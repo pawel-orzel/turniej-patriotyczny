@@ -48,45 +48,57 @@ const STATIONS = {
     id: 'kawa',
     name: 'KAWA U ANDRZEJA', 
     icon: Coffee, 
-    points: 10, 
     category: 'SPOŁECZNY',
-    question: "Z jakiego kraju pochodzi rzemieślnicza kawa serwowana u Andrzeja?", 
-    options: ["ETIOPIA", "RUANDA", "BRAZYLIA", "WIETNAM"], 
-    correct: 1,
-    color: '#DC2626' // Czerwony LLW
+    color: '#DC2626',
+    questions: [
+      { question: "Z jakiego kraju pochodzi rzemieślnicza kawa serwowana u Andrzeja?", options: ["ETIOPIA", "RUANDA", "BRAZYLIA", "WIETNAM"], correct: 1, points: 2 },
+      { question: "Kto jest patronem parafii, w której się obecnie znajdujemy?", options: ["ŚW. JAN", "ŚW. PIOTR", "ŚW. JÓZEF", "ŚW. ANDRZEJ"], correct: 2, points: 2 },
+      { question: "W którym roku została powołana parafia św. Andrzeja w Toruniu?", options: ["2010", "2016", "2020", "1999"], correct: 1, points: 2 },
+      { question: "Z czym najczęściej pije się kawę na porannym apelu harcerskim?", options: ["Z FILIŻANKI", "Z KUBKA TERMICZNEGO", "ZE SZKLANKI", "Z MENAŻKI"], correct: 1, points: 2 },
+      { question: "Jaki zakon posługuje w naszej parafii (na ul. św. Józefa)?", options: ["DOMINIKANIE", "JEZUICI", "REDEMPTORYŚCI", "FRANCISZKANIE"], correct: 2, points: 2 }
+    ]
   },
   skauci: { 
     id: 'skauci',
     name: 'OBÓZ SKAUTÓW KRÓLA', 
     icon: Shield, 
-    points: 15, 
     category: 'SKAUTING',
-    question: "Co oznacza oficjalne zawołanie Skautów Króla?", 
-    options: ["CZUWAJ!", "ZAWSZE GOTÓW!", "GOTÓW!", "Z PANEM BOGIEM!"], 
-    correct: 2,
-    color: '#22C55E' // Zielony LLW
+    color: '#22C55E',
+    questions: [
+      { question: "Co oznacza oficjalne zawołanie Skautów Króla?", options: ["CZUWAJ!", "ZAWSZE GOTÓW!", "GOTÓW!", "Z PANEM BOGIEM!"], correct: 2, points: 3 },
+      { question: "Jak nazywa się założyciel światowego skautingu?", options: ["ANDRZEJ MAŁKOWSKI", "ROBERT BADEN-POWELL", "ALEKSANDER KAMIŃSKI", "JÓZEF PIŁSUDSKI"], correct: 1, points: 3 },
+      { question: "Który węzeł najlepiej nadaje się do łączenia dwóch lin tej samej grubości?", options: ["PŁASKI", "RUTYNOWY", "ÓSEMKA", "SZYBKI"], correct: 0, points: 3 },
+      { question: "Kto jest założycielem harcerstwa na ziemiach polskich?", options: ["ROBERT BADEN-POWELL", "ANDRZEJ MAŁKOWSKI", "STEFAN WINCENTY", "IGNACY PADEREWSKI"], correct: 1, points: 3 },
+      { question: "Głównym symbolem noszonym na mundurze Skauta Króla jest:", options: ["LILIJKA", "KRZYŻ", "ORZEŁEK", "TARCZA"], correct: 1, points: 3 }
+    ]
   },
   gastronomia: { 
     id: 'gastronomia',
     name: 'STREFA GASTRO', 
     icon: Heart, 
-    points: 5, 
     category: 'TRADYCJA',
-    question: "Jaką tradycyjną przekąskę przygotowała Grupa św. Józefa i Klub Seniora?", 
-    options: ["ZAPIEKANKI", "CHLEB ZE SMALCEM", "HOT-DOGI", "POPCORN"], 
-    correct: 1,
-    color: '#EAB308' // Żółty LLW
+    color: '#EAB308',
+    questions: [
+      { question: "Jaką tradycyjną przekąskę serwuje dzisiaj Grupa św. Józefa?", options: ["FRYTKI", "ZAPIEKANKI", "HOT-DOGI", "POPCORN"], correct: 1, points: 1 },
+      { question: "Z jakiego miasta w Polsce wywodzą się słynne rogale świętomarcińskie?", options: ["Z TORUNIA", "Z KRAKOWA", "Z POZNANIA", "Z WARSZAWY"], correct: 2, points: 1 },
+      { question: "Jak nazywają się tradycyjne pierogi z farszem twarogowo-ziemniaczanym?", options: ["LITEWSKIE", "RUSKIE", "UKRAIŃSKIE", "POLSKIE"], correct: 1, points: 1 },
+      { question: "Co jest podstawowym składnikiem prawdziwego staropolskiego bigosu?", options: ["FASOLA", "KASZA", "KAPUSTA", "ZIEMNIAKI"], correct: 2, points: 1 },
+      { question: "Na jakiej bazie przygotowuje się tradycyjny polski żurek?", options: ["ZAKWASU", "OCTU", "MLEKA", "ŚMIETANY"], correct: 0, points: 1 }
+    ]
   },
   medyczna: { 
     id: 'medyczna',
     name: 'PIERWSZA POMOC', 
     icon: Zap, 
-    points: 10, 
     category: 'WIEDZA',
-    question: "Jaki jest uniwersalny numer alarmowy w całej Europie?", 
-    options: ["997", "112", "998", "999"], 
-    correct: 1,
-    color: '#3B82F6' // Niebieski LLW
+    color: '#3B82F6',
+    questions: [
+      { question: "Jaki jest uniwersalny, ogólnoeuropejski numer alarmowy?", options: ["997", "112", "998", "999"], correct: 1, points: 2 },
+      { question: "Jaki jest prawidłowy stosunek uciśnięć do wdechów u dorosłego (RKO)?", options: ["15:2", "30:2", "30:5", "10:1"], correct: 1, points: 2 },
+      { question: "Co oznacza medyczny skrót AED?", options: ["APARAT EKG", "AUTOMATYCZNY DEFIBRYLATOR ZEWNĘTRZNY", "AMBULANS", "APTECZKA EKSPERTÓW"], correct: 1, points: 2 },
+      { question: "W jakiej pozycji układamy nieprzytomnego, który oddycha samodzielnie?", options: ["NA PLECACH", "Z NOGAMI W GÓRZE", "BEZPIECZNEJ USTALONEJ", "SIEDZĄCEJ"], correct: 2, points: 2 },
+      { question: "Czego bezwzględnie NIE WOLNO robić przy oparzeniu wrzątkiem?", options: ["CHŁODZIĆ WODĄ", "ZDJĄĆ BIŻUTERII", "PRZEBIJAĆ PĘCHERZY", "ZAŁOŻYĆ OPATRUNKU"], correct: 2, points: 2 }
+    ]
   }
 };
 
@@ -164,9 +176,8 @@ export default function App() {
     setSubmitting(false);
   };
 
-  const handleAnswer = async (index) => {
+  const handleStationComplete = async (pointsEarned) => {
     if (!user || !userData || !currentStationId) return;
-
     // Blokada czasowa przesunięta na 30 Czerwca 2026, godz. 15:30 dla celów testowych.
     // PAMIĘTAJ: Miesiące w JavaScript liczymy od 0 (0 = styczeń, 5 = czerwiec).
     const cutoffTime = new Date(2026, 5, 30, 15, 30, 0).getTime();
@@ -178,14 +189,13 @@ export default function App() {
     }
 
     setSubmitting(true);
-    const station = STATIONS[currentStationId];
-    const isCorrect = index === station.correct;
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
-      totalPoints: userData.totalPoints + (isCorrect ? station.points : 0),
+      totalPoints: userData.totalPoints + pointsEarned,
       completedStations: arrayUnion(currentStationId)
     });
     setSubmitting(false);
-    setTimeout(() => { setView('home'); setCurrentStationId(null); }, 1500);
+    setView('home'); 
+    setCurrentStationId(null);
   };
 
   if (loading) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
@@ -240,7 +250,7 @@ export default function App() {
         {view === 'admin' ? (
           <AdminView setView={setView} />
         ) : view === 'quiz' && currentStationId ? (
-          <QuizView station={STATIONS[currentStationId]} userData={userData} handleAnswer={handleAnswer} submitting={submitting} />
+          <QuizView station={STATIONS[currentStationId]} userData={userData} handleStationComplete={handleStationComplete} submitting={submitting} />
         ) : view === 'leaderboard' ? (
           <LeaderboardView setView={setView} />
         ) : (
@@ -326,6 +336,7 @@ function HomeView({ userData, setView }) {
       {/* BENTO GRID STACJI */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {Object.values(STATIONS).map((st) => {
+          const maxPoints = st.questions.reduce((acc, q) => acc + q.points, 0);
           const isDone = userData?.completedStations.includes(st.id);
           return (
             <div 
@@ -344,7 +355,7 @@ function HomeView({ userData, setView }) {
                 <h5 className="text-2xl font-[900] uppercase leading-tight">{st.name}</h5>
               </div>
               <div className="flex justify-between items-center mt-6">
-                <span className="font-mono text-[12px] font-bold text-slate-500">{st.points} PKT</span>
+                <span className="font-mono text-[12px] font-bold text-slate-500">{maxPoints} PKT</span>
                 {isDone ? (
                   <CheckCircle className="text-green-600 w-8 h-8" />
                 ) : (
@@ -367,8 +378,11 @@ function HomeView({ userData, setView }) {
 }
 
 // --- QUIZ VIEW ---
-function QuizView({ station, userData, handleAnswer, submitting }) {
+function QuizView({ station, userData, handleStationComplete, submitting }) {
   const isDone = userData?.completedStations.includes(station.id);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [localScore, setLocalScore] = useState(0);
+  const [selectedOption, setSelectedOption] = useState(null); // Do animacji kolorów
 
   if (isDone) return (
     <div className="text-center py-20 animate-in zoom-in">
@@ -380,28 +394,68 @@ function QuizView({ station, userData, handleAnswer, submitting }) {
     </div>
   );
 
+  const currentQ = station.questions[currentIdx];
+  const maxPoints = station.questions.reduce((acc, q) => acc + q.points, 0);
+
+  const handleOptionClick = (idx) => {
+    if (selectedOption !== null || submitting) return; // Zapobiega podwójnemu kliknięciu
+    setSelectedOption(idx);
+
+    const isCorrect = idx === currentQ.correct;
+    const newScore = localScore + (isCorrect ? currentQ.points : 0);
+
+    // Czekamy sekundę, aby gracz zobaczył zielony/czerwony kolor
+    setTimeout(() => {
+      if (currentIdx + 1 < station.questions.length) {
+        setLocalScore(newScore);
+        setCurrentIdx(currentIdx + 1);
+        setSelectedOption(null); // Reset wyboru dla nowego pytania
+      } else {
+        // Koniec quizu na tej stacji
+        handleStationComplete(newScore);
+      }
+    }, 1000);
+  };
+
   return (
     <div className="animate-in slide-in-from-bottom-12 duration-500">
       <div style={{backgroundColor: station.color}} className={`${neoCard} p-10 text-white mb-8`}>
-        <div className="font-mono text-[10px] tracking-widest uppercase mb-4 opacity-80">WYZWANIE: {station.category}</div>
+        <div className="flex justify-between items-center mb-4 opacity-80">
+          <div className="font-mono text-[10px] tracking-widest uppercase">WYZWANIE: {station.category}</div>
+          <div className="font-mono text-[10px] tracking-widest uppercase font-bold bg-black/20 px-3 py-1 rounded-full">
+            PYTANIE {currentIdx + 1} / {station.questions.length}
+          </div>
+        </div>
         <h3 className="text-4xl font-[900] uppercase leading-none mb-4">{station.name}</h3>
-        <div className="bg-white/20 p-4 rounded-[12px] font-mono text-[12px] font-bold">WARTOŚĆ: {station.points} PUNKTÓW</div>
+        <div className="bg-white/20 p-4 rounded-[12px] font-mono text-[12px] font-bold flex justify-between">
+          <span>MAX STACJI: {maxPoints} PKT</span>
+          <span>ZDOBYTO: {localScore} PKT</span>
+        </div>
       </div>
 
       <div className={`${neoCard} bg-white p-10`}>
-        <h4 className="text-2xl font-[900] uppercase mb-10 leading-tight border-l-8 border-black pl-6">{station.question}</h4>
+        <h4 className="text-2xl font-[900] uppercase mb-10 leading-tight border-l-8 border-black pl-6">{currentQ.question}</h4>
         <div className="grid grid-cols-1 gap-4">
-          {station.options.map((opt, idx) => (
-            <button 
-              key={idx}
-              disabled={submitting}
-              onClick={() => handleAnswer(idx)}
-              className={`${neoBtn} bg-white text-left p-6 font-[900] uppercase text-lg flex justify-between items-center group`}
-            >
-              <span>{opt}</span>
-              <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-            </button>
-          ))}
+          {currentQ.options.map((opt, idx) => {
+            // Logika podświetlania poprawnych i błędnych odpowiedzi
+            let btnStyle = "bg-white text-black";
+            if (selectedOption !== null) {
+              if (idx === currentQ.correct) btnStyle = "bg-green-500 text-white border-green-700 shadow-none translate-y-[2px] translate-x-[2px]";
+              else if (idx === selectedOption) btnStyle = "bg-red-500 text-white border-red-700 shadow-none translate-y-[2px] translate-x-[2px]";
+            }
+
+            return (
+              <button 
+                key={idx}
+                disabled={submitting || selectedOption !== null}
+                onClick={() => handleOptionClick(idx)}
+                className={`${neoBtn} ${btnStyle} text-left p-6 font-[900] uppercase text-lg flex justify-between items-center group`}
+              >
+                <span>{opt}</span>
+                <ChevronRight className={`w-6 h-6 ${selectedOption === null ? 'group-hover:translate-x-2' : ''} transition-transform`} />
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
