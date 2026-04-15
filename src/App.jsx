@@ -58,7 +58,7 @@ const STATIONS = {
     name: 'OBÓZ SKAUTÓW KRÓLA', 
     icon: Shield, 
     points: 15, 
-    category: 'LITURGICZNY',
+    category: 'SKAUTING',
     question: "Co oznacza oficjalne zawołanie Skautów Króla?", 
     options: ["CZUWAJ!", "ZAWSZE GOTÓW!", "GOTÓW!", "Z PANEM BOGIEM!"], 
     correct: 2,
@@ -69,7 +69,7 @@ const STATIONS = {
     name: 'STREFA GASTRO', 
     icon: Heart, 
     points: 5, 
-    category: 'FIZYCZNY',
+    category: 'TRADYCJA',
     question: "Jaką tradycyjną przekąskę przygotowała Grupa św. Józefa i Klub Seniora?", 
     options: ["ZAPIEKANKI", "CHLEB ZE SMALCEM", "HOT-DOGI", "POPCORN"], 
     correct: 1,
@@ -80,7 +80,7 @@ const STATIONS = {
     name: 'PIERWSZA POMOC', 
     icon: Zap, 
     points: 10, 
-    category: 'INTELEKTUALNY',
+    category: 'WIEDZA',
     question: "Jaki jest uniwersalny numer alarmowy w całej Europie?", 
     options: ["997", "112", "998", "999"], 
     correct: 1,
@@ -172,29 +172,29 @@ export default function App() {
     setTimeout(() => { setView('home'); setCurrentStationId(null); }, 1500);
   };
 
-  if (loading) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-indigo-600 rounded-full animate-spin"></div></div>;
+  if (loading) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
   if (user && !userData) {
     return (
       <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
         <div className={`${neoCard} w-full max-w-sm p-10 text-center`}>
-          <div className="bg-[#4F46E5] border-4 border-black w-24 h-24 rounded-[24px] flex items-center justify-center mx-auto mb-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+          <div className="bg-[#DC2626] border-4 border-black w-24 h-24 rounded-[24px] flex items-center justify-center mx-auto mb-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
             <Flag className="text-white w-12 h-12" />
           </div>
-          <h1 className="text-4xl font-[900] mb-2 leading-none uppercase tracking-tighter">PASZPORT LLW</h1>
-          <p className="font-mono text-[10px] tracking-widest text-slate-500 mb-10 uppercase">System Identyfikacji Wiary</p>
+          <h1 className="text-4xl font-[900] mb-2 leading-none uppercase tracking-tighter">PASZPORT SKAUTA</h1>
+          <p className="font-mono text-[10px] tracking-widest text-slate-500 mb-10 uppercase">Biało-Czerwona 2.0</p>
           <input 
             type="text" 
             placeholder="TWÓJ NICK..." 
-            className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-indigo-50"
+            className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-red-50"
             value={nick}
             onChange={(e) => setNick(e.target.value)}
           />
           <button 
             onClick={handleRegister}
-            className={`${neoBtn} w-full py-5 bg-[#4F46E5] text-white font-[900] uppercase`}
+            className={`${neoBtn} w-full py-5 bg-[#DC2626] text-white font-[900] uppercase`}
           >
-            OTWÓRZ LABIRYNT
+            OTWÓRZ PASZPORT
           </button>
         </div>
       </div>
@@ -234,15 +234,15 @@ export default function App() {
 
       {/* MENU DOLNE */}
       <nav className="fixed bottom-0 inset-x-0 bg-white border-t-[3px] border-black p-5 flex justify-around items-center z-50">
-        <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view === 'home' ? 'text-[#4F46E5]' : 'text-black'}`}>
+        <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view === 'home' ? 'text-[#DC2626]' : 'text-black'}`}>
           <MapPin className="w-7 h-7" />
           <span className="font-mono text-[9px] font-bold uppercase tracking-widest">MAPA</span>
         </button>
-        <button onClick={() => setView('ai')} className={`flex flex-col items-center gap-1 ${view === 'ai' ? 'text-[#4F46E5]' : 'text-black'}`}>
+        <button onClick={() => setView('ai')} className={`flex flex-col items-center gap-1 ${view === 'ai' ? 'text-[#DC2626]' : 'text-black'}`}>
           <Sparkles className="w-7 h-7" />
           <span className="font-mono text-[9px] font-bold uppercase tracking-widest">AI SKAUT</span>
         </button>
-        <button onClick={() => setView('leaderboard')} className={`flex flex-col items-center gap-1 ${view === 'leaderboard' ? 'text-[#4F46E5]' : 'text-black'}`}>
+        <button onClick={() => setView('leaderboard')} className={`flex flex-col items-center gap-1 ${view === 'leaderboard' ? 'text-[#DC2626]' : 'text-black'}`}>
           <Trophy className="w-7 h-7" />
           <span className="font-mono text-[9px] font-bold uppercase tracking-widest">RANKING</span>
         </button>
@@ -256,10 +256,10 @@ function HomeView({ userData, setView }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* BANER GŁÓWNY */}
-      <div className={`${neoCard} bg-[#4F46E5] p-10 text-white relative overflow-hidden`}>
+      <div className={`${neoCard} bg-[#DC2626] p-10 text-white relative overflow-hidden`}>
         <div className="relative z-10">
-          <div className={neoTag + " bg-indigo-800 border-indigo-400 text-white mb-4"}>MISJA DZISIAJ</div>
-          <h3 className="text-4xl font-[900] leading-none uppercase mb-2 tracking-tighter">LABIRYNT WIARY</h3>
+          <div className={neoTag + " bg-red-800 border-red-400 text-white mb-4"}>MISJA DZISIAJ</div>
+          <h3 className="text-4xl font-[900] leading-none uppercase mb-2 tracking-tighter">TURNIEJ SKAUTOWY</h3>
           <p className="font-mono text-[11px] tracking-widest opacity-80 uppercase">Zdobądź wszystkie 4 pieczęcie!</p>
         </div>
         <Flag className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 rotate-12" />
@@ -299,9 +299,9 @@ function HomeView({ userData, setView }) {
       </div>
 
       <div className={`${neoCard} bg-white p-8 border-dashed flex gap-6 items-center`}>
-         <Info className="w-12 h-12 text-indigo-600 shrink-0" />
+         <Info className="w-12 h-12 text-[#DC2626] shrink-0" />
          <p className="font-mono text-[11px] leading-relaxed uppercase font-bold text-slate-600">
-           KAŻDA STACJA TO KOLEJNY KROK W LABIRYNCIE. PÓŁFINAŁ O GODZINIE 15:30 NA SCENIE GŁÓWNEJ DLA TOP 10 WYNIKÓW.
+           KAŻDA STACJA TO KOLEJNY KROK W TURNIEJU. PÓŁFINAŁ O GODZINIE 15:30 NA SCENIE GŁÓWNEJ DLA TOP 10 WYNIKÓW.
          </p>
       </div>
     </div>
@@ -349,24 +349,24 @@ function AiView({ setView }) {
         <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">WIRTUALNY ZASTĘPOWY</div>
       </div>
 
-      <div className={`${neoCard} bg-indigo-50 p-8 text-center`}>
-        <Sparkles className="w-12 h-12 text-indigo-600 mx-auto mb-6" />
-        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4">ZDOBĄDŹ WYZWANIE</h3>
-        <p className="font-mono text-[11px] font-bold text-slate-500 uppercase mb-8">
+      <div className={`${neoCard} bg-black p-8 text-center text-white`}>
+        <Sparkles className="w-12 h-12 text-[#EAB308] mx-auto mb-6 animate-pulse" />
+        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#EAB308]">ZDOBĄDŹ WYZWANIE</h3>
+        <p className="font-mono text-[11px] font-bold text-slate-300 uppercase mb-8">
           Nasz AI Skaut wygeneruje dla Ciebie unikalną ciekawostkę patriotyczną lub wyzwanie wprost z Torunia.
         </p>
         <button
           onClick={fetchAiChallenge}
           disabled={loading}
-          className={`${neoBtn} w-full py-5 bg-[#4F46E5] text-white font-[900] uppercase flex justify-center items-center gap-2`}
+          className={`${neoBtn} w-full py-5 bg-[#EAB308] text-black font-[900] uppercase flex justify-center items-center gap-2`}
         >
-          {loading ? <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : "ZAPYTAJ AI SKAUTA"}
+          {loading ? <div className="w-6 h-6 border-4 border-black border-t-transparent rounded-full animate-spin"></div> : "ZAPYTAJ AI SKAUTA"}
         </button>
       </div>
 
       {aiResponse && (
-        <div className={`${neoCard} p-8 bg-white border-dashed animate-in slide-in-from-bottom-4`}>
-          <div className="font-mono text-[10px] tracking-widest text-indigo-500 mb-4 font-bold uppercase">RAPORT AI SKAUTA:</div>
+        <div className={`${neoCard} p-8 bg-white border-dashed border-[#EAB308] animate-in slide-in-from-bottom-4`}>
+          <div className="font-mono text-[10px] tracking-widest text-[#EAB308] mb-4 font-bold uppercase">RAPORT AI SKAUTA:</div>
           <p className="text-lg font-[800] uppercase leading-relaxed text-black">
             {aiResponse}
           </p>
@@ -444,7 +444,7 @@ function LeaderboardView({ setView }) {
         {leaders.map((p, idx) => (
           <div 
             key={p.uid} 
-            className={`${neoCard} p-6 flex items-center justify-between ${idx === 0 ? 'bg-indigo-50 border-indigo-600' : ''}`}
+            className={`${neoCard} p-6 flex items-center justify-between ${idx === 0 ? 'bg-red-50 border-[#DC2626]' : ''}`}
           >
             <div className="flex items-center gap-6">
               <div className={`w-12 h-12 border-[3px] border-black rounded-[12px] flex items-center justify-center font-[900] text-xl ${
