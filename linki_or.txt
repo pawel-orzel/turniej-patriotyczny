@@ -6,3 +6,8 @@ Obóz Skautów Króla: https://turniej-patriotyczny.vercel.app/?station=skauci
 Strefa Gastronomiczna: https://turniej-patriotyczny.vercel.app/?station=gastronomia
 Stanowisko Pierwszej Pomocy: https://turniej-patriotyczny.vercel.app/?station=medyczna
 Możesz już teraz wejść na swój adres z telefonu, ręcznie dopisać do paska adresu np. ?station=kawa i przetestować, jak pięknie wszystko działa na żywo!
+
+
+
+
+https://turniej-patriotyczny.vercel.app/?admin=true

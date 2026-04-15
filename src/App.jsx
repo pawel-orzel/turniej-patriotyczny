@@ -91,9 +91,9 @@ const STATIONS = {
 };
 
 // --- STYL NEO-BRUTALISTYCZNY (CUSTOM CLASSES) ---
-const neoCard = "bg-white border-[3px] border-black shadow-neo rounded-[32px]";
-const neoBtn = "bg-white border-[3px] border-black shadow-neo-sm active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all rounded-[16px]";
-const neoTag = "font-mono text-[10px] tracking-widest uppercase bg-white border-2 border-black px-3 py-1 rounded-full inline-block";
+const neoCard = "border-[3px] border-black shadow-neo rounded-[32px]";
+const neoBtn = "border-[3px] border-black shadow-neo-sm active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all rounded-[16px]";
+const neoTag = "font-mono text-[10px] tracking-widest uppercase border-2 border-black px-3 py-1 rounded-full inline-block";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -193,7 +193,7 @@ export default function App() {
   if (user && !userData && view !== 'admin') {
     return (
       <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
-        <div className={`${neoCard} w-full max-w-sm p-10 text-center`}>
+        <div className={`${neoCard} bg-white w-full max-w-sm p-10 text-center`}>
         <div className="bg-[#DC2626] border-4 border-black w-24 h-24 rounded-[24px] flex items-center justify-center mx-auto mb-8 shadow-neo-sm">
             <Flag className="text-white w-12 h-12" />
           </div>
@@ -330,7 +330,7 @@ function HomeView({ userData, setView }) {
           return (
             <div 
               key={st.id} 
-              className={`${neoCard} p-8 flex flex-col justify-between min-h-[220px] transition-all ${isDone ? 'opacity-50 grayscale' : 'hover:translate-y-[-4px]'}`}
+              className={`${neoCard} bg-white p-8 flex flex-col justify-between min-h-[220px] transition-all ${isDone ? 'opacity-50 grayscale' : 'hover:translate-y-[-4px]'}`}
             >
               <div>
                 <div className="flex justify-between items-start mb-6">
@@ -388,7 +388,7 @@ function QuizView({ station, userData, handleAnswer, submitting }) {
         <div className="bg-white/20 p-4 rounded-[12px] font-mono text-[12px] font-bold">WARTOŚĆ: {station.points} PUNKTÓW</div>
       </div>
 
-      <div className={`${neoCard} p-10`}>
+      <div className={`${neoCard} bg-white p-10`}>
         <h4 className="text-2xl font-[900] uppercase mb-10 leading-tight border-l-8 border-black pl-6">{station.question}</h4>
         <div className="grid grid-cols-1 gap-4">
           {station.options.map((opt, idx) => (
@@ -396,7 +396,7 @@ function QuizView({ station, userData, handleAnswer, submitting }) {
               key={idx}
               disabled={submitting}
               onClick={() => handleAnswer(idx)}
-              className={`${neoBtn} text-left p-6 font-[900] uppercase text-lg flex justify-between items-center group`}
+              className={`${neoBtn} bg-white text-left p-6 font-[900] uppercase text-lg flex justify-between items-center group`}
             >
               <span>{opt}</span>
               <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
@@ -434,7 +434,7 @@ function LeaderboardView({ setView }) {
         {leaders.map((p, idx) => (
           <div 
             key={p.uid} 
-            className={`${neoCard} p-6 flex items-center justify-between ${idx === 0 ? 'bg-red-50 border-[#DC2626]' : ''}`}
+            className={`${neoCard} p-6 flex items-center justify-between ${idx === 0 ? 'bg-red-50 border-[#DC2626]' : 'bg-white'}`}
           >
             <div className="flex items-center gap-6">
               <div className={`w-12 h-12 border-[3px] border-black rounded-[12px] flex items-center justify-center font-[900] text-xl ${
