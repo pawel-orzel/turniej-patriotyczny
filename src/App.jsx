@@ -20,7 +20,7 @@ import {
 import { getAnalytics } from 'firebase/analytics';
 import { 
   User, Trophy, Coffee, Shield, Heart, Zap, 
-  CheckCircle, ChevronRight, Medal, 
+  CheckCircle, ChevronRight, 
   MapPin, Flag, Timer, Info
 } from 'lucide-react';
 
@@ -89,8 +89,8 @@ const STATIONS = {
 };
 
 // --- STYL NEO-BRUTALISTYCZNY (CUSTOM CLASSES) ---
-const neoCard = "bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
-const neoBtn = "bg-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all rounded-[16px]";
+const neoCard = "bg-white border-[3px] border-black shadow-neo rounded-[32px]";
+const neoBtn = "bg-white border-[3px] border-black shadow-neo-sm active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all rounded-[16px]";
 const neoTag = "font-mono text-[10px] tracking-widest uppercase bg-white border-2 border-black px-3 py-1 rounded-full inline-block";
 
 export default function App() {
@@ -189,7 +189,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
         <div className={`${neoCard} w-full max-w-sm p-10 text-center`}>
-          <div className="bg-[#DC2626] border-4 border-black w-24 h-24 rounded-[24px] flex items-center justify-center mx-auto mb-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+        <div className="bg-[#DC2626] border-4 border-black w-24 h-24 rounded-[24px] flex items-center justify-center mx-auto mb-8 shadow-neo-sm">
             <Flag className="text-white w-12 h-12" />
           </div>
           <h1 className="text-4xl font-[900] mb-2 leading-none uppercase tracking-tighter">PASZPORT SKAUTA</h1>
@@ -225,7 +225,7 @@ export default function App() {
             <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mt-1">STATUS: AKTYWNY</div>
           </div>
         </div>
-        <div className="bg-[#EAB308] border-[3px] border-black px-5 py-2 rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-3">
+        <div className="bg-[#EAB308] border-[3px] border-black px-5 py-2 rounded-[16px] shadow-neo-sm flex items-center gap-3">
           <Trophy className="w-5 h-5" />
           <span className="text-2xl font-[900]">{userData?.totalPoints}</span>
         </div>
@@ -281,7 +281,7 @@ function HomeView({ userData, setView }) {
             >
               <div>
                 <div className="flex justify-between items-start mb-6">
-                  <div style={{backgroundColor: st.color}} className="p-4 border-[3px] border-black rounded-[16px] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <div style={{backgroundColor: st.color}} className="p-4 border-[3px] border-black rounded-[16px] text-white shadow-neo-sm">
                     <st.icon className="w-8 h-8" />
                   </div>
                   <div className="font-mono text-[10px] tracking-widest text-slate-400 text-right">
@@ -319,7 +319,7 @@ function QuizView({ station, userData, handleAnswer, submitting }) {
 
   if (isDone) return (
     <div className="text-center py-20 animate-in zoom-in">
-      <div className="bg-green-100 border-[3px] border-black w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+      <div className="bg-green-100 border-[3px] border-black w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-neo">
         <CheckCircle className="text-green-600 w-12 h-12" />
       </div>
       <h3 className="text-3xl font-[900] uppercase mb-4">PIECZĘĆ ZDOBYTA</h3>
