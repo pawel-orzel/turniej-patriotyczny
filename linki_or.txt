@@ -1,0 +1,8 @@
+Wystarczy, że wkleisz poniższe dokładne linki do dowolnego darmowego generatora kodów QR (np. qr-code-generator.com lub bitly.com/qr-code):
+
+Rejestracja (Na główny plakat startowy): https://turniej-patriotyczny.vercel.app/
+Stoisko "Kawa u Andrzeja": https://turniej-patriotyczny.vercel.app/?station=kawa
+Obóz Skautów Króla: https://turniej-patriotyczny.vercel.app/?station=skauci
+Strefa Gastronomiczna: https://turniej-patriotyczny.vercel.app/?station=gastronomia
+Stanowisko Pierwszej Pomocy: https://turniej-patriotyczny.vercel.app/?station=medyczna
+Możesz już teraz wejść na swój adres z telefonu, ręcznie dopisać do paska adresu np. ?station=kawa i przetestować, jak pięknie wszystko działa na żywo!

@@ -9,7 +9,9 @@ import {
   onSnapshot, 
   updateDoc,
   arrayUnion,
-  query
+  query,
+  getDocs,
+  deleteDoc
 } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -98,7 +100,7 @@ export default function App() {
   const [userData, setUserData] = useState(null);
   const [nick, setNick] = useState('');
   const [currentStationId, setCurrentStationId] = useState(null);
-  const [view, setView] = useState('home'); // 'home' | 'leaderboard' | 'quiz'
+  const [view, setView] = useState('home'); // 'home' | 'leaderboard' | 'quiz' | 'admin'
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -130,7 +132,10 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sId = params.get('station');
-    if (STATIONS[sId]) {
+    const adminParam = params.get('admin');
+    if (adminParam === 'true') {
+      setView('admin');
+    } else if (STATIONS[sId]) {
       setCurrentStationId(sId);
       setView('quiz');
     }
@@ -162,9 +167,9 @@ export default function App() {
   const handleAnswer = async (index) => {
     if (!user || !userData || !currentStationId) return;
 
-    // Blokada czasowa (np. 15 Kwiecień 2026, 15:30)
-    // Dostosuj rok, miesiąc (0-11) i dzień do faktycznej daty wydarzenia!
-    const cutoffTime = new Date(2026, 3, 15, 15, 30, 0).getTime();
+    // Blokada czasowa przesunięta na 30 Czerwca 2026, godz. 15:30 dla celów testowych.
+    // PAMIĘTAJ: Miesiące w JavaScript liczymy od 0 (0 = styczeń, 5 = czerwiec).
+    const cutoffTime = new Date(2026, 5, 30, 15, 30, 0).getTime();
     if (Date.now() > cutoffTime) {
       alert("ELIMINACJE ZAKOŃCZONE! TRWA PODLICZANIE WYNIKÓW DO PÓŁFINAŁU.");
       setView('leaderboard');
@@ -185,7 +190,7 @@ export default function App() {
 
   if (loading) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
-  if (user && !userData) {
+  if (user && !userData && view !== 'admin') {
     return (
       <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
         <div className={`${neoCard} w-full max-w-sm p-10 text-center`}>
@@ -232,7 +237,9 @@ export default function App() {
       </header>
 
       <main className="max-w-xl mx-auto p-6">
-        {view === 'quiz' && currentStationId ? (
+        {view === 'admin' ? (
+          <AdminView setView={setView} />
+        ) : view === 'quiz' && currentStationId ? (
           <QuizView station={STATIONS[currentStationId]} userData={userData} handleAnswer={handleAnswer} submitting={submitting} />
         ) : view === 'leaderboard' ? (
           <LeaderboardView setView={setView} />
@@ -252,6 +259,52 @@ export default function App() {
           <span className="font-mono text-[9px] font-bold uppercase tracking-widest">RANKING</span>
         </button>
       </nav>
+    </div>
+  );
+}
+
+// --- ADMIN VIEW ---
+function AdminView({ setView }) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const clearDatabase = async () => {
+    if (!window.confirm("CZY NA PEWNO CHCESZ USUNĄĆ WSZYSTKICH UCZESTNIKÓW I WYZEROWAĆ RANKING? TEJ OPERACJI NIE MOŻNA COFNĄĆ!")) return;
+    setIsDeleting(true);
+    try {
+      const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
+      const snapshot = await getDocs(q);
+      const deletePromises = snapshot.docs.map(document => 
+        deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', document.id))
+      );
+      await Promise.all(deletePromises);
+      alert("BAZA DANYCH ZOSTAŁA WYCZYSZCZONA! TURNIEJ ZRESETOWANY.");
+    } catch (err) {
+      console.error(err);
+      alert("WYSTĄPIŁ BŁĄD PODCZAS CZYSZCZENIA BAZY.");
+    }
+    setIsDeleting(false);
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500 mt-8">
+      <div>
+        <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">PANEL ADMINA</h1>
+        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">ZARZĄDZANIE TURNIEJEM</div>
+      </div>
+
+      <div className={`${neoCard} p-8 bg-red-50 border-dashed border-[#DC2626] text-center`}>
+        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#DC2626]">RESETOWANIE WYNIKÓW</h3>
+        <p className="font-mono text-[11px] font-bold text-slate-600 uppercase mb-8">
+          Użyj tego przycisku przed oficjalnym startem pikniku, aby usunąć wszystkie testowe konta i wyzerować ranking.
+        </p>
+        <button
+          onClick={clearDatabase}
+          disabled={isDeleting}
+          className={`${neoBtn} w-full py-5 bg-[#DC2626] text-white font-[900] uppercase`}
+        >
+          {isDeleting ? "TRWA CZYSZCZENIE..." : "WYCZYŚĆ BAZĘ DANYCH"}
+        </button>
+      </div>
     </div>
   );
 }
