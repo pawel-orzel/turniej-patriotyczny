@@ -21,7 +21,7 @@ import { getAnalytics } from 'firebase/analytics';
 import { 
   User, Trophy, Coffee, Shield, Heart, Zap, 
   CheckCircle, ChevronRight, Medal, 
-  MapPin, Flag, Timer, Info
+  MapPin, Flag, Timer, Info, Sparkles
 } from 'lucide-react';
 
 // --- KONFIGURACJA FIREBASE ---
@@ -98,7 +98,7 @@ export default function App() {
   const [userData, setUserData] = useState(null);
   const [nick, setNick] = useState('');
   const [currentStationId, setCurrentStationId] = useState(null);
-  const [view, setView] = useState('home'); // 'home' | 'leaderboard' | 'quiz'
+  const [view, setView] = useState('home'); // 'home' | 'leaderboard' | 'quiz' | 'ai'
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -225,6 +225,8 @@ export default function App() {
           <QuizView station={STATIONS[currentStationId]} userData={userData} handleAnswer={handleAnswer} submitting={submitting} />
         ) : view === 'leaderboard' ? (
           <LeaderboardView setView={setView} />
+        ) : view === 'ai' ? (
+          <AiView setView={setView} />
         ) : (
           <HomeView userData={userData} setView={setView} />
         )}
@@ -235,6 +237,10 @@ export default function App() {
         <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view === 'home' ? 'text-[#4F46E5]' : 'text-black'}`}>
           <MapPin className="w-7 h-7" />
           <span className="font-mono text-[9px] font-bold uppercase tracking-widest">MAPA</span>
+        </button>
+        <button onClick={() => setView('ai')} className={`flex flex-col items-center gap-1 ${view === 'ai' ? 'text-[#4F46E5]' : 'text-black'}`}>
+          <Sparkles className="w-7 h-7" />
+          <span className="font-mono text-[9px] font-bold uppercase tracking-widest">AI SKAUT</span>
         </button>
         <button onClick={() => setView('leaderboard')} className={`flex flex-col items-center gap-1 ${view === 'leaderboard' ? 'text-[#4F46E5]' : 'text-black'}`}>
           <Trophy className="w-7 h-7" />
@@ -298,6 +304,74 @@ function HomeView({ userData, setView }) {
            KAŻDA STACJA TO KOLEJNY KROK W LABIRYNCIE. PÓŁFINAŁ O GODZINIE 15:30 NA SCENIE GŁÓWNEJ DLA TOP 10 WYNIKÓW.
          </p>
       </div>
+    </div>
+  );
+}
+
+// --- AI VIEW ---
+function AiView({ setView }) {
+  const [aiResponse, setAiResponse] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const fetchAiChallenge = async () => {
+    setLoading(true);
+    setAiResponse('');
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY; 
+      if (!apiKey) {
+        setAiResponse("BRAK KLUCZA API GEMINI. DODAJ ZMIENNĄ VITE_GEMINI_API_KEY W PLIKU .env");
+        setLoading(false);
+        return;
+      }
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: "Podaj krótkie, harcerskie wyzwanie fizyczne lub patriotyczną ciekawostkę z Torunia dla uczestnika gry terenowej. Bądź zwięzły, używaj energicznego, harcerskiego tonu. Maksymalnie 2-3 zdania." }] }]
+        })
+      });
+      const data = await res.json();
+      if (data.candidates && data.candidates[0].content.parts[0].text) {
+        setAiResponse(data.candidates[0].content.parts[0].text);
+      } else {
+        setAiResponse("AI SKAUT ZGUBIŁ ZASIĘG. SPRÓBUJ PONOWNIE.");
+      }
+    } catch (err) {
+      setAiResponse("BŁĄD ŁĄCZNOŚCI Z BAZĄ GŁÓWNĄ.");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div>
+        <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2">AI SKAUT</h1>
+        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">WIRTUALNY ZASTĘPOWY</div>
+      </div>
+
+      <div className={`${neoCard} bg-indigo-50 p-8 text-center`}>
+        <Sparkles className="w-12 h-12 text-indigo-600 mx-auto mb-6" />
+        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4">ZDOBĄDŹ WYZWANIE</h3>
+        <p className="font-mono text-[11px] font-bold text-slate-500 uppercase mb-8">
+          Nasz AI Skaut wygeneruje dla Ciebie unikalną ciekawostkę patriotyczną lub wyzwanie wprost z Torunia.
+        </p>
+        <button
+          onClick={fetchAiChallenge}
+          disabled={loading}
+          className={`${neoBtn} w-full py-5 bg-[#4F46E5] text-white font-[900] uppercase flex justify-center items-center gap-2`}
+        >
+          {loading ? <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : "ZAPYTAJ AI SKAUTA"}
+        </button>
+      </div>
+
+      {aiResponse && (
+        <div className={`${neoCard} p-8 bg-white border-dashed animate-in slide-in-from-bottom-4`}>
+          <div className="font-mono text-[10px] tracking-widest text-indigo-500 mb-4 font-bold uppercase">RAPORT AI SKAUTA:</div>
+          <p className="text-lg font-[800] uppercase leading-relaxed text-black">
+            {aiResponse}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
