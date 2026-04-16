@@ -59,8 +59,6 @@ export default function App() {
   const [appConfig, setAppConfig] = useState(null);
   const [countdown, setCountdown] = useState('');
   const [currentStationId, setCurrentStationId] = useState(null);
-  const [unlockingStationId, setUnlockingStationId] = useState(null);
-  const [gatekeeperCode, setGatekeeperCode] = useState('');
   const [view, setView] = useState('home'); // 'home' | 'leaderboard' | 'quiz' | 'admin'
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -171,12 +169,8 @@ export default function App() {
     if (adminParam === 'true' && user?.uid === OWNER_UID) {
       setView('admin');
     } else if (stations[sId] && userData) {
-      if (userData.unlockedStations?.includes(sId)) {
-        setCurrentStationId(sId);
-        setView('quiz');
-      } else {
-        setUnlockingStationId(sId);
-      }
+      setCurrentStationId(sId);
+      setView('quiz');
     }
   }, [user, userData, stations]); // Reaguj gdy załaduje się user i jego dane
 
@@ -199,7 +193,6 @@ export default function App() {
         nick: nick.toUpperCase(),
         totalPoints: 0,
         completedStations: [],
-        unlockedStations: [],
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -229,22 +222,6 @@ export default function App() {
     setSubmitting(false);
     setView('home');
     setCurrentStationId(null);
-  };
-
-  const handleUnlockStation = async () => {
-    if (!unlockingStationId || !appConfig?.dynamicCodes) return;
-    const correctCode = appConfig.dynamicCodes[unlockingStationId];
-    if (gatekeeperCode.toUpperCase() === correctCode.toUpperCase()) {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
-        unlockedStations: arrayUnion(unlockingStationId)
-      });
-      setUnlockingStationId(null);
-      setGatekeeperCode('');
-      setCurrentStationId(unlockingStationId);
-      setView('quiz');
-    } else {
-      alert("ZŁY KOD! ZAPYTAJ STRAŻNIKA STACJI O POPRAWNY.");
-    }
   };
 
   const handleAdminLogin = async () => {
@@ -340,27 +317,6 @@ export default function App() {
     );
   }
 
-  if (unlockingStationId) {
-    return (
-      <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-6 animate-in fade-in">
-        <div className={`${neoCard} bg-white w-full max-w-sm p-10 text-center`}>
-          <Lock className="w-16 h-16 mx-auto mb-6 text-[#EAB308]" />
-          <h3 className="text-2xl font-[900] uppercase mb-2">STRAŻNIK WIEDZY</h3>
-          <p className="font-mono text-[11px] text-slate-500 uppercase mb-8">Wpisz tajny kod od obsługi stacji, by odblokować to wyzwanie.</p>
-          <input 
-            type="text" 
-            placeholder="KOD DOSTĘPU..." 
-            className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-yellow-50 text-center"
-            value={gatekeeperCode}
-            onChange={(e) => setGatekeeperCode(e.target.value)}
-          />
-          <button onClick={handleUnlockStation} className={`${neoBtn} w-full py-5 bg-[#EAB308] text-black font-[900] uppercase mb-4`}>ODBLOKUJ</button>
-          <button onClick={() => setUnlockingStationId(null)} className="font-mono text-slate-400 uppercase text-xs">ANULUJ</button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-24">
       {/* NAGŁÓWEK */}
@@ -391,7 +347,7 @@ export default function App() {
         ) : view === 'leaderboard' ? (
           <LeaderboardView appConfig={appConfig} />
         ) : (
-          <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} setUnlockingStationId={setUnlockingStationId} />
+          <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} setView={setView} setCurrentStationId={setCurrentStationId} />
         )}
       </main>
 
@@ -470,16 +426,6 @@ function AdminView({ appConfig, user, stations }) {
         <input type="text" readOnly value={user?.uid || 'Brak UID'} className="w-full p-3 bg-slate-100 border-2 border-black rounded-lg font-mono text-sm" />
       </div>
 
-      {/* KODY DOSTĘPU */}
-      <div className={`${neoCard} bg-white p-8`}>
-        <h3 className="text-xl font-[900] uppercase mb-4">KODY STRAŻNIKÓW</h3>
-        <div className="font-mono text-sm space-y-2">
-          {appConfig?.dynamicCodes && Object.entries(appConfig.dynamicCodes).map(([key, value]) => (
-            <div key={key} className="flex justify-between"><span>{key.toUpperCase()}:</span> <span className="font-bold">{value}</span></div>
-          ))}
-        </div>
-      </div>
-
       {/* LINKI DO STACJI (GENERATOR) */}
       <div className={`${neoCard} bg-white p-8`}>
         <h3 className="text-xl font-[900] uppercase mb-4">LINKI DO KODÓW QR STACJI</h3>
@@ -536,7 +482,7 @@ function AdminView({ appConfig, user, stations }) {
 }
 
 // --- HOME (BENTO BOX LAYOUT) ---
-function HomeView({ userData, appConfig, stations, stationsError, refetchStations, setUnlockingStationId }) {
+function HomeView({ userData, appConfig, stations, stationsError, refetchStations, setView, setCurrentStationId }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* BANER GŁÓWNY */}
@@ -586,11 +532,15 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
         {Object.values(stations).map((st) => {
           const maxPoints = st.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
           const isDone = userData?.completedStations?.includes(st.id);
-          const isUnlocked = userData?.unlockedStations?.includes(st.id);
           return (
             <div 
               key={st.id} 
-              onClick={() => !isUnlocked && !isDone && setUnlockingStationId(st.id)}
+              onClick={() => {
+                if (!isDone) {
+                  setCurrentStationId(st.id);
+                  setView('quiz');
+                }
+              }}
               className={`${neoCard} bg-white p-8 flex flex-col justify-between min-h-[220px] transition-all ${isDone ? 'opacity-50 grayscale' : 'cursor-pointer hover:translate-y-[-4px]'}`}
             >
               <div>
@@ -608,11 +558,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
                 <span className="font-mono text-[12px] font-bold text-slate-500">{maxPoints} PKT</span>
                 {isDone ? (
                   <CheckCircle className="text-green-600 w-8 h-8" />
-                ) : (
-                  isUnlocked 
-                    ? <div className="bg-black text-white px-4 py-1 rounded-full font-mono text-[10px] tracking-widest uppercase">OPEN</div>
-                    : <Lock className="text-slate-400 w-8 h-8" />
-                )}
+                ) : <ChevronRight className="w-8 h-8" />}
               </div>
             </div>
           );
