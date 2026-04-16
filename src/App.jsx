@@ -573,9 +573,6 @@ function AdminView({ appConfig, user, stations, onLogout }) {
           <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
           <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
         </div>
-        <button onClick={onLogout} className="font-mono text-[10px] font-bold tracking-widest uppercase bg-black text-white px-4 py-3 rounded-xl shadow-neo-sm active:translate-y-1 active:translate-x-1 transition-transform">
-          Wyloguj
-        </button>
       </div>
 
       {/* ZARZĄDZANIE CZASEM */}
