@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField } from 'firebase/firestore';
 import { Trophy, Radio, Activity, ChevronRight, Megaphone } from 'lucide-react';
 
 // Custom Classes Neo-Brutalism
@@ -69,8 +69,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
   const clearAnnouncement = async () => {
       const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-      // Using setDoc with merge to just remove the announcement field
-      await setDoc(liveRef, { announcement: null }, { merge: true });
+      await setDoc(liveRef, { announcement: deleteField() }, { merge: true });
   };
 
   if (isAdmin) {
@@ -158,16 +157,19 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 <h2 className="text-xl font-[900] uppercase mb-4 flex items-center gap-2"><Megaphone /> OGŁOSZENIA NA EKRANACH</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button onClick={() => announce('finalists', 'FINALIŚCI TURNIEJU', 'Oto gracze, którzy zmierzą się w wielkim finale!')} className={`${neoBtn} py-3 bg-green-600 text-white`}>
-                        OGŁOŚ FINALISTÓW
+                        OGŁOŚ FINALISTÓW (TOP 10)
                     </button>
                     <button onClick={() => announce('winners', 'MISTRZOWIE TURNIEJU', 'Gratulacje dla najlepszych!')} className={`${neoBtn} py-3 bg-yellow-400 text-black`}>
-                        OGŁOŚ ZWYCIĘZCÓW
+                        OGŁOŚ ZWYCIĘZCÓW (TOP 5)
                     </button>
                 </div>
                 {liveStage?.announcement && (
-                  <button onClick={clearAnnouncement} className="mt-4 w-full font-mono text-xs text-slate-500 uppercase tracking-widest hover:text-red-500">
-                      Wyczyść ogłoszenie i wróć do sceny
-                  </button>
+                  <div className="mt-6 p-4 border-[3px] border-red-500 bg-white rounded-[16px] text-center shadow-neo-sm">
+                     <div className="font-[900] text-red-600 uppercase mb-2 text-lg">AKTYWNE OGŁOSZENIE: {liveStage.announcement.title}</div>
+                     <button onClick={clearAnnouncement} className={`${neoBtn} w-full py-3 bg-red-600 text-white`}>
+                         UKRYJ OGŁOSZENIE (WRÓĆ DO SCENY)
+                     </button>
+                  </div>
                 )}
               </div>
 
@@ -254,6 +256,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
       return <AnnouncementPanel
           title={liveStage.announcement.title}
           subtitle={liveStage.announcement.subtitle}
+          type={liveStage.announcement.type}
           showConfetti={liveStage.announcement.type === 'winners'}
           db={db}
           appId={appId}
@@ -466,21 +469,24 @@ function Confetti() {
     );
 }
 
-function AnnouncementPanel({ title, subtitle, showConfetti, db, appId, isAdmin, liveStage }) {
+function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isAdmin, liveStage }) {
+    const limit = type === 'winners' ? 5 : 10;
     return (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 text-white animate-in fade-in zoom-in duration-500">
+        <div className="fixed inset-0 z-[100] bg-black text-white animate-in fade-in zoom-in duration-500 overflow-y-auto">
             {showConfetti && <Confetti />}
-            <Trophy className="text-yellow-400 w-24 h-24 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.4)]" />
-            <h1 className="text-5xl font-[900] uppercase text-center mb-2 tracking-tighter">{title}</h1>
-            <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8">{subtitle}</p>
-            <div className="w-full max-w-2xl bg-black/30 p-4 rounded-2xl">
-                <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={null} />
+            <div className="min-h-full flex flex-col items-center justify-center p-6 py-12">
+                <Trophy className="text-yellow-400 w-24 h-24 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.4)] shrink-0" />
+                <h1 className="text-4xl md:text-5xl font-[900] uppercase text-center mb-2 tracking-tighter shrink-0">{title}</h1>
+                <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8 shrink-0">{subtitle}</p>
+                <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black">
+                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={null} limitCount={limit} />
+                </div>
             </div>
         </div>
     );
 }
 
-function Leaderboard({ db, appId, isAdmin, liveStage }) {
+function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20 }) {
   const [leaders, setLeaders] = useState([]);
 
   useEffect(() => {
@@ -497,7 +503,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage }) {
         const bCreated = b.timestamp ? new Date(b.timestamp).getTime() : 0;
         return aCreated - bCreated;
       });
-      setLeaders(all.slice(0, 20));
+      setLeaders(all.slice(0, limitCount));
     }, (err) => console.error("Ranking error:", err));
     return () => unsub();
   }, [db, appId]);
@@ -522,7 +528,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage }) {
   };
 
   return (
-    <div className={`${neoCard} p-6 bg-white`}>
+    <div className={`${neoCard} p-6 bg-white text-black`}>
       <h2 className="text-2xl font-[900] uppercase mb-2 flex items-center gap-2">
         <Trophy className="w-8 h-8 text-[#EAB308]" />
         RANKING MISTRZÓW
