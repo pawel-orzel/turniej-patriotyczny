@@ -53,6 +53,8 @@ const appId = 'weekend-patriotyczny-torun';
 const neoCard = "border-[3px] border-black shadow-neo rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-neo-sm active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all rounded-[16px]";
 const neoTag = "font-mono text-[10px] tracking-widest uppercase border-2 border-black px-3 py-1 rounded-full inline-block";
+const STATIONS_CACHE_KEY = 'stations_cache';
+const CACHE_EXPIRATION_MS = 2 * 60 * 1000; // 2 minuty
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -100,6 +102,18 @@ export default function App() {
   const fetchStations = useCallback(async () => {
     setStationsError(null);
     setStations(null); // Reset stations to show loading indicator
+
+    // 1. Sprawdź cache
+    const cachedItem = localStorage.getItem(STATIONS_CACHE_KEY);
+    if (cachedItem) {
+      const { timestamp, data } = JSON.parse(cachedItem);
+      if (Date.now() - timestamp < CACHE_EXPIRATION_MS) {
+        console.log("Ładowanie stacji z cache...");
+        setStations(data);
+        return;
+      }
+    }
+
     const iconMap = { coffee: Coffee, shield: Shield, heart: Heart, zap: Zap };
 
     try {
@@ -189,6 +203,8 @@ export default function App() {
         });
 
         setStations(processedStations);
+        // Zapisz do cache
+        localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
     } catch (error) {
         console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
         setStationsError("Nie udało się załadować stacji. Sprawdź połączenie z internetem.");
@@ -476,6 +492,7 @@ function AdminView({ appConfig, user, stations }) {
   const [newTime, setNewTime] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [staffMessage, setStaffMessage] = useState('');
+  const [copiedUrl, setCopiedUrl] = useState('');
 
   const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
 
@@ -487,6 +504,12 @@ function AdminView({ appConfig, user, stations }) {
       alert("Błąd aktualizacji!");
       console.error(err);
     }
+  };
+
+  const handleCopy = (url) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(url);
+    setTimeout(() => setCopiedUrl(''), 2000); // Reset po 2 sekundach
   };
 
   const clearDatabase = async () => {
@@ -535,17 +558,29 @@ function AdminView({ appConfig, user, stations }) {
         <h3 className="text-xl font-[900] uppercase mb-4">LINKI DO KODÓW QR STACJI</h3>
         <p className="font-mono text-xs text-slate-500 mb-4">Skopiuj poniższe linki i wklej je do darmowego generatora kodów QR (np. qr-code-generator.com).</p>
         <div className="space-y-4">
-          <div className="p-3 bg-slate-50 border-2 border-black rounded-lg shadow-neo-sm">
-            <div className="font-[900] uppercase mb-1">REJESTRACJA (PLAKAT GŁÓWNY)</div>
-            <code className="text-xs break-all text-blue-600 font-bold">{window.location.origin}/</code>
-          </div>
-          {stations && Object.values(stations).map(st => (
-            <div key={st.id} className="p-3 bg-slate-50 border-2 border-black rounded-lg shadow-neo-sm">
-              <div className="font-[900] uppercase mb-1 text-[#DC2626]">{st.name}</div>
-              <div className="font-mono text-[10px] text-slate-500 mb-1">ID STACJI: {st.id}</div>
-              <code className="text-xs break-all text-blue-600 font-bold">{window.location.origin}/?station={st.id}</code>
+          <div className="p-3 bg-slate-50 border-2 border-black rounded-lg shadow-neo-sm flex justify-between items-center">
+            <div>
+              <div className="font-[900] uppercase mb-1">REJESTRACJA (PLAKAT GŁÓWNY)</div>
+              <code className="text-xs break-all text-blue-600 font-bold">{window.location.origin}/</code>
             </div>
-          ))}
+            <button onClick={() => handleCopy(`${window.location.origin}/`)} className={`${neoBtn} px-4 py-2 text-xs font-bold uppercase ${copiedUrl === `${window.location.origin}/` ? 'bg-green-500 text-white' : 'bg-white'}`}>
+              {copiedUrl === `${window.location.origin}/` ? 'SKOPIOWANO' : 'KOPIUJ'}
+            </button>
+          </div>
+          {stations && Object.values(stations).map(st => {
+            const url = `${window.location.origin}/?station=${st.id}`;
+            return (
+              <div key={st.id} className="p-3 bg-slate-50 border-2 border-black rounded-lg shadow-neo-sm flex justify-between items-center">
+                <div>
+                  <div className="font-[900] uppercase mb-1 text-[#DC2626]">{st.name}</div>
+                  <code className="text-xs break-all text-blue-600 font-bold">{url}</code>
+                </div>
+                <button onClick={() => handleCopy(url)} className={`${neoBtn} px-4 py-2 text-xs font-bold uppercase ${copiedUrl === url ? 'bg-green-500 text-white' : 'bg-white'}`}>
+                  {copiedUrl === url ? 'SKOPIOWANO' : 'KOPIUJ'}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -681,6 +716,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 
 // --- QUIZ VIEW ---
 function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
+  const questionRefs = useRef([]); // Ref do przewijania
   const isDone = userData?.completedStations?.includes(station.id);
   const [localScore, setLocalScore] = useState(0);
   const [questionCodes, setQuestionCodes] = useState({});
@@ -693,14 +729,23 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     setLocalScore(0);
     setQuestionCodes({});
     setActiveQuestionIdx(null);
-    setUnlockedQuestions(new Set());
+    const answeredOnStation = new Set(userData?.answeredQuestions?.[station.id] || []);
+    setAnsweredQuestions(answeredOnStation);
+    setUnlockedQuestions(answeredOnStation); // Odblokowane to co najmniej te, na które już odpowiedziano
     setSelectedOptions({});
-  }, [station.id]);
+  }, [station.id, userData]);
 
   useEffect(() => {
-    const existing = userData?.answeredQuestions?.[station.id] || [];
-    setAnsweredQuestions(new Set(existing));
-  }, [station.id, userData]);
+    // Przewijanie do aktywnego pytania
+    if (activeQuestionIdx !== null && questionRefs.current[activeQuestionIdx]) {
+      setTimeout(() => {
+        questionRefs.current[activeQuestionIdx].scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }, 100); // Małe opóźnienie dla pewności, że element jest widoczny
+    }
+  }, [activeQuestionIdx]);
 
   if (isDone) return (
     <div className="text-center py-20 animate-in zoom-in">
@@ -713,7 +758,6 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   );
 
   const maxPoints = station.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
-  const isAllAnswered = station.questions?.length > 0 && answeredQuestions.size === station.questions.length;
 
   const getQuestionCodeValue = (question) => {
     if (!question) return undefined;
@@ -802,8 +846,12 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
             : [question.option1, question.option2, question.option3, question.option4].filter(Boolean);
 
           return (
-            <div key={idx} className={`${neoCard} bg-white p-6`}>
-              <button type="button" onClick={() => setActiveQuestionIdx(idx)} className="w-full text-left">
+            <div 
+              key={idx} 
+              ref={el => questionRefs.current[idx] = el} // Przypisanie refa
+              className={`${neoCard} bg-white p-6 transition-all duration-300 ${isAnswered ? 'opacity-60 grayscale' : ''}`}
+            >
+              <button type="button" onClick={() => setActiveQuestionIdx(isActive ? null : idx)} className="w-full text-left">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400 mb-2">Pytanie {idx + 1}</div>
@@ -931,7 +979,14 @@ function LeaderboardView({ appConfig }) {
             </div>
             <div className="text-right">
               <div className="text-3xl font-[900] leading-none">{p.totalPoints}</div>
-              <div className="font-mono text-[9px] text-slate-400 tracking-widest font-bold">PKT</div>
+              <div className="font-mono text-[9px] text-slate-400 tracking-widest font-bold">
+                PKT
+              </div>
+              {p.scoreUpdatedAt && (
+                <div className="font-mono text-[9px] text-slate-400 tracking-widest font-bold mt-1">
+                  {new Date(p.scoreUpdatedAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              )}
             </div>
           </div>
         ))}
