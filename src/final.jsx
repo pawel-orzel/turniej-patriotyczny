@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs } from 'firebase/firestore';
-import { Trophy, Radio, Activity, ChevronRight, Announce } from 'lucide-react';
+import { Trophy, Radio, Activity, ChevronRight, Megaphone } from 'lucide-react';
 
 // Custom Classes Neo-Brutalism
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] bg-white";
@@ -155,7 +155,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
               </div>
 
               <div className={`${neoCard} p-6 bg-green-50`}>
-                <h2 className="text-xl font-[900] uppercase mb-4 flex items-center gap-2"><Announce /> OGŁOSZENIA NA EKRANACH</h2>
+                <h2 className="text-xl font-[900] uppercase mb-4 flex items-center gap-2"><Megaphone /> OGŁOSZENIA NA EKRANACH</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button onClick={() => announce('finalists', 'FINALIŚCI TURNIEJU', 'Oto gracze, którzy zmierzą się w wielkim finale!')} className={`${neoBtn} py-3 bg-green-600 text-white`}>
                         OGŁOŚ FINALISTÓW
