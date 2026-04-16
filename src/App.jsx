@@ -636,6 +636,7 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
         return next;
       });
       setQuestionCodes((prev) => ({ ...prev, [idx]: '' }));
+      setActiveQuestionIdx(idx);
     } else {
       alert('ZŁY KOD! ZAPYTAJ INSTRUKTORA O POPRAWNY.');
     }
@@ -723,26 +724,32 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
                     </>
                   ) : (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4">
-                        {question.options.map((opt, optIdx) => {
-                          let btnStyle = 'bg-white text-black';
-                          if (isAnswered) {
-                            if (optIdx === question.correct) btnStyle = 'bg-green-500 text-white border-green-700';
-                            else if (optIdx === selectedOption) btnStyle = 'bg-red-500 text-white border-red-700';
-                          }
-                          return (
-                            <button
-                              key={optIdx}
-                              disabled={submitting || isAnswered}
-                              onClick={() => handleOptionClick(idx, optIdx)}
-                              className={`${neoBtn} ${btnStyle} text-left p-5 font-[900] uppercase text-lg flex justify-between items-center`}
-                            >
-                              <span>{opt}</span>
-                              <ChevronRight className="w-6 h-6 transition-transform" />
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {question.options?.length ? (
+                        <div className="grid grid-cols-1 gap-4">
+                          {question.options.map((opt, optIdx) => {
+                            let btnStyle = 'bg-white text-black';
+                            if (isAnswered) {
+                              if (optIdx === question.correct) btnStyle = 'bg-green-500 text-white border-green-700';
+                              else if (optIdx === selectedOption) btnStyle = 'bg-red-500 text-white border-red-700';
+                            }
+                            return (
+                              <button
+                                key={optIdx}
+                                disabled={submitting || isAnswered}
+                                onClick={() => handleOptionClick(idx, optIdx)}
+                                className={`${neoBtn} ${btnStyle} text-left p-5 font-[900] uppercase text-lg flex justify-between items-center`}
+                              >
+                                <span>{opt}</span>
+                                <ChevronRight className="w-6 h-6 transition-transform" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="rounded-[16px] p-4 bg-yellow-50 text-yellow-900 font-mono text-sm">
+                          Dane pytania nie zawierają odpowiedzi. Sprawdź konfigurację arkusza i skrypt Apps Script.
+                        </div>
+                      )}
                       {isAnswered && (
                         <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
                           {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
