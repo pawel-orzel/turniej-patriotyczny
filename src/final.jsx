@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, increment, getDocs } from 'firebase/firestore';
 import { Trophy, Radio, Activity, ChevronRight } from 'lucide-react';
 
-const ADMIN_UID = "bLh8osMPACdoM2psBiOoPp0r4KE3";
-
 // Custom Classes Neo-Brutalism
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] bg-white";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
 
-export default function FinalStage({ db, user, appId, stations }) {
+export default function FinalStage({ db, user, appId, stations, isAdmin }) {
   const [liveStage, setLiveStage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -22,7 +20,6 @@ export default function FinalStage({ db, user, appId, stations }) {
     return () => unsub();
   }, [db, appId]);
 
-  const isAdmin = user?.uid === ADMIN_UID;
   const isParticipant = !isAdmin && user;
 
   const getQuestions = (stationId) => {

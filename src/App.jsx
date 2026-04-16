@@ -65,7 +65,6 @@ export default function App() {
   const [stations, setStations] = useState(null);
   const [stationsError, setStationsError] = useState(null);
   const [appConfig, setAppConfig] = useState(null);
-  const [countdown, setCountdown] = useState('');
   const [currentStationId, setCurrentStationId] = useState(null);
   const [view, setView] = useState('home'); // 'home' | 'leaderboard' | 'quiz' | 'admin'
   const [loading, setLoading] = useState(true);
@@ -236,34 +235,6 @@ export default function App() {
   }, [user]); // Zależność powoduje, że useEffect uruchomi się ponownie po załadowaniu obiektu user
 
   useEffect(() => {
-    // Centralny licznik czasu do końca turnieju
-    if (!appConfig?.endTime) return;
-    const getEndTime = () => {
-      const endValue = appConfig.endTime;
-      if (endValue && typeof endValue.toMillis === 'function') {
-        return endValue.toMillis();
-      }
-      return new Date(endValue).getTime();
-    };
-
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const end = getEndTime();
-      const distance = end - now;
-      if (distance < 0) {
-        setCountdown("00:00:00");
-        clearInterval(interval);
-        return;
-      }
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000).toString().padStart(2, '0');
-      setCountdown(`${hours}:${minutes}:${seconds}`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [appConfig]);
-
-  useEffect(() => {
     if (!stations) return; // Czekaj aż stacje się załadują
     const params = new URLSearchParams(window.location.search);
     const sId = params.get('station');
@@ -312,18 +283,6 @@ export default function App() {
 
   const handleStationComplete = async (pointsEarned) => {
     if (!user || !userData || !currentStationId) return;
-    // Blokada czasowa przesunięta na 30 Czerwca 2026, godz. 15:30 dla celów testowych.
-    // PAMIĘTAJ: Miesiące w JavaScript liczymy od 0 (0 = styczeń, 5 = czerwiec).
-    const endValue = appConfig?.endTime;
-    const end = endValue && typeof endValue.toMillis === 'function'
-      ? endValue.toMillis()
-      : new Date(endValue).getTime();
-    if (Date.now() > end) {
-      alert("ELIMINACJE ZAKOŃCZONE! TRWA PODLICZANIE WYNIKÓW DO PÓŁFINAŁU.");
-      setView('leaderboard');
-      setCurrentStationId(null);
-      return;
-    }
 
     setSubmitting(true);
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
@@ -474,7 +433,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-24">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
-      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} />
+      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} />
 
       {/* NAGŁÓWEK */}
       <header className="bg-white border-b-[3px] border-black p-6 sticky top-0 z-50 flex justify-between items-center">
@@ -489,7 +448,7 @@ export default function App() {
         </div>
         <div className="text-right flex flex-col items-end">
           <div className="text-2xl font-[900] leading-none">{userData?.totalPoints} PKT</div>
-          <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase font-bold">{countdown}</div>
+          <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase font-bold">KONIEC: {appConfig?.endTime || '--:--'}</div>
           <button onClick={handleLogout} className="mt-1 font-mono text-[9px] font-bold tracking-widest uppercase bg-slate-100 text-black px-2 py-1 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all flex items-center gap-1 shadow-neo-sm">
             <LogOut className="w-3 h-3" /> WYLOGUJ
           </button>
@@ -533,36 +492,12 @@ function AdminView({ appConfig, user, stations, onLogout }) {
   const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
 
   useEffect(() => {
-    if (!appConfig?.endTime) return;
-    const value = appConfig.endTime;
-    const timeString = typeof value === 'object' && typeof value.toDate === 'function'
-      ? value.toDate().toISOString().slice(0, 16)
-      : new Date(value).toISOString().slice(0, 16);
-
-    if (!isNaN(new Date(timeString).getTime())) {
-      setNewTime(timeString);
-    }
+    setNewTime(appConfig?.endTime || '');
   }, [appConfig?.endTime]);
 
   const handleUpdateConfig = async (field, value) => {
-    if (field === 'endTime') {
-      if (!value) {
-        alert('Wybierz datę i godzinę zakończenia.');
-        return;
-      }
-      const parsed = new Date(value);
-      if (isNaN(parsed.getTime())) {
-        alert('Nieprawidłowa data. Wybierz poprawny czas.');
-        return;
-      }
-      value = parsed.toISOString();
-    }
-
     try {
       await setDoc(configRef, { [field]: value }, { merge: true });
-      if (field === 'endTime') {
-        setNewTime(value.slice(0, 16));
-      }
       alert(`Pole "${field}" zaktualizowane!`);
     } catch (err) {
       alert("Błąd aktualizacji!");
@@ -600,6 +535,15 @@ function AdminView({ appConfig, user, stations, onLogout }) {
         </div>
         <button onClick={onLogout} className="font-mono text-[10px] font-bold tracking-widest uppercase bg-black text-white px-4 py-3 rounded-xl shadow-neo-sm active:translate-y-1 active:translate-x-1 transition-transform">
           Wyloguj
+        </button>
+      </div>
+
+      {/* ZARZĄDZANIE FINAŁEM */}
+      <div className={`${neoCard} p-8 bg-blue-50 border-dashed border-[#3B82F6] text-center`}>
+        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#3B82F6]">REŻYSERKA FINAŁU</h3>
+        <p className="font-mono text-xs text-slate-600 mb-6">Zarządzaj pytaniami na żywo dla Półfinału i Finału.</p>
+        <button onClick={() => document.getElementById('rezyserka-btn')?.click()} className={`${neoBtn} w-full py-5 bg-[#3B82F6] text-white font-[900] uppercase`}>
+          OTWÓRZ REŻYSERKĘ
         </button>
       </div>
 
@@ -647,10 +591,11 @@ function AdminView({ appConfig, user, stations, onLogout }) {
       <div className={`${neoCard} bg-white p-8`}>
         <h3 className="text-xl font-[900] uppercase mb-4">USTAW CZAS ZAKOŃCZENIA</h3>
           <div className="font-mono text-[11px] uppercase mb-3 text-slate-600">
-            Obecny czas zakończenia: <span className="font-[900] text-black">{appConfig?.endTime ? (typeof appConfig.endTime.toDate === 'function' ? appConfig.endTime.toDate().toLocaleString() : new Date(appConfig.endTime).toLocaleString()) : 'brak'}</span>
+            Wyświetlany czas zakończenia: <span className="font-[900] text-black">{appConfig?.endTime || 'brak'}</span>
           </div>
         <input 
-          type="datetime-local" 
+          type="text" 
+          placeholder="np. 15:30"
           value={newTime} 
           onChange={e => setNewTime(e.target.value)} 
           className="w-full p-3 border-[3px] border-black rounded-lg mb-4" 
@@ -660,15 +605,6 @@ function AdminView({ appConfig, user, stations, onLogout }) {
           className={`${neoBtn} bg-black text-white w-full py-3`}
         >
           ZAPISZ CZAS
-        </button>
-      </div>
-
-      {/* ZARZĄDZANIE FINAŁEM */}
-      <div className={`${neoCard} p-8 bg-blue-50 border-dashed border-[#3B82F6] text-center`}>
-        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#3B82F6]">REŻYSERKA FINAŁU</h3>
-        <p className="font-mono text-xs text-slate-600 mb-6">Zarządzaj pytaniami na żywo dla Półfinału i Finału.</p>
-        <button onClick={() => document.getElementById('rezyserka-btn')?.click()} className={`${neoBtn} w-full py-5 bg-[#3B82F6] text-white font-[900] uppercase`}>
-          OTWÓRZ REŻYSERKĘ
         </button>
       </div>
 
@@ -1060,7 +996,7 @@ function LeaderboardView({ appConfig }) {
       <div className={`${neoCard} bg-black text-white p-8 text-center`}>
         <Trophy className="w-10 h-10 mx-auto mb-4 text-[#EAB308]" />
         <h5 className="text-xl font-[900] uppercase mb-2">GOTOWY NA PÓŁFINAŁ?</h5>
-        <p className="font-mono text-[11px] opacity-60 uppercase">O godz. {appConfig?.endTime ? new Date(appConfig.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '??:??'} zamkniemy ranking.</p>
+        <p className="font-mono text-[11px] opacity-60 uppercase">O godz. {appConfig?.endTime || '??:??'} zamkniemy ranking.</p>
       </div>
     </div>
   );
