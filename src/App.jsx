@@ -123,6 +123,8 @@ export default function App() {
     setStationsError(null);
     setStations(null); // Reset stations to show loading indicator
 
+    const iconMap = { coffee: Coffee, shield: Shield, heart: Heart, zap: Zap };
+
     // 1. Sprawdź cache
     try {
       const cachedItem = localStorage.getItem(STATIONS_CACHE_KEY);
@@ -130,6 +132,10 @@ export default function App() {
         const { timestamp, data } = JSON.parse(cachedItem);
         if (Date.now() - timestamp < CACHE_EXPIRATION_MS) {
           console.log("Ładowanie stacji z cache...");
+          // Odzyskiwanie referencji do ikon Reacta (JSON ucina komponenty/funkcje)
+          Object.keys(data).forEach(key => {
+            data[key].icon = iconMap[(data[key].iconName || '').toLowerCase()] || Info;
+          });
           setStations(data);
           return;
         }
@@ -140,8 +146,6 @@ export default function App() {
         localStorage.removeItem(STATIONS_CACHE_KEY);
       } catch (err) {} // Bezpieczne zignorowanie błędu, jeśli przeglądarka blokuje localStorage
     }
-
-    const iconMap = { coffee: Coffee, shield: Shield, heart: Heart, zap: Zap };
 
     try {
         const response = await fetch(GOOGLE_SCRIPT_URL);
