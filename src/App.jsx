@@ -683,6 +683,9 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
           const selectedOption = selectedOptions[idx];
           const isActive = activeQuestionIdx === idx;
           const isCorrect = selectedOption === question.correct;
+          const answerOptions = (question.options && question.options.length)
+            ? question.options
+            : [question.option1, question.option2, question.option3, question.option4].filter(Boolean);
 
           return (
             <div key={idx} className={`${neoCard} bg-white p-6`}>
@@ -724,9 +727,9 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
                     </>
                   ) : (
                     <div className="space-y-4">
-                      {((question.options && question.options.length) ? question.options : [question.option1, question.option2, question.option3, question.option4].filter(Boolean)).length ? (
+                      {answerOptions.length ? (
                         <div className="grid grid-cols-1 gap-4">
-                          {((question.options && question.options.length) ? question.options : [question.option1, question.option2, question.option3, question.option4].filter(Boolean)).map((opt, optIdx) => {
+                          {answerOptions.map((opt, optIdx) => {
                             let btnStyle = 'bg-white text-black';
                             if (isAnswered) {
                               if (optIdx === question.correct) btnStyle = 'bg-green-500 text-white border-green-700';
@@ -745,11 +748,7 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
                             );
                           })}
                         </div>
-                      ) : (
-                        <div className="rounded-[16px] p-4 bg-yellow-50 text-yellow-900 font-mono text-sm">
-                          Dane pytania nie zawierają odpowiedzi. Sprawdź konfigurację arkusza i skrypt Apps Script.
-                        </div>
-                      )}
+                      ) : null}
                       {isAnswered && (
                         <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
                           {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
