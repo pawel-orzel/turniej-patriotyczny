@@ -385,7 +385,7 @@ export default function App() {
 
       <main className="max-w-xl mx-auto p-6">
         {view === 'admin' && user?.uid === OWNER_UID ? (
-          <AdminView appConfig={appConfig} user={user} />
+          <AdminView appConfig={appConfig} user={user} stations={stations} />
         ) : view === 'quiz' && currentStationId ? (
           <QuizView station={stations[currentStationId]} userData={userData} handleStationComplete={handleStationComplete} submitting={submitting} />
         ) : view === 'leaderboard' ? (
@@ -411,7 +411,7 @@ export default function App() {
 }
 
 // --- ADMIN VIEW ---
-function AdminView({ appConfig, user }) {
+function AdminView({ appConfig, user, stations }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [newTime, setNewTime] = useState('');
   const [newMessage, setNewMessage] = useState('');
@@ -476,6 +476,25 @@ function AdminView({ appConfig, user }) {
         <div className="font-mono text-sm space-y-2">
           {appConfig?.dynamicCodes && Object.entries(appConfig.dynamicCodes).map(([key, value]) => (
             <div key={key} className="flex justify-between"><span>{key.toUpperCase()}:</span> <span className="font-bold">{value}</span></div>
+          ))}
+        </div>
+      </div>
+
+      {/* LINKI DO STACJI (GENERATOR) */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">LINKI DO KODÓW QR STACJI</h3>
+        <p className="font-mono text-xs text-slate-500 mb-4">Skopiuj poniższe linki i wklej je do darmowego generatora kodów QR (np. qr-code-generator.com).</p>
+        <div className="space-y-4">
+          <div className="p-3 bg-slate-50 border-2 border-black rounded-lg shadow-neo-sm">
+            <div className="font-[900] uppercase mb-1">REJESTRACJA (PLAKAT GŁÓWNY)</div>
+            <code className="text-xs break-all text-blue-600 font-bold">{window.location.origin}/</code>
+          </div>
+          {stations && Object.values(stations).map(st => (
+            <div key={st.id} className="p-3 bg-slate-50 border-2 border-black rounded-lg shadow-neo-sm">
+              <div className="font-[900] uppercase mb-1 text-[#DC2626]">{st.name}</div>
+              <div className="font-mono text-[10px] text-slate-500 mb-1">ID STACJI: {st.id}</div>
+              <code className="text-xs break-all text-blue-600 font-bold">{window.location.origin}/?station={st.id}</code>
+            </div>
           ))}
         </div>
       </div>
