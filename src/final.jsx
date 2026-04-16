@@ -155,12 +155,15 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
               <div className={`${neoCard} p-6 bg-green-50`}>
                 <h2 className="text-xl font-[900] uppercase mb-4 flex items-center gap-2"><Megaphone /> OGŁOSZENIA NA EKRANACH</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button onClick={() => announce('finalists', 'FINALIŚCI TURNIEJU', 'Oto gracze, którzy zmierzą się w wielkim finale!')} className={`${neoBtn} py-3 bg-green-600 text-white`}>
-                        OGŁOŚ FINALISTÓW (TOP 10)
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <button onClick={() => announce('semifinalists', 'PÓŁFINALIŚCI TURNIEJU', 'Oto 10 najlepszych graczy z eliminacji!')} className={`${neoBtn} py-3 bg-blue-500 text-white text-[11px] lg:text-sm`}>
+                        OGŁOŚ PÓŁFINALISTÓW (TOP 10)
                     </button>
-                    <button onClick={() => announce('winners', 'MISTRZOWIE TURNIEJU', 'Gratulacje dla najlepszych!')} className={`${neoBtn} py-3 bg-yellow-400 text-black`}>
-                        OGŁOŚ ZWYCIĘZCÓW (TOP 5)
+                    <button onClick={() => announce('finalists', 'FINALIŚCI TURNIEJU', 'Oto gracze, którzy zmierzą się w wielkim finale!')} className={`${neoBtn} py-3 bg-green-600 text-white text-[11px] lg:text-sm`}>
+                        OGŁOŚ FINALISTÓW (TOP 5)
+                    </button>
+                    <button onClick={() => announce('winners', 'MISTRZOWIE TURNIEJU', 'Gratulacje dla najlepszych!')} className={`${neoBtn} py-3 bg-yellow-400 text-black text-[11px] lg:text-sm`}>
+                        OGŁOŚ ZWYCIĘZCÓW (TOP 3)
                     </button>
                 </div>
                 {liveStage?.announcement && (
@@ -470,7 +473,7 @@ function Confetti() {
 }
 
 function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isAdmin, liveStage }) {
-    const limit = type === 'winners' ? 5 : 10;
+    const limit = type === 'semifinalists' ? 10 : (type === 'finalists' ? 5 : 3);
     return (
         <div className="fixed inset-0 z-[100] bg-black text-white animate-in fade-in zoom-in duration-500 overflow-y-auto">
             {showConfetti && <Confetti />}

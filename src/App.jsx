@@ -132,7 +132,9 @@ export default function App() {
       }
     } catch (e) {
       console.warn("Nie udało się załadować stacji z cache (może być uszkodzony). Pobieram z sieci.", e);
-      localStorage.removeItem(STATIONS_CACHE_KEY);
+      try {
+        localStorage.removeItem(STATIONS_CACHE_KEY);
+      } catch (err) {} // Bezpieczne zignorowanie błędu, jeśli przeglądarka blokuje localStorage
     }
 
     const iconMap = { coffee: Coffee, shield: Shield, heart: Heart, zap: Zap };
@@ -225,7 +227,11 @@ export default function App() {
 
         setStations(processedStations);
         // Zapisz do cache
-        localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
+        try {
+          localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
+        } catch (err) {
+          console.warn("Zapis cache zablokowany przez przeglądarkę.");
+        }
     } catch (error) {
         console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
         setStationsError("Nie udało się załadować stacji. Sprawdź połączenie z internetem.");
@@ -277,6 +283,9 @@ export default function App() {
         setUserData(null);
       }
       setLoading(false);
+    }, (error) => {
+      console.error("Błąd pobierania danych gracza:", error);
+      setLoading(false); // Zapobiega nieskończonemu ładowaniu przy błędzie Firebase
     });
     return () => unsubscribe();
   }, [user]);
