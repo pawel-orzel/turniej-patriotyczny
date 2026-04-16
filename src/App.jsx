@@ -613,7 +613,11 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
       alert('Błąd: Brak kodu dla tego pytania.');
       return;
     }
-    if (questionCode.toUpperCase() === question.code.toUpperCase()) {
+
+    const enteredCode = questionCode.toString().trim().toUpperCase();
+    const expectedCode = question.code.toString().trim().toUpperCase();
+
+    if (enteredCode === expectedCode) {
       setUnlockedQuestions((prev) => {
         const next = new Set(prev);
         next.add(idx);
