@@ -236,9 +236,17 @@ export default function App() {
   useEffect(() => {
     // Centralny licznik czasu do końca turnieju
     if (!appConfig?.endTime) return;
+    const getEndTime = () => {
+      const endValue = appConfig.endTime;
+      if (endValue && typeof endValue.toMillis === 'function') {
+        return endValue.toMillis();
+      }
+      return new Date(endValue).getTime();
+    };
+
     const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const end = new Date(appConfig.endTime).getTime();
+      const now = Date.now();
+      const end = getEndTime();
       const distance = end - now;
       if (distance < 0) {
         setCountdown("00:00:00");
@@ -300,7 +308,10 @@ export default function App() {
     if (!user || !userData || !currentStationId) return;
     // Blokada czasowa przesunięta na 30 Czerwca 2026, godz. 15:30 dla celów testowych.
     // PAMIĘTAJ: Miesiące w JavaScript liczymy od 0 (0 = styczeń, 5 = czerwiec).
-    const end = new Date(appConfig.endTime).getTime();
+    const endValue = appConfig.endTime;
+    const end = endValue && typeof endValue.toMillis === 'function'
+      ? endValue.toMillis()
+      : new Date(endValue).getTime();
     if (Date.now() > end) {
       alert("ELIMINACJE ZAKOŃCZONE! TRWA PODLICZANIE WYNIKÓW DO PÓŁFINAŁU.");
       setView('leaderboard');
@@ -380,7 +391,10 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
         <div className={`${neoCard} bg-white w-full max-w-sm p-10 text-center`}>
-        <div className="bg-[#DC2626] border-4 border-black w-24 h-24 rounded-[24px] flex items-center justify-center mx-auto mb-8 shadow-neo-sm">
+        <div className="bg-[#DC2626] border-4 border-black w-max mx-auto rounded-full p-4 mb-6 shadow-neo-sm">
+            <img src="/favicon.png" alt="Logo aplikacji" className="w-12 h-12 object-contain" />
+          </div>
+          <div className="bg-[#DC2626] border-4 border-black w-24 h-24 rounded-[24px] flex items-center justify-center mx-auto mb-8 shadow-neo-sm">
             <Flag className="text-white w-12 h-12" />
           </div>
           <h1 className="text-4xl font-[900] mb-2 leading-none uppercase tracking-tighter">PASZPORT SKAUTA</h1>
@@ -490,15 +504,42 @@ export default function App() {
 function AdminView({ appConfig, user, stations }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [newTime, setNewTime] = useState('');
-  const [newMessage, setNewMessage] = useState('');
   const [staffMessage, setStaffMessage] = useState('');
   const [copiedUrl, setCopiedUrl] = useState('');
 
   const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
 
+  useEffect(() => {
+    if (!appConfig?.endTime) return;
+    const value = appConfig.endTime;
+    const timeString = typeof value === 'object' && typeof value.toDate === 'function'
+      ? value.toDate().toISOString().slice(0, 16)
+      : new Date(value).toISOString().slice(0, 16);
+
+    if (!isNaN(new Date(timeString).getTime())) {
+      setNewTime(timeString);
+    }
+  }, [appConfig?.endTime]);
+
   const handleUpdateConfig = async (field, value) => {
+    if (field === 'endTime') {
+      if (!value) {
+        alert('Wybierz datę i godzinę zakończenia.');
+        return;
+      }
+      const parsed = new Date(value);
+      if (isNaN(parsed.getTime())) {
+        alert('Nieprawidłowa data. Wybierz poprawny czas.');
+        return;
+      }
+      value = parsed.toISOString();
+    }
+
     try {
       await updateDoc(configRef, { [field]: value });
+      if (field === 'endTime') {
+        setNewTime(value.slice(0, 16));
+      }
       alert(`Pole "${field}" zaktualizowane!`);
     } catch (err) {
       alert("Błąd aktualizacji!");
@@ -587,20 +628,11 @@ function AdminView({ appConfig, user, stations }) {
       {/* ZARZĄDZANIE CZASEM */}
       <div className={`${neoCard} bg-white p-8`}>
         <h3 className="text-xl font-[900] uppercase mb-4">USTAW CZAS ZAKOŃCZENIA</h3>
-        <input type="datetime-local" value={newTime} onChange={e => setNewTime(e.target.value)} className="w-full p-3 border-[3px] border-black rounded-lg mb-4"/>
-        <button onClick={() => handleUpdateConfig('endTime', newTime)} className={`${neoBtn} bg-black text-white w-full py-3`}>ZAPISZ CZAS</button>
+          <div className="font-mono text-[11px] uppercase mb-3 text-slate-600">
+            Obecny czas zakończenia: <span className="font-[900] text-black">{appConfig?.endTime ? (typeof appConfig.endTime.toDate === 'function' ? appConfig.endTime.toDate().toLocaleString() : new Date(appConfig.endTime).toLocaleString()) : 'brak'}</span>
+          </div>
       </div>
 
-      {/* OGŁOSZENIA */}
-      <div className={`${neoCard} bg-white p-8`}>
-        <h3 className="text-xl font-[900] uppercase mb-4">OGŁOSZENIA ZE SZTABU</h3>
-        <textarea value={newMessage} onChange={e => setNewMessage(e.target.value)} className="w-full p-3 border-[3px] border-black rounded-lg mb-4" placeholder="Treść ogłoszenia..."></textarea>
-        <div className="grid grid-cols-2 gap-4">
-          <button onClick={() => handleUpdateConfig('messages', arrayUnion(newMessage))} className={`${neoBtn} bg-blue-500 text-white py-3`}>DODAJ</button>
-          <button onClick={() => handleUpdateConfig('messages', [])} className={`${neoBtn} bg-slate-200 text-black py-3`}>WYCZYŚĆ</button>
-        </div>
-      </div>
-      
       {/* INSTRUKCJE DLA KADRY */}
       <div className={`${neoCard} bg-yellow-50 p-8`}>
         <h3 className="text-xl font-[900] uppercase mb-4">INSTRUKCJE DLA STRAŻNIKÓW</h3>
@@ -633,19 +665,6 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
         </div>
         <Flag className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 rotate-12" />
       </div>
-
-      {/* OGŁOSZENIA */}
-      {Array.isArray(appConfig?.messages) && appConfig.messages.length > 0 && (
-        <div className={`${neoCard} bg-[#EAB308] p-8`}>
-          <div className="flex items-center gap-4 mb-4">
-            <Megaphone className="w-8 h-8" />
-            <h4 className="text-xl font-[900] uppercase">OGŁOSZENIA ZE SZTABU</h4>
-          </div>
-          <ul className="list-disc pl-5 space-y-2 font-mono uppercase text-sm">
-            {appConfig.messages.map((msg, i) => <li key={i}>{msg}</li>)}
-          </ul>
-        </div>
-      )}
 
       {/* BŁĄD ŁADOWANIA STACJI */}
       {stationsError && !stations && (
