@@ -404,11 +404,11 @@ export default function App() {
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
+  if (loading) return <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
   if (user && !userData && view !== 'admin') {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
+      <div className="min-h-[100dvh] bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
         <div className={`${neoCard} bg-white w-full max-w-sm p-10 text-center`}>
           <div className="bg-[#DC2626] border-4 border-black w-max mx-auto rounded-full p-4 mb-8 shadow-neo-sm">
             <img src="/favicon.png" alt="Logo aplikacji" className="w-14 h-14 object-contain" />
@@ -468,7 +468,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-24">
+    <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
       <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} />
 
@@ -505,16 +505,20 @@ export default function App() {
       </main>
 
       {/* MENU DOLNE */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white border-t-[3px] border-black p-5 flex justify-around items-center z-50">
-        <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view === 'home' ? 'text-[#DC2626]' : 'text-black'}`}>
-          <MapPin className="w-7 h-7" />
-          <span className="font-mono text-[9px] font-bold uppercase tracking-widest">MAPA</span>
-        </button>
-        <button onClick={() => setView('leaderboard')} className={`flex flex-col items-center gap-1 ${view === 'leaderboard' ? 'text-[#DC2626]' : 'text-black'}`}>
-          <Trophy className="w-7 h-7" />
-          <span className="font-mono text-[9px] font-bold uppercase tracking-widest">RANKING</span>
-        </button>
-      </nav>
+      {view !== 'admin' && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none flex justify-center pb-0 md:pb-8 md:px-4">
+          <nav className="pointer-events-auto w-full md:max-w-md bg-white border-t-[3px] md:border-[3px] border-black p-4 md:rounded-[24px] flex justify-around items-center shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)] md:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all">
+            <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view === 'home' ? 'text-[#DC2626]' : 'text-black'}`}>
+              <MapPin className="w-7 h-7" />
+              <span className="font-mono text-[9px] font-bold uppercase tracking-widest">MAPA</span>
+            </button>
+            <button onClick={() => setView('leaderboard')} className={`flex flex-col items-center gap-1 ${view === 'leaderboard' ? 'text-[#DC2626]' : 'text-black'}`}>
+              <Trophy className="w-7 h-7" />
+              <span className="font-mono text-[9px] font-bold uppercase tracking-widest">RANKING</span>
+            </button>
+          </nav>
+        </div>
+      )}
     </div>
   );
 }
@@ -523,7 +527,6 @@ export default function App() {
 function AdminView({ appConfig, user, stations, onLogout }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [newTime, setNewTime] = useState('');
-  const [staffMessage, setStaffMessage] = useState('');
   const [copiedUrl, setCopiedUrl] = useState('');
 
   const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
@@ -575,6 +578,27 @@ function AdminView({ appConfig, user, stations, onLogout }) {
         </button>
       </div>
 
+      {/* ZARZĄDZANIE CZASEM */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">USTAW CZAS ZAKOŃCZENIA</h3>
+          <div className="font-mono text-[11px] uppercase mb-3 text-slate-600">
+            Wyświetlany czas zakończenia: <span className="font-[900] text-black">{appConfig?.endTime || 'brak'}</span>
+          </div>
+        <input 
+          type="text" 
+          placeholder="np. 15:30"
+          value={newTime} 
+          onChange={e => setNewTime(e.target.value)} 
+          className="w-full p-3 border-[3px] border-black rounded-lg mb-4" 
+        />
+        <button 
+          onClick={() => handleUpdateConfig('endTime', newTime)} 
+          className={`${neoBtn} bg-black text-white w-full py-3`}
+        >
+          ZAPISZ CZAS
+        </button>
+      </div>
+
       {/* ZARZĄDZANIE FINAŁEM */}
       <div className={`${neoCard} p-8 bg-blue-50 border-dashed border-[#3B82F6] text-center`}>
         <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#3B82F6]">REŻYSERKA FINAŁU</h3>
@@ -582,13 +606,6 @@ function AdminView({ appConfig, user, stations, onLogout }) {
         <button onClick={() => document.getElementById('rezyserka-btn')?.click()} className={`${neoBtn} w-full py-5 bg-[#3B82F6] text-white font-[900] uppercase`}>
           OTWÓRZ REŻYSERKĘ
         </button>
-      </div>
-
-      {/* UID ADMINA */}
-      <div className={`${neoCard} bg-white p-8`}>
-        <h3 className="text-xl font-[900] uppercase mb-4">TWÓJ IDENTYFIKATOR ADMINA</h3>
-        <p className="font-mono text-xs text-slate-500 mb-2">Skopiuj ten identyfikator i wklej go do stałej `OWNER_UID` w pliku App.jsx, aby zabezpieczyć ten panel.</p>
-        <input type="text" readOnly value={user?.uid || 'Brak UID'} className="w-full p-3 bg-slate-100 border-2 border-black rounded-lg font-mono text-sm" />
       </div>
 
       {/* LINKI DO STACJI (GENERATOR) */}
@@ -624,32 +641,11 @@ function AdminView({ appConfig, user, stations, onLogout }) {
         </div>
       </div>
 
-      {/* ZARZĄDZANIE CZASEM */}
+      {/* UID ADMINA */}
       <div className={`${neoCard} bg-white p-8`}>
-        <h3 className="text-xl font-[900] uppercase mb-4">USTAW CZAS ZAKOŃCZENIA</h3>
-          <div className="font-mono text-[11px] uppercase mb-3 text-slate-600">
-            Wyświetlany czas zakończenia: <span className="font-[900] text-black">{appConfig?.endTime || 'brak'}</span>
-          </div>
-        <input 
-          type="text" 
-          placeholder="np. 15:30"
-          value={newTime} 
-          onChange={e => setNewTime(e.target.value)} 
-          className="w-full p-3 border-[3px] border-black rounded-lg mb-4" 
-        />
-        <button 
-          onClick={() => handleUpdateConfig('endTime', newTime)} 
-          className={`${neoBtn} bg-black text-white w-full py-3`}
-        >
-          ZAPISZ CZAS
-        </button>
-      </div>
-
-      {/* INSTRUKCJE DLA KADRY */}
-      <div className={`${neoCard} bg-yellow-50 p-8`}>
-        <h3 className="text-xl font-[900] uppercase mb-4">INSTRUKCJE DLA STRAŻNIKÓW</h3>
-        <textarea value={staffMessage} onChange={e => setStaffMessage(e.target.value)} className="w-full p-3 border-[3px] border-black rounded-lg mb-4" placeholder="Tajna wiadomość dla obsługi..."></textarea>
-        <button onClick={() => handleUpdateConfig('staffToGatekeepers', staffMessage)} className={`${neoBtn} bg-yellow-400 text-black w-full py-3`}>WYŚLIJ INSTRUKCJĘ</button>
+        <h3 className="text-xl font-[900] uppercase mb-4">TWÓJ IDENTYFIKATOR ADMINA</h3>
+        <p className="font-mono text-xs text-slate-500 mb-2">Skopiuj ten identyfikator i wklej go do stałej `OWNER_UID` w pliku App.jsx, aby zabezpieczyć ten panel.</p>
+        <input type="text" readOnly value={user?.uid || 'Brak UID'} className="w-full p-3 bg-slate-100 border-2 border-black rounded-lg font-mono text-sm" />
       </div>
 
       {/* RESETOWANIE */}
