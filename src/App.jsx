@@ -9,6 +9,8 @@ import {
   onSnapshot, 
   updateDoc,
   arrayUnion,
+  increment,
+  serverTimestamp,
   query,
   getDocs,
   deleteDoc
@@ -19,7 +21,9 @@ import {
   onAuthStateChanged,
   signInWithCustomToken,
   signInWithEmailAndPassword,
-  signOut
+  signOut,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { 
   User, Trophy, Coffee, Shield, Heart, Zap, Megaphone, Lock, Info,
@@ -76,6 +80,7 @@ export default function App() {
 
     const initAuth = async () => {
       try {
+        await setPersistence(auth, browserLocalPersistence);
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           await signInWithCustomToken(auth, __initial_auth_token);
         } else {
@@ -208,7 +213,9 @@ export default function App() {
         nick: nick.toUpperCase(),
         totalPoints: 0,
         completedStations: [],
-        timestamp: new Date().toISOString()
+        answeredQuestions: {},
+        timestamp: new Date().toISOString(),
+        scoreUpdatedAt: serverTimestamp()
       });
     } catch (error) {
       console.error("Błąd podczas rejestracji:", error);
@@ -237,6 +244,32 @@ export default function App() {
     setSubmitting(false);
     setView('home');
     setCurrentStationId(null);
+  };
+
+  const handleQuestionAnswered = async ({ stationId, questionIdx, pointsEarned, questionCount }) => {
+    if (!user || !userData) return;
+    const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
+    const currentAnswered = userData.answeredQuestions?.[stationId] || [];
+    if (currentAnswered.includes(questionIdx)) return;
+
+    const updates = {
+      [`answeredQuestions.${stationId}`]: arrayUnion(questionIdx)
+    };
+    if (pointsEarned > 0) {
+      updates.totalPoints = increment(pointsEarned);
+      updates.scoreUpdatedAt = serverTimestamp();
+    }
+    if (currentAnswered.length + 1 >= questionCount) {
+      updates.completedStations = arrayUnion(stationId);
+    }
+
+    setSubmitting(true);
+    try {
+      await updateDoc(userRef, updates);
+    } catch (err) {
+      console.error('Błąd zapisu odpowiedzi:', err);
+    }
+    setSubmitting(false);
   };
 
   const handleAdminLogin = async () => {
@@ -358,7 +391,7 @@ export default function App() {
         {view === 'admin' && user?.uid === OWNER_UID ? (
           <AdminView appConfig={appConfig} user={user} stations={stations} />
         ) : view === 'quiz' && currentStationId ? (
-          <QuizView station={stations[currentStationId]} userData={userData} handleStationComplete={handleStationComplete} submitting={submitting} />
+          <QuizView station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
         ) : view === 'leaderboard' ? (
           <LeaderboardView appConfig={appConfig} />
         ) : (
@@ -591,7 +624,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 }
 
 // --- QUIZ VIEW ---
-function QuizView({ station, userData, handleStationComplete, submitting }) {
+function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const isDone = userData?.completedStations?.includes(station.id);
   const [localScore, setLocalScore] = useState(0);
   const [questionCodes, setQuestionCodes] = useState({});
@@ -605,9 +638,13 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
     setQuestionCodes({});
     setActiveQuestionIdx(null);
     setUnlockedQuestions(new Set());
-    setAnsweredQuestions(new Set());
     setSelectedOptions({});
   }, [station.id]);
+
+  useEffect(() => {
+    const existing = userData?.answeredQuestions?.[station.id] || [];
+    setAnsweredQuestions(new Set(existing));
+  }, [station.id, userData]);
 
   if (isDone) return (
     <div className="text-center py-20 animate-in zoom-in">
@@ -673,6 +710,12 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
       return next;
     });
     setSelectedOptions((prev) => ({ ...prev, [questionIdx]: optionIdx }));
+    handleQuestionAnswered({
+      stationId: station.id,
+      questionIdx,
+      pointsEarned: isCorrect ? (question.points || 0) : 0,
+      questionCount: station.questions?.length || 0
+    });
   };
 
   return (
@@ -693,7 +736,7 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
 
       <div className="space-y-6">
         {station.questions?.map((question, idx) => {
-          const isUnlocked = unlockedQuestions.has(idx);
+          const isUnlocked = unlockedQuestions.has(idx) || answeredQuestions.has(idx);
           const isAnswered = answeredQuestions.has(idx);
           const selectedOption = selectedOptions[idx];
           const isActive = activeQuestionIdx === idx;
@@ -778,16 +821,6 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
         })}
       </div>
 
-      <div className={`${neoCard} bg-white p-8`}> 
-        <button
-          disabled={!isAllAnswered || submitting}
-          onClick={() => handleStationComplete(localScore)}
-          className={`${neoBtn} w-full py-5 ${isAllAnswered ? 'bg-black text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}
-        >
-          {isAllAnswered ? 'ZAKOŃCZ STACJĘ' : 'ODPOWIEDZ NA WSZYSTKIE PYTANIA'}
-        </button>
-        <p className="font-mono text-[11px] text-slate-500 uppercase">Wszystkie pytania widoczne od razu. Aby odpowiedzieć, wybierz pytanie i wpisz jego kod.</p>
-      </div>
     </div>
   );
 }
@@ -801,7 +834,19 @@ function LeaderboardView({ appConfig }) {
     const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const all = snapshot.docs.map(d => d.data());
-      setLeaders(all.sort((a, b) => b.totalPoints - a.totalPoints).slice(0, 10));
+      all.sort((a, b) => {
+        const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+
+        const aTime = a.scoreUpdatedAt?.toMillis ? a.scoreUpdatedAt.toMillis() : a.scoreUpdatedAt ? new Date(a.scoreUpdatedAt).getTime() : 0;
+        const bTime = b.scoreUpdatedAt?.toMillis ? b.scoreUpdatedAt.toMillis() : b.scoreUpdatedAt ? new Date(b.scoreUpdatedAt).getTime() : 0;
+        if (aTime !== bTime) return aTime - bTime;
+
+        const aCreated = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const bCreated = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return aCreated - bCreated;
+      });
+      setLeaders(all.slice(0, 10));
       setLoading(false);
     });
     return () => unsubscribe();
