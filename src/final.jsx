@@ -3,7 +3,7 @@ import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDoc
 import { Trophy, Radio, Activity, ChevronRight, Megaphone } from 'lucide-react';
 
 // Custom Classes Neo-Brutalism
-const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] bg-white";
+const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
 
 export default function FinalStage({ db, user, appId, stations, isAdmin }) {
@@ -100,7 +100,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 </div>
               </div>
 
-              <div className={`${neoCard} p-6 mb-8`}>
+              <div className={`${neoCard} bg-white p-6 mb-8`}>
                 <h2 className="text-xl font-[900] uppercase mb-4">KONTROLA STATUSU</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <button
@@ -398,18 +398,18 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
 
         <div className="grid grid-cols-1 gap-4">
           {liveStage.question.options.map((opt, idx) => {
-            let btnClass = isSubmitting || isSpectator ? 'opacity-50' : 'hover:bg-yellow-50';
+            let btnClass = isSubmitting || isSpectator ? 'bg-white text-black opacity-50' : 'bg-white text-black hover:bg-yellow-50';
             if (liveStage.showAnswer && idx === liveStage.question.correct) {
               btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; // Podświetlenie poprawnej odpowiedzi
             } else if (liveStage.showAnswer) {
-              btnClass = 'opacity-30 grayscale';
+              btnClass = 'bg-white text-black opacity-30 grayscale';
             }
             return (
               <button
                 key={idx}
                 disabled={isSubmitting || isSpectator || liveStage.showAnswer}
                 onClick={() => handleAnswer(idx)}
-                className={`${neoBtn} bg-white text-black p-6 font-[900] uppercase text-xl flex justify-between items-center text-left transition-all ${btnClass}`}
+                className={`${neoBtn} p-6 font-[900] uppercase text-xl flex justify-between items-center text-left transition-all ${btnClass}`}
               >
                 <span>{opt}</span>
                 <ChevronRight className="w-8 h-8 opacity-30" />
