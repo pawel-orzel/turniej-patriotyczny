@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 
 const OWNER_UID = "ZAMIEN_NA_SWOJE_UID_Z_FIREBASE_AUTH"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
-const GOOGLE_SCRIPT_URL = "https://docs.google.com/spreadsheets/d/1X5C7YmPnAF9u5S18qmUm-ru8ehIVYeUH4ibdx6H7QAM/edit?gid=0#gid=0"; // WAŻNE: Wklej tutaj URL z Google Apps Script
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/1uiCalGQypiffHPjO5uYMS6kYM2llfbjZCrBRD-IZ6PStxfgVkd0_iFNm/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
 const firebaseConfig = {
@@ -185,14 +185,19 @@ export default function App() {
   const handleRegister = async () => {
     if (!nick.trim() || !user) return;
     setSubmitting(true);
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
-      uid: user.uid,
-      nick: nick.toUpperCase(),
-      totalPoints: 0,
-      completedStations: [],
-      unlockedStations: [],
-      timestamp: new Date().toISOString()
-    });
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
+        uid: user.uid,
+        nick: nick.toUpperCase(),
+        totalPoints: 0,
+        completedStations: [],
+        unlockedStations: [],
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Błąd podczas rejestracji:", error);
+      alert("Wystąpił błąd przy logowaniu. Sprawdź połączenie.");
+    }
     setSubmitting(false);
   };
 
@@ -453,7 +458,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
       </div>
 
       {/* OGŁOSZENIA */}
-      {appConfig?.messages?.length > 0 && (
+      {Array.isArray(appConfig?.messages) && appConfig.messages.length > 0 && (
         <div className={`${neoCard} bg-[#EAB308] p-8`}>
           <div className="flex items-center gap-4 mb-4">
             <Megaphone className="w-8 h-8" />
@@ -487,7 +492,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
       {/* BENTO GRID STACJI */}
       {stations && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {Object.values(stations).map((st) => {
-          const maxPoints = st.questions.reduce((acc, q) => acc + q.points, 0);
+          const maxPoints = st.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
           const isDone = userData?.completedStations?.includes(st.id);
           const isUnlocked = userData?.unlockedStations?.includes(st.id);
           return (
@@ -534,7 +539,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 
 // --- QUIZ VIEW ---
 function QuizView({ station, userData, handleStationComplete, submitting }) {
-  const isDone = userData?.completedStations.includes(station.id);
+  const isDone = userData?.completedStations?.includes(station.id);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [localScore, setLocalScore] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null); // Do animacji kolorów
@@ -549,8 +554,8 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
     </div>
   );
 
-  const currentQ = station.questions[currentIdx];
-  const maxPoints = station.questions.reduce((acc, q) => acc + q.points, 0);
+  const currentQ = station.questions?.[currentIdx];
+  const maxPoints = station.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
 
   const handleOptionClick = (idx) => {
     if (selectedOption !== null || submitting) return; // Zapobiega podwójnemu kliknięciu
@@ -571,6 +576,15 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
       }
     }, 1000);
   };
+
+  if (!currentQ) return (
+    <div className="text-center py-20 animate-in zoom-in">
+      <h3 className="text-3xl font-[900] uppercase mb-4">Brak Pytań</h3>
+      <button onClick={() => handleStationComplete(localScore)} className={`${neoBtn} mt-4 px-8 py-3 bg-black text-white`}>
+        Wróć do mapy
+      </button>
+    </div>
+  );
 
   return (
     <div className="animate-in slide-in-from-bottom-12 duration-500">
