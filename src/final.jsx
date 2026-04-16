@@ -79,6 +79,27 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
               <div className={`${neoCard} p-6 mb-8`}>
                 <h2 className="text-xl font-[900] uppercase mb-4">KONTROLA STATUSU</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <button
+                    onClick={async () => {
+                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                      await updateDoc(liveRef, { isLiveModeVisible: true, active: false });
+                    }}
+                    className={`${neoBtn} w-full py-4 bg-red-600 text-white`}
+                  >
+                    OTWÓRZ PODGLĄD (WSZYSCY)
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if(!window.confirm("Czy na pewno chcesz wyłączyć Finał i przywrócić widok mapy wszystkim użytkownikom?")) return;
+                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                      await updateDoc(liveRef, { isLiveModeVisible: false, active: false });
+                    }}
+                    className={`${neoBtn} w-full py-4 bg-slate-800 text-white`}
+                  >
+                    ZAMKNIJ PODGLĄD (MAPA)
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
                     onClick={async () => {
@@ -87,7 +108,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                     }}
                     className={`${neoBtn} w-full py-4 bg-black text-white`}
                   >
-                    ZATRZYMAJ LIVE
+                    UKRYJ PYTANIE
                   </button>
                   <button
                     onClick={async () => {
@@ -173,7 +194,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
     );
   }
 
-  if (isParticipant && liveStage?.active) {
+  if (isParticipant && liveStage?.isLiveModeVisible) {
     return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} />;
   }
 
@@ -240,18 +261,22 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
     }
   };
 
-  if (answered && !isSpectator) {
+  if (!liveStage.active || (answered && !isSpectator)) {
     return (
       <div className="fixed inset-0 z-[100] bg-[#DC2626] flex flex-col items-center justify-center p-6 text-white animate-in fade-in zoom-in duration-300">
         <div className="bg-white border-[3px] border-black w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-          <Trophy className="text-[#EAB308] w-16 h-16" />
+          {liveStage.active ? <Trophy className="text-[#EAB308] w-16 h-16" /> : <Activity className="text-[#EAB308] w-16 h-16 animate-pulse" />}
         </div>
-        <h2 className="text-4xl font-[900] uppercase text-center mb-2 tracking-tighter">OCZEKIWANIE NA SYGNAŁ</h2>
-        <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8">Gotuj się na następne wyzwanie!</p>
+        <h2 className="text-4xl font-[900] uppercase text-center mb-2 tracking-tighter">
+          {liveStage.active ? "OCZEKIWANIE NA WIDZÓW" : "SCENA GŁÓWNA"}
+        </h2>
+        <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8">
+          {liveStage.active ? "Gotuj się na następne wyzwanie!" : "Oczekuj na sygnał od prowadzącego!"}
+        </p>
 
-        {result && (
+        {result && !isSpectator && (
           <div className="bg-black/20 p-6 rounded-[24px] border-[3px] border-black text-center w-full max-w-sm">
-            <div className="font-mono text-[10px] tracking-widest uppercase mb-1">TWÓJ WYNIK</div>
+            <div className="font-mono text-[10px] tracking-widest uppercase mb-1">TWÓJ WYNIK ZA PYTANIE</div>
             <div className="text-4xl font-[900] text-[#EAB308]">{result.earned} PKT</div>
             <div className="font-mono text-xs uppercase mt-2 opacity-70">
               {result.correct ? 'Poprawna odpowiedź!' : 'Niestety, błąd.'}
@@ -308,7 +333,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage }) {
     const q = query(
       collection(db, 'artifacts', appId, 'public', 'data', 'participants'),
       orderBy('totalPoints', 'desc'),
-      limit(25)
+      limit(20)
     );
     const unsub = onSnapshot(q, (snap) => {
       setLeaders(snap.docs.map(d => d.data()));
