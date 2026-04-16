@@ -492,7 +492,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-xl mx-auto p-6">
+      <main className="max-w-4xl mx-auto p-6">
         {view === 'admin' && user?.uid === OWNER_UID ? (
           <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
@@ -669,13 +669,13 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* BANER GŁÓWNY */}
-      <div className={`${neoCard} bg-[#DC2626] p-10 text-white relative overflow-hidden`}>
-        <div className="relative z-10">
+      <div className={`${neoCard} bg-[#DC2626] p-8 md:p-10 text-white relative overflow-hidden md:flex md:items-center md:justify-between`}>
+        <div className="relative z-10 shrink-0">
           <div className={neoTag + " bg-red-800 border-red-400 text-white mb-4"}>MISJA DZISIAJ</div>
-          <h3 className="text-4xl font-[900] leading-none uppercase mb-2 tracking-tighter">TURNIEJ SKAUTOWY</h3>
-          <p className="font-mono text-[11px] tracking-widest opacity-80 uppercase">Zdobądź wszystkie 4 pieczęcie!</p>
+          <h3 className="text-4xl md:text-5xl font-[900] leading-none uppercase mb-2 tracking-tighter">TURNIEJ SKAUTOWY</h3>
+          <p className="font-mono text-[11px] tracking-widest opacity-80 uppercase">Odpowiedz na jak największą liczbę pytań!</p>
         </div>
-        <Flag className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 rotate-12" />
+        <Flag className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 rotate-12 md:relative md:w-32 md:h-32 md:opacity-20 md:right-0 md:bottom-0 md:rotate-0" />
       </div>
 
       {/* BŁĄD ŁADOWANIA STACJI */}
@@ -737,11 +737,14 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
         })}
       </div>}
 
-      <div className={`${neoCard} bg-white p-8 border-dashed flex gap-6 items-center`}>
+      <div className={`${neoCard} bg-white p-8 border-dashed flex flex-col md:flex-row gap-6 items-start md:items-center`}>
          <Info className="w-12 h-12 text-[#DC2626] shrink-0" />
-         <p className="font-mono text-[11px] leading-relaxed uppercase font-bold text-slate-600">
-           KAŻDA STACJA TO KOLEJNY KROK W TURNIEJU. PÓŁFINAŁ O GODZINIE 15:30 NA SCENIE GŁÓWNEJ DLA TOP 10 WYNIKÓW.
-         </p>
+         <div className="font-mono text-[11px] leading-relaxed uppercase font-bold text-slate-600 space-y-2">
+           <p>1. Udaj się do wybranego stanowiska i zeskanuj jego kod QR.</p>
+           <p>2. Porozmawiaj ze strażnikiem stacji, aby otrzymać tajny kod do pytania.</p>
+           <p>3. O godz. {appConfig?.endTime || '??:??'} zapraszamy TOP 10 graczy na półfinał na scenie głównej!</p>
+           <p>4. Po rozstrzygnięciu półfinału rozegramy Wielki Finał dla najlepszych.</p>
+         </div>
       </div>
     </div>
   );

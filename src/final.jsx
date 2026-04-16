@@ -59,11 +59,26 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
   };
 
   const announce = async (type, title, subtitle) => {
-    if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz ogłosić ${type === 'winners' ? 'zwycięzców' : 'finalistów'}?`))) return;
+    const limitCount = type === 'semifinalists' ? 10 : (type === 'finalists' ? 5 : 3);
+    let currentEligible = liveStage?.eligibleUids || [];
+    
+    if (currentEligible.length === 0) {
+      try {
+        const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
+        const snap = await getDocs(q);
+        const all = snap.docs.map(d => d.data());
+        all.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
+        currentEligible = all.slice(0, limitCount).map(d => d.uid);
+      } catch (e) { console.error("Błąd przy automatycznym dobieraniu graczy:", e); }
+    }
+
+    if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz wyświetlić to ogłoszenie? Na ekranach pojawi się ${Math.min(currentEligible.length, limitCount)} graczy zaznaczonych aktualnie na zielono.`))) return;
+    
     const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
     await setDoc(liveRef, {
         isLiveModeVisible: true,
         active: false,
+        eligibleUids: currentEligible,
         announcement: { type, title, subtitle }
     }, { merge: true });
   };
@@ -265,7 +280,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
           db={db}
           appId={appId}
           isAdmin={false}
-          liveStage={null}
+          liveStage={liveStage}
       />;
     }
     return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} />;
@@ -483,14 +498,14 @@ function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isA
                 <h1 className="text-4xl md:text-5xl font-[900] uppercase text-center mb-2 tracking-tighter shrink-0">{title}</h1>
                 <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8 shrink-0">{subtitle}</p>
                 <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black">
-                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={null} limitCount={limit} />
+                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={true} />
                 </div>
             </div>
         </div>
     );
 }
 
-function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20 }) {
+function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEligible = false }) {
   const [leaders, setLeaders] = useState([]);
 
   useEffect(() => {
@@ -514,7 +529,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20 }) {
         const bCreated = getTime(b.timestamp);
         return aCreated - bCreated;
       });
-      setLeaders(all.slice(0, limitCount));
+      setLeaders(all);
     }, (err) => console.error("Ranking error:", err));
     return () => unsub();
   }, [db, appId]);
@@ -538,6 +553,12 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20 }) {
     }
   };
 
+  let displayedLeaders = leaders;
+  if (filterEligible && liveStage?.eligibleUids) {
+    displayedLeaders = displayedLeaders.filter(l => liveStage.eligibleUids.includes(l.uid));
+  }
+  displayedLeaders = displayedLeaders.slice(0, limitCount);
+
   return (
     <div className={`${neoCard} p-6 bg-white text-black`}>
       <h2 className="text-2xl font-[900] uppercase mb-2 flex items-center gap-2">
@@ -550,7 +571,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20 }) {
         </p>
       )}
       <div className="space-y-3">
-        {leaders.map((l, idx) => {
+        {displayedLeaders.map((l, idx) => {
           const isEligible = liveStage?.eligibleUids?.includes(l.uid);
           return (
             <div 
@@ -566,7 +587,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20 }) {
           </div>
           );
         })}
-        {leaders.length === 0 && (
+        {displayedLeaders.length === 0 && (
           <div className="text-center font-mono text-sm text-slate-500 py-4 uppercase">
             Brak wyników
           </div>
