@@ -108,11 +108,43 @@ export default function App() {
           throw new Error(`Błąd sieci: ${response.statusText}`);
         }
         const data = await response.json();
-        
+
+        const metadataSource = data.stationMetadata || data.stationMeta || data.stacje || data.stacjeList || data.stationsMeta || null;
+        const stationMetadataById = {};
+        if (Array.isArray(metadataSource)) {
+          metadataSource.forEach((item) => {
+            if (item?.id) stationMetadataById[item.id] = item;
+          });
+        }
+
+        const questionsSource = Array.isArray(data.questions) ? data.questions : null;
+        const questionsByStation = {};
+        if (questionsSource) {
+          questionsSource.forEach((question) => {
+            const stationId = question.stationId || question.station || question.stationID || question.station_id;
+            if (!stationId) return;
+            if (!questionsByStation[stationId]) questionsByStation[stationId] = [];
+            questionsByStation[stationId].push(question);
+          });
+        }
+
+        const rawStations = data.stations || data.stationList || data.stacje || {};
+        const stationEntries = Array.isArray(rawStations)
+          ? rawStations.reduce((acc, station) => {
+              if (station?.id) acc[station.id] = station;
+              return acc;
+            }, {})
+          : rawStations;
+
         const processedStations = {};
-        Object.keys(data.stations).forEach(stationId => {
-            const station = data.stations[stationId];
-            const questions = (station.questions || []).map((q) => {
+        Object.keys(stationEntries).forEach(stationId => {
+            const station = stationEntries[stationId] || {};
+            const metadata = stationMetadataById[stationId] || {};
+            const rawQuestions = Array.isArray(station.questions)
+              ? station.questions
+              : questionsByStation[stationId] || [];
+
+            const questions = (Array.isArray(rawQuestions) ? rawQuestions : []).map((q) => {
               const rawCorrect = Number(q.correct);
               const normalizedCorrect = Number.isFinite(rawCorrect)
                 ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
@@ -126,10 +158,13 @@ export default function App() {
                 correct: normalizedCorrect
               };
             });
+
             processedStations[stationId] = {
+                id: stationId,
+                ...metadata,
                 ...station,
                 questions,
-                icon: iconMap[station.iconName] || Info
+                icon: iconMap[(station.iconName || metadata.iconName || '').toLowerCase()] || Info
             };
         });
         setStations(processedStations);
