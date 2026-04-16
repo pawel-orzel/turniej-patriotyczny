@@ -280,7 +280,11 @@ export default function App() {
     if (!user) return;
     const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
     const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
-      if (snapshot.exists()) setUserData(snapshot.data());
+      if (snapshot.exists()) {
+        setUserData(snapshot.data());
+      } else {
+        setUserData(null);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
@@ -362,13 +366,17 @@ export default function App() {
       alert("Wpisz email i hasło!");
       return;
     }
+    setLoading(true);
     try {
       const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
       
       if (myUid === OWNER_UID) {
-        window.history.pushState({}, '', '?admin=true');
+        window.history.replaceState({}, '', '?admin=true');
         setView('admin');
+        setShowAdminForm(false);
+        setAdminEmail('');
+        setAdminPassword('');
       } else {
         alert("ZALOGOWANO!\n\nTwoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
         console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
@@ -378,13 +386,26 @@ export default function App() {
       console.error("Błąd logowania admina:", error);
       alert("Nie udało się zalogować.\nPowód błędu: " + error.message + "\n\nSprawdź konsolę (F12) po więcej szczegółów.");
     }
+    setLoading(false);
   };
 
   const handleLogout = async () => {
     try {
+      setLoading(true);
       await signOut(auth);
-      window.location.href = '/'; // Przeładowanie strony uruchomi na nowo ekran startowy
-    } catch (err) { console.error("Błąd wylogowania: ", err); }
+      setUserData(null);
+      setView('home');
+      setShowAdminForm(false);
+      setAdminEmail('');
+      setAdminPassword('');
+      // Wyczyść URL w przeglądarce ze starych parametrów bez odświeżania strony
+      window.history.replaceState({}, '', window.location.pathname);
+      
+      await signInAnonymously(auth);
+    } catch (err) { 
+      console.error("Błąd wylogowania: ", err); 
+      setLoading(false);
+    }
   };
 
   if (loading) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
@@ -477,7 +498,7 @@ export default function App() {
 
       <main className="max-w-xl mx-auto p-6">
         {view === 'admin' && user?.uid === OWNER_UID ? (
-          <AdminView appConfig={appConfig} user={user} stations={stations} />
+          <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
           <QuizView station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
         ) : view === 'leaderboard' ? (
@@ -503,7 +524,7 @@ export default function App() {
 }
 
 // --- ADMIN VIEW ---
-function AdminView({ appConfig, user, stations }) {
+function AdminView({ appConfig, user, stations, onLogout }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [newTime, setNewTime] = useState('');
   const [staffMessage, setStaffMessage] = useState('');
@@ -570,13 +591,6 @@ function AdminView({ appConfig, user, stations }) {
     setIsDeleting(false);
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      window.location.href = '/'; // Przeładowanie strony uruchomi na nowo logowanie gracza
-    } catch (err) { console.error("Błąd wylogowania: ", err); }
-  };
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500 mt-8">
       <div className="flex justify-between items-start gap-4">
@@ -584,7 +598,7 @@ function AdminView({ appConfig, user, stations }) {
           <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
           <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
         </div>
-        <button onClick={handleLogout} className="font-mono text-[10px] font-bold tracking-widest uppercase bg-black text-white px-4 py-3 rounded-xl shadow-neo-sm active:translate-y-1 active:translate-x-1 transition-transform">
+        <button onClick={onLogout} className="font-mono text-[10px] font-bold tracking-widest uppercase bg-black text-white px-4 py-3 rounded-xl shadow-neo-sm active:translate-y-1 active:translate-x-1 transition-transform">
           Wyloguj
         </button>
       </div>
@@ -633,6 +647,18 @@ function AdminView({ appConfig, user, stations }) {
           <div className="font-mono text-[11px] uppercase mb-3 text-slate-600">
             Obecny czas zakończenia: <span className="font-[900] text-black">{appConfig?.endTime ? (typeof appConfig.endTime.toDate === 'function' ? appConfig.endTime.toDate().toLocaleString() : new Date(appConfig.endTime).toLocaleString()) : 'brak'}</span>
           </div>
+        <input 
+          type="datetime-local" 
+          value={newTime} 
+          onChange={e => setNewTime(e.target.value)} 
+          className="w-full p-3 border-[3px] border-black rounded-lg mb-4" 
+        />
+        <button 
+          onClick={() => handleUpdateConfig('endTime', newTime)} 
+          className={`${neoBtn} bg-black text-white w-full py-3`}
+        >
+          ZAPISZ CZAS
+        </button>
       </div>
 
       {/* INSTRUKCJE DLA KADRY */}

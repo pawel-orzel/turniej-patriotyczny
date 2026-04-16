@@ -89,3 +89,43 @@ Muzyka: Miej przygotowaną playlistę "energetyczną" na czas logowania uczestni
 14:30 (Przypomnienie): "Pamiętajcie, stoisko z kawą i skauci mają swoje kody! Punkty się sumują. Aktualnie prowadzi użytkownik 'SzybkiSkaut'!"
 
 15:30 (Wezwanie): "Mamy wyniki! Zapraszam na scenę następujące osoby..." (odczytujesz listę).
+
+
+
+
+Jasne, opowiem Ci, jak działają i jak należy przeprowadzić dwa ostatnie, kluczowe etapy turnieju, opierając się na przygotowanym kodzie i scenariuszu.
+
+Etap 2: Półfinał na Scenie (15:30 – 15:50)
+Ten etap jest prostszy w obsłudze, ponieważ opiera się na zewnętrznym narzędziu.
+
+Kwalifikacja: Z rankingu w aplikacji wyłaniasz Top 10 osób z największą liczbą punktów po eliminacjach mobilnych.
+Miejsce: Zapraszasz tę dziesiątkę na scenę główną.
+Przebieg:
+Uruchamiasz przygotowany wcześniej quiz w Kahoot. Pytania powinny być wyświetlane na głównym ekranie.
+Zgodnie ze scenariuszem, pytania na tym etapie są trudniejsze i kładą nacisk na refleks uczestników.
+Cel: Z tej dziesiątki wyłaniasz 5 najlepszych osób ("Wielką Piątkę"), które przechodzą do Wielkiego Finału.
+Etap 3: Wielki Finał (16:45 – 17:00)
+Ten etap jest w pełni zautomatyzowany w aplikacji, którą stworzyliśmy. Jest to najbardziej ekscytująca część, kontrolowana na żywo przez Ciebie z panelu "Reżyserki".
+
+Kwalifikacja: 5 finalistów z półfinału staje na scenie.
+
+Przebieg (z perspektywy Admina - "Reżyserki"):
+
+Na swoim telefonie (jako zalogowany admin) otwierasz panel "REŻYSERKA".
+Zobaczysz tam listę przygotowanych, najtrudniejszych pytań finałowych (np. "W którym roku Toruń powrócił do macierzy?").
+Gdy jesteś gotowy, naciskasz przycisk "PUSH PYTANIE" przy wybranym pytaniu.
+W tym momencie pytanie jest "wypychane" do wszystkich uczestników turnieju, a w aplikacji na ich telefonach aktywuje się specjalny panel finałowy.
+Przebieg (z perspektywy Uczestnika):
+
+W momencie, gdy "wypchniesz" pytanie, na ekranach wszystkich uczestników (nie tylko finalistów na scenie) pojawi się specjalny panel, który przysłoni całą aplikację.
+Na środku ekranu zobaczą pytanie i cztery możliwe odpowiedzi.
+Muszą jak najszybciej zaznaczyć poprawną odpowiedź.
+System Punktacji: Działa tu zaawansowana formuła:
+1000 punktów za poprawną odpowiedź.
+Do 1000 punktów bonusu za szybkość. Bonus jest obliczany według wzoru max(0, 1000 - (czas odpowiedzi w ms - czas startu) / 10). Oznacza to, że z każdą sekundą zwłoki pula bonusowych punktów maleje.
+Po udzieleniu odpowiedzi uczestnik widzi ekran "OCZEKIWANIE NA SYGNAŁ" z informacją o zdobytym wyniku za to konkretne pytanie.
+Zakończenie i Ranking:
+
+Po zadaniu wszystkich pytań, jako admin naciskasz przycisk "ZATRZYMAJ LIVE". To wyłącza panel finałowy u wszystkich i wraca ich do normalnego widoku aplikacji.
+W trakcie finału oraz po jego zakończeniu, każdy może wejść w zakładkę "RANKING MISTRZÓW", która pokazuje 15 najlepszych wyników aktualizowanych w czasie rzeczywistym. Dzięki temu od razu widać, kto został zwycięzcą.
+W skrócie: półfinał to klasyczny Kahoot na scenie, a finał to zsynchronizowany, ogólnodostępny quiz w aplikacji, gdzie liczy się nie tylko wiedza, ale i błyskawiczny refleks.
