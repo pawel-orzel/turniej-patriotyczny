@@ -724,9 +724,9 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
                     </>
                   ) : (
                     <div className="space-y-4">
-                      {question.options?.length ? (
+                      {((question.options && question.options.length) ? question.options : [question.option1, question.option2, question.option3, question.option4].filter(Boolean)).length ? (
                         <div className="grid grid-cols-1 gap-4">
-                          {question.options.map((opt, optIdx) => {
+                          {((question.options && question.options.length) ? question.options : [question.option1, question.option2, question.option3, question.option4].filter(Boolean)).map((opt, optIdx) => {
                             let btnStyle = 'bg-white text-black';
                             if (isAnswered) {
                               if (optIdx === question.correct) btnStyle = 'bg-green-500 text-white border-green-700';
