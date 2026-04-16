@@ -474,7 +474,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-24">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
-      <FinalStage db={db} user={user} userData={userData} appId={appId} />
+      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} />
 
       {/* NAGŁÓWEK */}
       <header className="bg-white border-b-[3px] border-black p-6 sticky top-0 z-50 flex justify-between items-center">
@@ -624,7 +624,9 @@ function AdminView({ appConfig, user, stations, onLogout }) {
               {copiedUrl === `${window.location.origin}/` ? 'SKOPIOWANO' : 'KOPIUJ'}
             </button>
           </div>
-          {stations && Object.values(stations).map(st => {
+        {stations && Object.values(stations)
+          .filter(st => st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał')
+          .map(st => {
             const url = `${window.location.origin}/?station=${st.id}`;
             return (
               <div key={st.id} className="p-3 bg-slate-50 border-2 border-black rounded-lg shadow-neo-sm flex justify-between items-center">
@@ -715,7 +717,9 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 
       {/* BENTO GRID STACJI */}
       {stations && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {Object.values(stations).map((st) => {
+        {Object.values(stations)
+          .filter(st => st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał')
+          .map((st) => {
           const maxPoints = st.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
           const isDone = userData?.completedStations?.includes(st.id);
           return (
