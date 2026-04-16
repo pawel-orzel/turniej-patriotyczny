@@ -255,7 +255,7 @@ export default function App() {
       console.log(myUid);
     } catch (error) {
       console.error("Błąd logowania admina:", error);
-      alert("Nie udało się zalogować. Sprawdź konsolę przeglądarki.");
+      alert("Nie udało się zalogować.\nPowód błędu: " + error.message + "\n\nSprawdź konsolę (F12) po więcej szczegółów.");
     }
   };
 
