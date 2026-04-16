@@ -27,7 +27,7 @@ import {
   Flag, MapPin, LogOut
 } from 'lucide-react';
 
-const OWNER_UID = "HPGsaBM2pdSJJVJUrZf7mPkNQFJ3"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
+const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/1uiCalGQypiffHPjO5uYMS6kYM2llfbjZCrBRD-IZ6PStxfgVkd0_iFNm/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
