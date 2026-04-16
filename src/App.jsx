@@ -391,11 +391,8 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
         <div className={`${neoCard} bg-white w-full max-w-sm p-10 text-center`}>
-        <div className="bg-[#DC2626] border-4 border-black w-max mx-auto rounded-full p-4 mb-6 shadow-neo-sm">
-            <img src="/favicon.png" alt="Logo aplikacji" className="w-12 h-12 object-contain" />
-          </div>
-          <div className="bg-[#DC2626] border-4 border-black w-24 h-24 rounded-[24px] flex items-center justify-center mx-auto mb-8 shadow-neo-sm">
-            <Flag className="text-white w-12 h-12" />
+          <div className="bg-[#DC2626] border-4 border-black w-max mx-auto rounded-full p-4 mb-8 shadow-neo-sm">
+            <img src="/favicon.png" alt="Logo aplikacji" className="w-14 h-14 object-contain" />
           </div>
           <h1 className="text-4xl font-[900] mb-2 leading-none uppercase tracking-tighter">PASZPORT SKAUTA</h1>
           <p className="font-mono text-[10px] tracking-widest text-slate-500 mb-10 uppercase">Biało-Czerwona 2.0</p>
