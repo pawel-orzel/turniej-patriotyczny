@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs } from 'firebase/firestore';
-import { Trophy, Radio, Activity, ChevronRight } from 'lucide-react';
+import { Trophy, Radio, Activity, ChevronRight, Announce } from 'lucide-react';
 
 // Custom Classes Neo-Brutalism
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] bg-white";
@@ -55,6 +55,22 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
       console.error(error);
       alert("Błąd podczas ustawiania graczy: " + error.message);
     }
+  };
+
+  const announce = async (type, title, subtitle) => {
+    if (!window.confirm(`Czy na pewno chcesz ogłosić ${type === 'winners' ? 'zwycięzców' : 'finalistów'}?`)) return;
+    const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+    await setDoc(liveRef, {
+        isLiveModeVisible: true,
+        active: false,
+        announcement: { type, title, subtitle }
+    }, { merge: true });
+  };
+
+  const clearAnnouncement = async () => {
+      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+      // Using setDoc with merge to just remove the announcement field
+      await setDoc(liveRef, { announcement: null }, { merge: true });
   };
 
   if (isAdmin) {
@@ -138,6 +154,23 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 </div>
               </div>
 
+              <div className={`${neoCard} p-6 bg-green-50`}>
+                <h2 className="text-xl font-[900] uppercase mb-4 flex items-center gap-2"><Announce /> OGŁOSZENIA NA EKRANACH</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onClick={() => announce('finalists', 'FINALIŚCI TURNIEJU', 'Oto gracze, którzy zmierzą się w wielkim finale!')} className={`${neoBtn} py-3 bg-green-600 text-white`}>
+                        OGŁOŚ FINALISTÓW
+                    </button>
+                    <button onClick={() => announce('winners', 'MISTRZOWIE TURNIEJU', 'Gratulacje dla najlepszych!')} className={`${neoBtn} py-3 bg-yellow-400 text-black`}>
+                        OGŁOŚ ZWYCIĘZCÓW
+                    </button>
+                </div>
+                {liveStage?.announcement && (
+                  <button onClick={clearAnnouncement} className="mt-4 w-full font-mono text-xs text-slate-500 uppercase tracking-widest hover:text-red-500">
+                      Wyczyść ogłoszenie i wróć do sceny
+                  </button>
+                )}
+              </div>
+
               <div className={`${neoCard} p-6 bg-blue-50`}>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                   <h2 className="text-2xl font-[900] uppercase">1. PÓŁFINAŁ</h2>
@@ -149,13 +182,16 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                   {semifinalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "półfinał" w arkuszu.</div>
                   )}
-                  {semifinalQuestions.map(q => (
-                    <div key={q.id} className="border-2 border-black p-4 rounded-xl bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  {semifinalQuestions.map(q => {
+                    const isLive = liveStage?.active && liveStage?.currentId === q.id;
+                    return (
+                    <div key={q.id} className={`border-2 border-black p-4 rounded-xl bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all ${isLive ? 'opacity-50 grayscale' : ''}`}>
                       <div>
                         <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400">ID: {q.id}</div>
                         <div className="font-[900] text-lg leading-tight uppercase">{q.text}</div>
                       </div>
                       <button
+                        disabled={isLive}
                         onClick={async () => {
                           if (!window.confirm('Czy na pewno chcesz wypuścić to pytanie?')) return;
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
@@ -163,10 +199,10 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                         }}
                         className={`${neoBtn} bg-[#3B82F6] text-white px-6 py-3 shrink-0 w-full md:w-auto`}
                       >
-                        PUSH PÓŁFINAŁ
+                        {isLive ? 'NA ŻYWO' : 'PUSH PÓŁFINAŁ'}
                       </button>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
 
@@ -181,13 +217,16 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                   {finalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "finał" w arkuszu.</div>
                   )}
-                  {finalQuestions.map(q => (
-                    <div key={q.id} className="border-2 border-black p-4 rounded-xl bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  {finalQuestions.map(q => {
+                    const isLive = liveStage?.active && liveStage?.currentId === q.id;
+                    return (
+                    <div key={q.id} className={`border-2 border-black p-4 rounded-xl bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all ${isLive ? 'opacity-50 grayscale' : ''}`}>
                       <div>
                         <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400">ID: {q.id}</div>
                         <div className="font-[900] text-lg leading-tight uppercase">{q.text}</div>
                       </div>
                       <button
+                        disabled={isLive}
                         onClick={async () => {
                           if (!window.confirm('Czy na pewno chcesz wypuścić to pytanie?')) return;
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
@@ -195,10 +234,10 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                         }}
                         className={`${neoBtn} bg-[#EAB308] text-black px-6 py-3 shrink-0 w-full md:w-auto`}
                       >
-                        PUSH FINAŁ
+                        {isLive ? 'NA ŻYWO' : 'PUSH FINAŁ'}
                       </button>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
 
@@ -211,6 +250,17 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
   }
 
   if (isParticipant && liveStage?.isLiveModeVisible) {
+    if (liveStage.announcement) {
+      return <AnnouncementPanel
+          title={liveStage.announcement.title}
+          subtitle={liveStage.announcement.subtitle}
+          showConfetti={liveStage.announcement.type === 'winners'}
+          db={db}
+          appId={appId}
+          isAdmin={false}
+          liveStage={null}
+      />;
+    }
     return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} />;
   }
 
@@ -223,6 +273,33 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStartTime, setLocalStartTime] = useState(null);
 
+  const getStageColors = () => {
+    switch (liveStage?.stageName) {
+      case 'PÓŁFINAŁ':
+        return {
+          bg: 'bg-[#3B82F6]',
+          text: 'text-white',
+          accent: 'text-white',
+          tagBg: 'bg-black/20',
+        };
+      case 'FINAŁ':
+        return {
+          bg: 'bg-[#EAB308]',
+          text: 'text-black',
+          accent: 'text-black',
+          tagBg: 'bg-black/20',
+        };
+      default:
+        return {
+          bg: 'bg-[#DC2626]',
+          text: 'text-white',
+          accent: 'text-[#EAB308]',
+          tagBg: 'bg-black/20',
+        };
+    }
+  };
+
+  const stageColors = getStageColors();
   const isSpectator = !(liveStage?.eligibleUids || []).includes(user?.uid);
 
   useEffect(() => {
@@ -306,9 +383,9 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   return (
     <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto p-6 flex flex-col justify-center">
       <div className="max-w-md mx-auto w-full space-y-6">
-        <div className={`${neoCard} bg-[#DC2626] p-8 text-white text-center`}>
-          <Radio className="w-12 h-12 mx-auto mb-4 animate-pulse text-[#EAB308]" />
-          <div className="font-mono text-[10px] tracking-widest uppercase font-bold bg-black/20 px-3 py-1 rounded-full inline-block mb-4">
+        <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
+          <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
+          <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
             {isSpectator ? `WIDZ - ${liveStage.stageName || 'LIVE'}` : `GRACZ - ${liveStage.stageName || 'LIVE'}`}
           </div>
           <h2 className="text-3xl font-[900] uppercase leading-tight">
@@ -340,6 +417,67 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
       </div>
     </div>
   );
+}
+
+function Confetti() {
+    const confetti = Array.from({ length: 150 }).map((_, i) => {
+        const style = {
+            left: `${Math.random() * 100}vw`,
+            animationDuration: `${Math.random() * 3 + 2}s`,
+            animationDelay: `${Math.random() * 5}s`,
+            transform: `rotate(${Math.random() * 360}deg)`,
+        };
+        const emojis = ['🎉', '🎊', '🏆', '🥇', '⭐', '🇵🇱'];
+        return <div key={i} className="confetti-piece" style={style}>{emojis[i % emojis.length]}</div>;
+    });
+
+    return (
+        <>
+            <style>{`
+                @keyframes fall {
+                    0% { top: -10vh; opacity: 1; }
+                    100% { top: 110vh; opacity: 1; }
+                }
+                .confetti-piece {
+                    position: absolute;
+                    top: -10vh;
+                    font-size: 1.5rem;
+                    animation-name: fall;
+                    animation-timing-function: linear;
+                    animation-iteration-count: infinite;
+                    will-change: transform;
+                    user-select: none;
+                }
+                .confetti-container {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    pointer-events: none;
+                    overflow: hidden;
+                    z-index: 9999;
+                }
+            `}</style>
+            <div className="confetti-container">
+                {confetti}
+            </div>
+        </>
+    );
+}
+
+function AnnouncementPanel({ title, subtitle, showConfetti, db, appId, isAdmin, liveStage }) {
+    return (
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 text-white animate-in fade-in zoom-in duration-500">
+            {showConfetti && <Confetti />}
+            <Trophy className="text-yellow-400 w-24 h-24 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.4)]" />
+            <h1 className="text-5xl font-[900] uppercase text-center mb-2 tracking-tighter">{title}</h1>
+            <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8">{subtitle}</p>
+            <div className="w-full max-w-2xl bg-black/30 p-4 rounded-2xl">
+                <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={null} />
+            </div>
+        </div>
+    );
 }
 
 function Leaderboard({ db, appId, isAdmin, liveStage }) {
