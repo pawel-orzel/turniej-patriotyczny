@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 
 const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzpzbyEMWttEwhgcJRPg3EY7yh6KqFEiJHpyW6JasAI6W8IYMOHLoBdobW2sf96lIcpDA/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbySLiBJTSeqF1FdR2nLu__D839wFxzX9OOSi9uLCg2osZwW-E2Gj5REzX9iN9b11yiMig/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
 const firebaseConfig = {
@@ -107,8 +107,23 @@ export default function App() {
         const processedStations = {};
         Object.keys(data.stations).forEach(stationId => {
             const station = data.stations[stationId];
+            const questions = (station.questions || []).map((q) => {
+              const rawCorrect = Number(q.correct);
+              const normalizedCorrect = Number.isFinite(rawCorrect)
+                ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
+                : 0;
+              const options = (q.options && q.options.length)
+                ? q.options
+                : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
+              return {
+                ...q,
+                options,
+                correct: normalizedCorrect
+              };
+            });
             processedStations[stationId] = {
                 ...station,
+                questions,
                 icon: iconMap[station.iconName] || Info
             };
         });
