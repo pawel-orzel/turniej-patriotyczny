@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 
 const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/1uiCalGQypiffHPjO5uYMS6kYM2llfbjZCrBRD-IZ6PStxfgVkd0_iFNm/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz3xSkviG5CrfOgbgLf13pmL60w4ItYhyduuJ-dp6l_6t0oFDwNADK6V0sRZTxommm49g/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
 const firebaseConfig = {
