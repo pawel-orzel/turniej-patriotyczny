@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 
 const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbySLiBJTSeqF1FdR2nLu__D839wFxzX9OOSi9uLCg2osZwW-E2Gj5REzX9iN9b11yiMig/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
 const firebaseConfig = {
@@ -109,26 +109,7 @@ export default function App() {
         }
         const data = await response.json();
 
-        const metadataSource = data.stationMetadata || data.stationMeta || data.stacje || data.stacjeList || data.stationsMeta || null;
-        const stationMetadataById = {};
-        if (Array.isArray(metadataSource)) {
-          metadataSource.forEach((item) => {
-            if (item?.id) stationMetadataById[item.id] = item;
-          });
-        }
-
-        const questionsSource = Array.isArray(data.questions) ? data.questions : null;
-        const questionsByStation = {};
-        if (questionsSource) {
-          questionsSource.forEach((question) => {
-            const stationId = question.stationId || question.station || question.stationID || question.station_id;
-            if (!stationId) return;
-            if (!questionsByStation[stationId]) questionsByStation[stationId] = [];
-            questionsByStation[stationId].push(question);
-          });
-        }
-
-        const rawStations = data.stations || data.stationList || data.stacje || {};
+        const rawStations = data.stations || data.stationList || data.stacje || data.stationData || {};
         const stationEntries = Array.isArray(rawStations)
           ? rawStations.reduce((acc, station) => {
               if (station?.id) acc[station.id] = station;
@@ -136,10 +117,21 @@ export default function App() {
             }, {})
           : rawStations;
 
+        const questionsSource = data.questions || data.pytania || [];
+        const questionsByStation = {};
+        if (Array.isArray(questionsSource)) {
+          questionsSource.forEach((question) => {
+            const stationId = question.stationId || question.station || question.stationID || question.station_id;
+            if (!stationId) return;
+            const key = String(stationId).trim();
+            if (!questionsByStation[key]) questionsByStation[key] = [];
+            questionsByStation[key].push(question);
+          });
+        }
+
         const processedStations = {};
         Object.keys(stationEntries).forEach(stationId => {
             const station = stationEntries[stationId] || {};
-            const metadata = stationMetadataById[stationId] || {};
             const rawQuestions = Array.isArray(station.questions)
               ? station.questions
               : questionsByStation[stationId] || [];
@@ -161,12 +153,41 @@ export default function App() {
 
             processedStations[stationId] = {
                 id: stationId,
-                ...metadata,
                 ...station,
                 questions,
-                icon: iconMap[(station.iconName || metadata.iconName || '').toLowerCase()] || Info
+                icon: iconMap[(station.iconName || '').toLowerCase()] || Info
             };
         });
+
+        Object.keys(questionsByStation).forEach((stationId) => {
+          if (!processedStations[stationId]) {
+            const rawQuestions = questionsByStation[stationId];
+            const questions = rawQuestions.map((q) => {
+              const rawCorrect = Number(q.correct);
+              const normalizedCorrect = Number.isFinite(rawCorrect)
+                ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
+                : 0;
+              const options = (q.options && q.options.length)
+                ? q.options
+                : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
+              return {
+                ...q,
+                options,
+                correct: normalizedCorrect
+              };
+            });
+            processedStations[stationId] = {
+              id: stationId,
+              name: stationId,
+              category: '',
+              color: '#000000',
+              iconName: 'info',
+              questions,
+              icon: Info
+            };
+          }
+        });
+
         setStations(processedStations);
     } catch (error) {
         console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
