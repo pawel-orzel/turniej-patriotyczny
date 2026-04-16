@@ -242,8 +242,11 @@ export default function App() {
   const handleAdminLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      // Po zalogowaniu, useEffect z onAuthStateChanged automatycznie zaktualizuje stan user
+      const result = await signInWithPopup(auth, provider);
+      const myUid = result.user.uid;
+      alert("ZALOGOWANO!\n\nTwoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
+      console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
+      console.log(myUid);
     } catch (error) {
       console.error("Błąd logowania admina:", error);
       alert("Nie udało się zalogować. Sprawdź konsolę przeglądarki.");
