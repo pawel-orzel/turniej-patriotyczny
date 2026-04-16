@@ -17,14 +17,18 @@ import {
   getAuth, 
   signInAnonymously, 
   onAuthStateChanged,
-  signInWithCustomToken 
+  signInWithCustomToken,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
-import { getAnalytics } from 'firebase/analytics';
 import { 
-  User, Trophy, Coffee, Shield, Heart, Zap, 
+  User, Trophy, Coffee, Shield, Heart, Zap, Megaphone, Lock, Info,
   CheckCircle, ChevronRight, 
-  MapPin, Flag, Timer, Info
+  Flag, MapPin
 } from 'lucide-react';
+
+const OWNER_UID = "ZAMIEN_NA_SWOJE_UID_Z_FIREBASE_AUTH"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/1uiCalGQypiffHPjO5uYMS6kYM2llfbjZCrBRD-IZ6PStxfgVkd0_iFNm/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
 const firebaseConfig = {
@@ -37,70 +41,9 @@ const firebaseConfig = {
   measurementId: "G-XXZR5KK5BD"
 };
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'weekend-patriotyczny-torun';
-
-// --- DEFINICJA STACJI ZGODNIE Z KOLORAMI FORMACJI LLW ---
-const STATIONS = {
-  kawa: { 
-    id: 'kawa',
-    name: 'KAWA U ANDRZEJA', 
-    icon: Coffee, 
-    category: 'SPOŁECZNY',
-    color: '#DC2626',
-    questions: [
-      { question: "Z jakiego kraju pochodzi rzemieślnicza kawa serwowana u Andrzeja?", options: ["ETIOPIA", "RUANDA", "BRAZYLIA", "WIETNAM"], correct: 1, points: 2 },
-      { question: "Kto jest patronem parafii, w której się obecnie znajdujemy?", options: ["ŚW. JAN", "ŚW. PIOTR", "ŚW. JÓZEF", "ŚW. ANDRZEJ"], correct: 2, points: 2 },
-      { question: "W którym roku została powołana parafia św. Andrzeja w Toruniu?", options: ["2010", "2016", "2020", "1999"], correct: 1, points: 2 },
-      { question: "Z czym najczęściej pije się kawę na porannym apelu harcerskim?", options: ["Z FILIŻANKI", "Z KUBKA TERMICZNEGO", "ZE SZKLANKI", "Z MENAŻKI"], correct: 1, points: 2 },
-      { question: "Jaki zakon posługuje w naszej parafii (na ul. św. Józefa)?", options: ["DOMINIKANIE", "JEZUICI", "REDEMPTORYŚCI", "FRANCISZKANIE"], correct: 2, points: 2 }
-    ]
-  },
-  skauci: { 
-    id: 'skauci',
-    name: 'OBÓZ SKAUTÓW KRÓLA', 
-    icon: Shield, 
-    category: 'SKAUTING',
-    color: '#22C55E',
-    questions: [
-      { question: "Co oznacza oficjalne zawołanie Skautów Króla?", options: ["CZUWAJ!", "ZAWSZE GOTÓW!", "GOTÓW!", "Z PANEM BOGIEM!"], correct: 2, points: 3 },
-      { question: "Jak nazywa się założyciel światowego skautingu?", options: ["ANDRZEJ MAŁKOWSKI", "ROBERT BADEN-POWELL", "ALEKSANDER KAMIŃSKI", "JÓZEF PIŁSUDSKI"], correct: 1, points: 3 },
-      { question: "Który węzeł najlepiej nadaje się do łączenia dwóch lin tej samej grubości?", options: ["PŁASKI", "RUTYNOWY", "ÓSEMKA", "SZYBKI"], correct: 0, points: 3 },
-      { question: "Kto jest założycielem harcerstwa na ziemiach polskich?", options: ["ROBERT BADEN-POWELL", "ANDRZEJ MAŁKOWSKI", "STEFAN WINCENTY", "IGNACY PADEREWSKI"], correct: 1, points: 3 },
-      { question: "Głównym symbolem noszonym na mundurze Skauta Króla jest:", options: ["LILIJKA", "KRZYŻ", "ORZEŁEK", "TARCZA"], correct: 1, points: 3 }
-    ]
-  },
-  gastronomia: { 
-    id: 'gastronomia',
-    name: 'STREFA GASTRO', 
-    icon: Heart, 
-    category: 'TRADYCJA',
-    color: '#EAB308',
-    questions: [
-      { question: "Jaką tradycyjną przekąskę serwuje dzisiaj Grupa św. Józefa?", options: ["FRYTKI", "ZAPIEKANKI", "HOT-DOGI", "POPCORN"], correct: 1, points: 1 },
-      { question: "Z jakiego miasta w Polsce wywodzą się słynne rogale świętomarcińskie?", options: ["Z TORUNIA", "Z KRAKOWA", "Z POZNANIA", "Z WARSZAWY"], correct: 2, points: 1 },
-      { question: "Jak nazywają się tradycyjne pierogi z farszem twarogowo-ziemniaczanym?", options: ["LITEWSKIE", "RUSKIE", "UKRAIŃSKIE", "POLSKIE"], correct: 1, points: 1 },
-      { question: "Co jest podstawowym składnikiem prawdziwego staropolskiego bigosu?", options: ["FASOLA", "KASZA", "KAPUSTA", "ZIEMNIAKI"], correct: 2, points: 1 },
-      { question: "Na jakiej bazie przygotowuje się tradycyjny polski żurek?", options: ["ZAKWASU", "OCTU", "MLEKA", "ŚMIETANY"], correct: 0, points: 1 }
-    ]
-  },
-  medyczna: { 
-    id: 'medyczna',
-    name: 'PIERWSZA POMOC', 
-    icon: Zap, 
-    category: 'WIEDZA',
-    color: '#3B82F6',
-    questions: [
-      { question: "Jaki jest uniwersalny, ogólnoeuropejski numer alarmowy?", options: ["997", "112", "998", "999"], correct: 1, points: 2 },
-      { question: "Jaki jest prawidłowy stosunek uciśnięć do wdechów u dorosłego (RKO)?", options: ["15:2", "30:2", "30:5", "10:1"], correct: 1, points: 2 },
-      { question: "Co oznacza medyczny skrót AED?", options: ["APARAT EKG", "AUTOMATYCZNY DEFIBRYLATOR ZEWNĘTRZNY", "AMBULANS", "APTECZKA EKSPERTÓW"], correct: 1, points: 2 },
-      { question: "W jakiej pozycji układamy nieprzytomnego, który oddycha samodzielnie?", options: ["NA PLECACH", "Z NOGAMI W GÓRZE", "BEZPIECZNEJ USTALONEJ", "SIEDZĄCEJ"], correct: 2, points: 2 },
-      { question: "Czego bezwzględnie NIE WOLNO robić przy oparzeniu wrzątkiem?", options: ["CHŁODZIĆ WODĄ", "ZDJĄĆ BIŻUTERII", "PRZEBIJAĆ PĘCHERZY", "ZAŁOŻYĆ OPATRUNKU"], correct: 2, points: 2 }
-    ]
-  }
-};
 
 // --- STYL NEO-BRUTALISTYCZNY (CUSTOM CLASSES) ---
 const neoCard = "border-[3px] border-black shadow-neo rounded-[32px]";
@@ -111,10 +54,16 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [nick, setNick] = useState('');
+  const [stations, setStations] = useState(null);
+  const [appConfig, setAppConfig] = useState(null);
+  const [countdown, setCountdown] = useState('');
   const [currentStationId, setCurrentStationId] = useState(null);
+  const [unlockingStationId, setUnlockingStationId] = useState(null);
+  const [gatekeeperCode, setGatekeeperCode] = useState('');
   const [view, setView] = useState('home'); // 'home' | 'leaderboard' | 'quiz' | 'admin'
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
 
   useEffect(() => {
     // Import czcionek
@@ -142,16 +91,83 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const iconMap = {
+        coffee: Coffee,
+        shield: Shield,
+        heart: Heart,
+        zap: Zap
+    };
+
+    const fetchStations = async () => {
+        try {
+            const response = await fetch(GOOGLE_SCRIPT_URL);
+            const data = await response.json();
+            
+            const processedStations = {};
+            Object.keys(data.stations).forEach(stationId => {
+                const station = data.stations[stationId];
+                processedStations[stationId] = {
+                    ...station,
+                    icon: iconMap[station.iconName] || Info
+                };
+            });
+            setStations(processedStations);
+        } catch (error) {
+            console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
+        }
+    };
+    fetchStations();
+  }, []);
+
+  useEffect(() => {
+    // Nasłuchiwanie na zmiany w konfiguracji aplikacji (ogłoszenia, czas, hasła)
+    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config');
+    const unsubscribe = onSnapshot(configRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setAppConfig(snapshot.data());
+      } else {
+        console.log("Dokument konfiguracyjny nie istnieje!");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // Centralny licznik czasu do końca turnieju
+    if (!appConfig?.endTime) return;
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const end = new Date(appConfig.endTime).getTime();
+      const distance = end - now;
+      if (distance < 0) {
+        setCountdown("00:00:00");
+        clearInterval(interval);
+        return;
+      }
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000).toString().padStart(2, '0');
+      setCountdown(`${hours}:${minutes}:${seconds}`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [appConfig]);
+
+  useEffect(() => {
+    if (!stations) return; // Czekaj aż stacje się załadują
     const params = new URLSearchParams(window.location.search);
     const sId = params.get('station');
     const adminParam = params.get('admin');
-    if (adminParam === 'true') {
+    if (adminParam === 'true' && user?.uid === OWNER_UID) {
       setView('admin');
-    } else if (STATIONS[sId]) {
-      setCurrentStationId(sId);
-      setView('quiz');
+    } else if (stations[sId] && userData) {
+      if (userData.unlockedStations?.includes(sId)) {
+        setCurrentStationId(sId);
+        setView('quiz');
+      } else {
+        setUnlockingStationId(sId);
+      }
     }
-  }, []);
+  }, [user, userData, stations]); // Reaguj gdy załaduje się user i jego dane
 
   useEffect(() => {
     if (!user) return;
@@ -171,6 +187,7 @@ export default function App() {
       nick: nick.toUpperCase(),
       totalPoints: 0,
       completedStations: [],
+      unlockedStations: [],
       timestamp: new Date().toISOString()
     });
     setSubmitting(false);
@@ -180,8 +197,8 @@ export default function App() {
     if (!user || !userData || !currentStationId) return;
     // Blokada czasowa przesunięta na 30 Czerwca 2026, godz. 15:30 dla celów testowych.
     // PAMIĘTAJ: Miesiące w JavaScript liczymy od 0 (0 = styczeń, 5 = czerwiec).
-    const cutoffTime = new Date(2026, 5, 30, 15, 30, 0).getTime();
-    if (Date.now() > cutoffTime) {
+    const end = new Date(appConfig.endTime).getTime();
+    if (Date.now() > end) {
       alert("ELIMINACJE ZAKOŃCZONE! TRWA PODLICZANIE WYNIKÓW DO PÓŁFINAŁU.");
       setView('leaderboard');
       setCurrentStationId(null);
@@ -194,11 +211,38 @@ export default function App() {
       completedStations: arrayUnion(currentStationId)
     });
     setSubmitting(false);
-    setView('home'); 
+    setView('home');
     setCurrentStationId(null);
   };
 
-  if (loading) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
+  const handleUnlockStation = async () => {
+    if (!unlockingStationId || !appConfig?.dynamicCodes) return;
+    const correctCode = appConfig.dynamicCodes[unlockingStationId];
+    if (gatekeeperCode.toUpperCase() === correctCode.toUpperCase()) {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
+        unlockedStations: arrayUnion(unlockingStationId)
+      });
+      setUnlockingStationId(null);
+      setGatekeeperCode('');
+      setCurrentStationId(unlockingStationId);
+      setView('quiz');
+    } else {
+      alert("ZŁY KOD! ZAPYTAJ STRAŻNIKA STACJI O POPRAWNY.");
+    }
+  };
+
+  const handleAdminLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      // Po zalogowaniu, useEffect z onAuthStateChanged automatycznie zaktualizuje stan user
+    } catch (error) {
+      console.error("Błąd logowania admina:", error);
+      alert("Nie udało się zalogować. Sprawdź konsolę przeglądarki.");
+    }
+  };
+
+  if (loading || !stations) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
   if (user && !userData && view !== 'admin') {
     return (
@@ -222,9 +266,33 @@ export default function App() {
           >
             OTWÓRZ PASZPORT
           </button>
+          <button onClick={handleAdminLogin} className="mt-6 font-mono text-xs text-slate-400 uppercase tracking-widest">
+            Logowanie dla Sztabu
+          </button>
         </div>
       </div>
     );
+  }
+
+  if (unlockingStationId) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-6 animate-in fade-in">
+        <div className={`${neoCard} bg-white w-full max-w-sm p-10 text-center`}>
+          <Lock className="w-16 h-16 mx-auto mb-6 text-[#EAB308]" />
+          <h3 className="text-2xl font-[900] uppercase mb-2">STRAŻNIK WIEDZY</h3>
+          <p className="font-mono text-[11px] text-slate-500 uppercase mb-8">Wpisz tajny kod od obsługi stacji, by odblokować to wyzwanie.</p>
+          <input 
+            type="text" 
+            placeholder="KOD DOSTĘPU..." 
+            className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-yellow-50 text-center"
+            value={gatekeeperCode}
+            onChange={(e) => setGatekeeperCode(e.target.value)}
+          />
+          <button onClick={handleUnlockStation} className={`${neoBtn} w-full py-5 bg-[#EAB308] text-black font-[900] uppercase mb-4`}>ODBLOKUJ</button>
+          <button onClick={() => setUnlockingStationId(null)} className="font-mono text-slate-400 uppercase text-xs">ANULUJ</button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -240,21 +308,21 @@ export default function App() {
             <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mt-1">STATUS: AKTYWNY</div>
           </div>
         </div>
-        <div className="bg-[#EAB308] border-[3px] border-black px-5 py-2 rounded-[16px] shadow-neo-sm flex items-center gap-3">
-          <Trophy className="w-5 h-5" />
-          <span className="text-2xl font-[900]">{userData?.totalPoints}</span>
+        <div className="text-right">
+          <div className="text-2xl font-[900] leading-none">{userData?.totalPoints} PKT</div>
+          <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase font-bold">{countdown}</div>
         </div>
       </header>
 
       <main className="max-w-xl mx-auto p-6">
-        {view === 'admin' ? (
-          <AdminView setView={setView} />
+        {view === 'admin' && user?.uid === OWNER_UID ? (
+          <AdminView appConfig={appConfig} user={user} />
         ) : view === 'quiz' && currentStationId ? (
-          <QuizView station={STATIONS[currentStationId]} userData={userData} handleStationComplete={handleStationComplete} submitting={submitting} />
+          <QuizView station={stations[currentStationId]} userData={userData} handleStationComplete={handleStationComplete} submitting={submitting} />
         ) : view === 'leaderboard' ? (
-          <LeaderboardView setView={setView} />
+          <LeaderboardView appConfig={appConfig} />
         ) : (
-          <HomeView userData={userData} setView={setView} />
+          <HomeView userData={userData} appConfig={appConfig} stations={stations} setUnlockingStationId={setUnlockingStationId} />
         )}
       </main>
 
@@ -274,53 +342,101 @@ export default function App() {
 }
 
 // --- ADMIN VIEW ---
-function AdminView({ setView }) {
+function AdminView({ appConfig, user }) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [newTime, setNewTime] = useState('');
+  const [newMessage, setNewMessage] = useState('');
+  const [staffMessage, setStaffMessage] = useState('');
+
+  const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config');
+
+  const handleUpdateConfig = async (field, value) => {
+    try {
+      await updateDoc(configRef, { [field]: value });
+      alert(`Pole "${field}" zaktualizowane!`);
+    } catch (err) {
+      alert("Błąd aktualizacji!");
+      console.error(err);
+    }
+  };
 
   const clearDatabase = async () => {
     if (!window.confirm("CZY NA PEWNO CHCESZ USUNĄĆ WSZYSTKICH UCZESTNIKÓW I WYZEROWAĆ RANKING? TEJ OPERACJI NIE MOŻNA COFNĄĆ!")) return;
     setIsDeleting(true);
     try {
-      const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
-      const snapshot = await getDocs(q);
+      const participantsRef = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
+      const snapshot = await getDocs(participantsRef);
       const deletePromises = snapshot.docs.map(document => 
-        deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', document.id))
+        deleteDoc(doc(participantsRef, document.id))
       );
       await Promise.all(deletePromises);
       alert("BAZA DANYCH ZOSTAŁA WYCZYSZCZONA! TURNIEJ ZRESETOWANY.");
-    } catch (err) {
-      console.error(err);
-      alert("WYSTĄPIŁ BŁĄD PODCZAS CZYSZCZENIA BAZY.");
-    }
+    } catch (err) { console.error(err); alert("WYSTĄPIŁ BŁĄD PODCZAS CZYSZCZENIA BAZY."); }
     setIsDeleting(false);
   };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 mt-8">
       <div>
-        <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">PANEL ADMINA</h1>
-        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">ZARZĄDZANIE TURNIEJEM</div>
+        <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
+        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
       </div>
 
+      {/* UID ADMINA */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">TWÓJ IDENTYFIKATOR ADMINA</h3>
+        <p className="font-mono text-xs text-slate-500 mb-2">Skopiuj ten identyfikator i wklej go do stałej `OWNER_UID` w pliku App.jsx, aby zabezpieczyć ten panel.</p>
+        <input type="text" readOnly value={user?.uid || 'Brak UID'} className="w-full p-3 bg-slate-100 border-2 border-black rounded-lg font-mono text-sm" />
+      </div>
+
+      {/* KODY DOSTĘPU */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">KODY STRAŻNIKÓW</h3>
+        <div className="font-mono text-sm space-y-2">
+          {appConfig?.dynamicCodes && Object.entries(appConfig.dynamicCodes).map(([key, value]) => (
+            <div key={key} className="flex justify-between"><span>{key.toUpperCase()}:</span> <span className="font-bold">{value}</span></div>
+          ))}
+        </div>
+      </div>
+
+      {/* ZARZĄDZANIE CZASEM */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">USTAW CZAS ZAKOŃCZENIA</h3>
+        <input type="datetime-local" value={newTime} onChange={e => setNewTime(e.target.value)} className="w-full p-3 border-[3px] border-black rounded-lg mb-4"/>
+        <button onClick={() => handleUpdateConfig('endTime', newTime)} className={`${neoBtn} bg-black text-white w-full py-3`}>ZAPISZ CZAS</button>
+      </div>
+
+      {/* OGŁOSZENIA */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">OGŁOSZENIA ZE SZTABU</h3>
+        <textarea value={newMessage} onChange={e => setNewMessage(e.target.value)} className="w-full p-3 border-[3px] border-black rounded-lg mb-4" placeholder="Treść ogłoszenia..."></textarea>
+        <div className="grid grid-cols-2 gap-4">
+          <button onClick={() => handleUpdateConfig('messages', arrayUnion(newMessage))} className={`${neoBtn} bg-blue-500 text-white py-3`}>DODAJ</button>
+          <button onClick={() => handleUpdateConfig('messages', [])} className={`${neoBtn} bg-slate-200 text-black py-3`}>WYCZYŚĆ</button>
+        </div>
+      </div>
+      
+      {/* INSTRUKCJE DLA KADRY */}
+      <div className={`${neoCard} bg-yellow-50 p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">INSTRUKCJE DLA STRAŻNIKÓW</h3>
+        <textarea value={staffMessage} onChange={e => setStaffMessage(e.target.value)} className="w-full p-3 border-[3px] border-black rounded-lg mb-4" placeholder="Tajna wiadomość dla obsługi..."></textarea>
+        <button onClick={() => handleUpdateConfig('staffToGatekeepers', staffMessage)} className={`${neoBtn} bg-yellow-400 text-black w-full py-3`}>WYŚLIJ INSTRUKCJĘ</button>
+      </div>
+
+      {/* RESETOWANIE */}
       <div className={`${neoCard} p-8 bg-red-50 border-dashed border-[#DC2626] text-center`}>
-        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#DC2626]">RESETOWANIE WYNIKÓW</h3>
-        <p className="font-mono text-[11px] font-bold text-slate-600 uppercase mb-8">
-          Użyj tego przycisku przed oficjalnym startem pikniku, aby usunąć wszystkie testowe konta i wyzerować ranking.
-        </p>
-        <button
-          onClick={clearDatabase}
-          disabled={isDeleting}
-          className={`${neoBtn} w-full py-5 bg-[#DC2626] text-white font-[900] uppercase`}
-        >
-          {isDeleting ? "TRWA CZYSZCZENIE..." : "WYCZYŚĆ BAZĘ DANYCH"}
+        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#DC2626]">STREFA NIEBEZPIECZNA</h3>
+        <button onClick={clearDatabase} disabled={isDeleting} className={`${neoBtn} w-full py-5 bg-[#DC2626] text-white font-[900] uppercase`}>
+          {isDeleting ? "TRWA CZYSZCZENIE..." : "RESETUJ RANKING"}
         </button>
       </div>
+
     </div>
   );
 }
 
 // --- HOME (BENTO BOX LAYOUT) ---
-function HomeView({ userData, setView }) {
+function HomeView({ userData, appConfig, stations, setUnlockingStationId }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* BANER GŁÓWNY */}
@@ -333,15 +449,30 @@ function HomeView({ userData, setView }) {
         <Flag className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 rotate-12" />
       </div>
 
+      {/* OGŁOSZENIA */}
+      {appConfig?.messages?.length > 0 && (
+        <div className={`${neoCard} bg-[#EAB308] p-8`}>
+          <div className="flex items-center gap-4 mb-4">
+            <Megaphone className="w-8 h-8" />
+            <h4 className="text-xl font-[900] uppercase">OGŁOSZENIA ZE SZTABU</h4>
+          </div>
+          <ul className="list-disc pl-5 space-y-2 font-mono uppercase text-sm">
+            {appConfig.messages.map((msg, i) => <li key={i}>{msg}</li>)}
+          </ul>
+        </div>
+      )}
+
       {/* BENTO GRID STACJI */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {Object.values(STATIONS).map((st) => {
+        {Object.values(stations).map((st) => {
           const maxPoints = st.questions.reduce((acc, q) => acc + q.points, 0);
-          const isDone = userData?.completedStations.includes(st.id);
+          const isDone = userData?.completedStations?.includes(st.id);
+          const isUnlocked = userData?.unlockedStations?.includes(st.id);
           return (
             <div 
               key={st.id} 
-              className={`${neoCard} bg-white p-8 flex flex-col justify-between min-h-[220px] transition-all ${isDone ? 'opacity-50 grayscale' : 'hover:translate-y-[-4px]'}`}
+              onClick={() => !isUnlocked && !isDone && setUnlockingStationId(st.id)}
+              className={`${neoCard} bg-white p-8 flex flex-col justify-between min-h-[220px] transition-all ${isDone ? 'opacity-50 grayscale' : 'cursor-pointer hover:translate-y-[-4px]'}`}
             >
               <div>
                 <div className="flex justify-between items-start mb-6">
@@ -359,7 +490,9 @@ function HomeView({ userData, setView }) {
                 {isDone ? (
                   <CheckCircle className="text-green-600 w-8 h-8" />
                 ) : (
-                  <div className="bg-black text-white px-4 py-1 rounded-full font-mono text-[10px] tracking-widest uppercase">OPEN</div>
+                  isUnlocked 
+                    ? <div className="bg-black text-white px-4 py-1 rounded-full font-mono text-[10px] tracking-widest uppercase">OPEN</div>
+                    : <Lock className="text-slate-400 w-8 h-8" />
                 )}
               </div>
             </div>
@@ -463,7 +596,7 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
 }
 
 // --- RANKING VIEW ---
-function LeaderboardView({ setView }) {
+function LeaderboardView({ appConfig }) {
   const [leaders, setLeaders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -507,9 +640,9 @@ function LeaderboardView({ setView }) {
       </div>
 
       <div className={`${neoCard} bg-black text-white p-8 text-center`}>
-        <Timer className="w-10 h-10 mx-auto mb-4 text-[#EAB308]" />
+        <Trophy className="w-10 h-10 mx-auto mb-4 text-[#EAB308]" />
         <h5 className="text-xl font-[900] uppercase mb-2">GOTOWY NA PÓŁFINAŁ?</h5>
-        <p className="font-mono text-[11px] opacity-60 uppercase">O godz. 15:30 zamkniemy ranking eliminacyjny.</p>
+        <p className="font-mono text-[11px] opacity-60 uppercase">O godz. {appConfig?.endTime ? new Date(appConfig.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '??:??'} zamkniemy ranking.</p>
       </div>
     </div>
   );
