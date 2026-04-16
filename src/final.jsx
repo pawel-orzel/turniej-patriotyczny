@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField } from 'firebase/firestore';
 import { Trophy, Radio, Activity, ChevronRight, Megaphone } from 'lucide-react';
+import { showAlert, showConfirm } from './modal';
 
 // Custom Classes Neo-Brutalism
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
@@ -39,7 +40,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
   const finalQuestions = getQuestions('finał');
 
   const setEligible = async (count, stageName) => {
-    if (!window.confirm(`Czy na pewno chcesz pobrać TOP ${count} z rankingu i ustawić ich jako graczy do etapu: ${stageName}?`)) return;
+    if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz pobrać TOP ${count} z rankingu i ustawić ich jako graczy do etapu: ${stageName}?`))) return;
     
     try {
       const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
@@ -50,15 +51,15 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
       
       const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
       await setDoc(liveRef, { eligibleUids: uids, stageName }, { merge: true });
-      alert(`Ustawiono ${uids.length} autoryzowanych graczy dla: ${stageName}!`);
+      await showAlert("SUKCES", `Ustawiono ${uids.length} autoryzowanych graczy dla: ${stageName}!`);
     } catch (error) {
       console.error(error);
-      alert("Błąd podczas ustawiania graczy: " + error.message);
+      await showAlert("BŁĄD", "Błąd podczas ustawiania graczy: " + error.message);
     }
   };
 
   const announce = async (type, title, subtitle) => {
-    if (!window.confirm(`Czy na pewno chcesz ogłosić ${type === 'winners' ? 'zwycięzców' : 'finalistów'}?`)) return;
+    if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz ogłosić ${type === 'winners' ? 'zwycięzców' : 'finalistów'}?`))) return;
     const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
     await setDoc(liveRef, {
         isLiveModeVisible: true,
@@ -108,7 +109,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                       try {
                         const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                         await setDoc(liveRef, { isLiveModeVisible: true, active: false }, { merge: true });
-                      } catch(e) { alert(e.message); }
+                      } catch(e) { await showAlert("BŁĄD", e.message); }
                     }}
                     className={`${neoBtn} w-full py-4 bg-red-600 text-white`}
                   >
@@ -116,11 +117,11 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                   </button>
                   <button
                     onClick={async () => {
-                      if(!window.confirm("Czy na pewno chcesz wyłączyć Finał i przywrócić widok mapy wszystkim użytkownikom?")) return;
+                      if(!(await showConfirm("POTWIERDŹ", "Czy na pewno chcesz wyłączyć Finał i przywrócić widok mapy wszystkim użytkownikom?"))) return;
                       try {
                         const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                         await setDoc(liveRef, { isLiveModeVisible: false, active: false }, { merge: true });
-                      } catch(e) { alert(e.message); }
+                      } catch(e) { await showAlert("BŁĄD", e.message); }
                     }}
                     className={`${neoBtn} w-full py-4 bg-slate-800 text-white`}
                   >
@@ -133,7 +134,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                       try {
                         const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                         await setDoc(liveRef, { active: false }, { merge: true });
-                      } catch(e) { alert(e.message); }
+                      } catch(e) { await showAlert("BŁĄD", e.message); }
                     }}
                     className={`${neoBtn} w-full py-4 bg-black text-white`}
                   >
@@ -144,7 +145,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                       try {
                         const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                         await setDoc(liveRef, { showAnswer: true }, { merge: true });
-                      } catch(e) { alert(e.message); }
+                      } catch(e) { await showAlert("BŁĄD", e.message); }
                     }}
                     className={`${neoBtn} w-full py-4 bg-green-400 text-black`}
                   >
@@ -198,7 +199,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                       <button
                         disabled={isLive}
                         onClick={async () => {
-                          if (!window.confirm('Czy na pewno chcesz wypuścić to pytanie?')) return;
+                          if (!(await showConfirm("POTWIERDŹ", "Czy na pewno chcesz wypuścić to pytanie?"))) return;
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                           await setDoc(liveRef, { active: true, currentId: q.id, question: q, showAnswer: false, startTime: serverTimestamp(), stageName: 'PÓŁFINAŁ' }, { merge: true });
                         }}
@@ -233,7 +234,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                       <button
                         disabled={isLive}
                         onClick={async () => {
-                          if (!window.confirm('Czy na pewno chcesz wypuścić to pytanie?')) return;
+                          if (!(await showConfirm("POTWIERDŹ", "Czy na pewno chcesz wypuścić to pytanie?"))) return;
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                           await setDoc(liveRef, { active: true, currentId: q.id, question: q, showAnswer: false, startTime: serverTimestamp(), stageName: 'FINAŁ' }, { merge: true });
                         }}
@@ -499,11 +500,18 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20 }) {
       all.sort((a, b) => {
         const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
         if (scoreDiff !== 0) return scoreDiff;
-        const aTime = a.scoreUpdatedAt?.toMillis ? a.scoreUpdatedAt.toMillis() : a.scoreUpdatedAt ? new Date(a.scoreUpdatedAt).getTime() : 0;
-        const bTime = b.scoreUpdatedAt?.toMillis ? b.scoreUpdatedAt.toMillis() : b.scoreUpdatedAt ? new Date(b.scoreUpdatedAt).getTime() : 0;
+        const getTime = (ts) => {
+          if (!ts) return 0;
+          try {
+            const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
+            return isNaN(ms) ? 0 : ms;
+          } catch (e) { return 0; }
+        };
+        const aTime = getTime(a.scoreUpdatedAt);
+        const bTime = getTime(b.scoreUpdatedAt);
         if (aTime !== bTime) return aTime - bTime;
-        const aCreated = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-        const bCreated = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        const aCreated = getTime(a.timestamp);
+        const bCreated = getTime(b.timestamp);
         return aCreated - bCreated;
       });
       setLeaders(all.slice(0, limitCount));
@@ -526,7 +534,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20 }) {
       await setDoc(liveRef, { eligibleUids: next }, { merge: true });
     } catch (err) {
       console.error(err);
-      alert("Błąd: " + err.message);
+      await showAlert("BŁĄD", err.message);
     }
   };
 

@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 
 import FinalStage from './final';
+import { showAlert, showConfirm } from './modal';
 
 const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
@@ -105,12 +106,15 @@ export default function App() {
           await signInAnonymously(auth);
         }
       } catch (err) { console.error("Błąd logowania:", err); }
+      
+      if (!auth.currentUser) {
+        setLoading(false); // W razie kompletnej porażki zwolnij ekran ładowania
+      }
     };
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      if (!u) setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -305,7 +309,7 @@ export default function App() {
       });
     } catch (error) {
       console.error("Błąd podczas rejestracji:", error);
-      alert("Wystąpił błąd przy logowaniu. Sprawdź połączenie.");
+      await showAlert("BŁĄD REJESTRACJI", "Wystąpił błąd przy logowaniu. Sprawdź połączenie.");
     }
     setSubmitting(false);
   };
@@ -351,7 +355,7 @@ export default function App() {
 
   const handleAdminLogin = async () => {
     if (!adminEmail || !adminPassword) {
-      alert("Wpisz email i hasło!");
+      await showAlert("BRAK DANYCH", "Wpisz email i hasło!");
       return;
     }
     setLoading(true);
@@ -366,13 +370,13 @@ export default function App() {
         setAdminEmail('');
         setAdminPassword('');
       } else {
-        alert("ZALOGOWANO!\n\nTwoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
+        await showAlert("ZALOGOWANO!", "Twoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
         console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
         console.log(myUid);
       }
     } catch (error) {
       console.error("Błąd logowania admina:", error);
-      alert("Nie udało się zalogować.\nPowód błędu: " + error.message + "\n\nSprawdź konsolę (F12) po więcej szczegółów.");
+      await showAlert("BŁĄD LOGOWANIA", "Nie udało się zalogować.\nPowód błędu: " + error.message + "\n\nSprawdź konsolę (F12) po więcej szczegółów.");
     }
     setLoading(false);
   };
@@ -527,9 +531,9 @@ function AdminView({ appConfig, user, stations, onLogout }) {
   const handleUpdateConfig = async (field, value) => {
     try {
       await setDoc(configRef, { [field]: value }, { merge: true });
-      alert(`Pole "${field}" zaktualizowane!`);
+      await showAlert("SUKCES", `Pole "${field}" zaktualizowane!`);
     } catch (err) {
-      alert("Błąd aktualizacji!");
+      await showAlert("BŁĄD", "Błąd aktualizacji!");
       console.error(err);
     }
   };
@@ -541,7 +545,7 @@ function AdminView({ appConfig, user, stations, onLogout }) {
   };
 
   const clearDatabase = async () => {
-    if (!window.confirm("CZY NA PEWNO CHCESZ USUNĄĆ WSZYSTKICH UCZESTNIKÓW I WYZEROWAĆ RANKING? TEJ OPERACJI NIE MOŻNA COFNĄĆ!")) return;
+    if (!(await showConfirm("OSTRZEŻENIE", "CZY NA PEWNO CHCESZ USUNĄĆ WSZYSTKICH UCZESTNIKÓW I WYZEROWAĆ RANKING? TEJ OPERACJI NIE MOŻNA COFNĄĆ!"))) return;
     setIsDeleting(true);
     try {
       const participantsRef = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
@@ -550,8 +554,8 @@ function AdminView({ appConfig, user, stations, onLogout }) {
         deleteDoc(doc(participantsRef, document.id))
       );
       await Promise.all(deletePromises);
-      alert("BAZA DANYCH ZOSTAŁA WYCZYSZCZONA! TURNIEJ ZRESETOWANY.");
-    } catch (err) { console.error(err); alert("WYSTĄPIŁ BŁĄD PODCZAS CZYSZCZENIA BAZY."); }
+      await showAlert("SUKCES", "BAZA DANYCH ZOSTAŁA WYCZYSZCZONA! TURNIEJ ZRESETOWANY.");
+    } catch (err) { console.error(err); await showAlert("BŁĄD", "WYSTĄPIŁ BŁĄD PODCZAS CZYSZCZENIA BAZY."); }
     setIsDeleting(false);
   };
 
@@ -598,7 +602,7 @@ function AdminView({ appConfig, user, stations, onLogout }) {
             </button>
           </div>
         {stations && Object.values(stations)
-          .filter(st => st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał')
+          .filter(st => st?.id && st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał')
           .map(st => {
             const url = `${window.location.origin}/?station=${st.id}`;
             return (
@@ -692,7 +696,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
       {/* BENTO GRID STACJI */}
       {stations && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {Object.values(stations)
-          .filter(st => st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał')
+          .filter(st => st?.id && st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał')
           .map((st) => {
           const maxPoints = st.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
           const isDone = userData?.completedStations?.includes(st.id);
@@ -799,12 +803,12 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     return fuzzyKey ? question[fuzzyKey] : undefined;
   };
 
-  const handleUnlockQuestion = (idx) => {
+  const handleUnlockQuestion = async (idx) => {
     const question = station.questions?.[idx];
     const expectedRaw = getQuestionCodeValue(question);
     if (!question || expectedRaw === undefined || expectedRaw === null || expectedRaw.toString().trim() === '') {
       console.warn('Brak kodu w obiekcie pytania lub nieznany klucz:', question);
-      alert('Błąd: Brak kodu dla tego pytania.');
+      await showAlert("BŁĄD", "Brak kodu dla tego pytania.");
       return;
     }
 
@@ -820,7 +824,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
       setQuestionCodes((prev) => ({ ...prev, [idx]: '' }));
       setActiveQuestionIdx(idx);
     } else {
-      alert('ZŁY KOD! ZAPYTAJ INSTRUKTORA O POPRAWNY.');
+      await showAlert("ZŁY KOD", "Zapytaj instruktora o poprawny kod.");
     }
   };
 
@@ -972,12 +976,19 @@ function LeaderboardView({ appConfig }) {
         const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
         if (scoreDiff !== 0) return scoreDiff;
 
-        const aTime = a.scoreUpdatedAt?.toMillis ? a.scoreUpdatedAt.toMillis() : a.scoreUpdatedAt ? new Date(a.scoreUpdatedAt).getTime() : 0;
-        const bTime = b.scoreUpdatedAt?.toMillis ? b.scoreUpdatedAt.toMillis() : b.scoreUpdatedAt ? new Date(b.scoreUpdatedAt).getTime() : 0;
+        const getTime = (ts) => {
+          if (!ts) return 0;
+          try {
+            const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
+            return isNaN(ms) ? 0 : ms;
+          } catch (e) { return 0; }
+        };
+        const aTime = getTime(a.scoreUpdatedAt);
+        const bTime = getTime(b.scoreUpdatedAt);
         if (aTime !== bTime) return aTime - bTime;
 
-        const aCreated = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-        const bCreated = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        const aCreated = getTime(a.timestamp);
+        const bCreated = getTime(b.timestamp);
         return aCreated - bCreated;
       });
       setLeaders(all.slice(0, 10));
@@ -1014,7 +1025,14 @@ function LeaderboardView({ appConfig }) {
               </div>
               {p.scoreUpdatedAt && (
                 <div className="font-mono text-[9px] text-slate-400 tracking-widest font-bold mt-1">
-                {new Date(typeof p.scoreUpdatedAt.toDate === 'function' ? p.scoreUpdatedAt.toDate() : p.scoreUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {(() => {
+                  try {
+                    const d = typeof p.scoreUpdatedAt.toDate === 'function' ? p.scoreUpdatedAt.toDate() : new Date(p.scoreUpdatedAt);
+                    return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  } catch (e) {
+                    return '';
+                  }
+                })()}
                 </div>
               )}
             </div>
