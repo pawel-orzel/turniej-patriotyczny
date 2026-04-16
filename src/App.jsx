@@ -31,6 +31,8 @@ import {
   Flag, MapPin, LogOut
 } from 'lucide-react';
 
+import FinalStage from './final';
+
 const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
@@ -308,7 +310,7 @@ export default function App() {
     if (!user || !userData || !currentStationId) return;
     // Blokada czasowa przesunięta na 30 Czerwca 2026, godz. 15:30 dla celów testowych.
     // PAMIĘTAJ: Miesiące w JavaScript liczymy od 0 (0 = styczeń, 5 = czerwiec).
-    const endValue = appConfig.endTime;
+    const endValue = appConfig?.endTime;
     const end = endValue && typeof endValue.toMillis === 'function'
       ? endValue.toMillis()
       : new Date(endValue).getTime();
@@ -450,6 +452,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-24">
+      {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
+      <FinalStage db={db} user={user} userData={userData} appId={appId} />
+
       {/* NAGŁÓWEK */}
       <header className="bg-white border-b-[3px] border-black p-6 sticky top-0 z-50 flex justify-between items-center">
         <div className="flex items-center gap-4">
@@ -473,7 +478,7 @@ export default function App() {
       <main className="max-w-xl mx-auto p-6">
         {view === 'admin' && user?.uid === OWNER_UID ? (
           <AdminView appConfig={appConfig} user={user} stations={stations} />
-        ) : view === 'quiz' && currentStationId ? (
+        ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
           <QuizView station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
         ) : view === 'leaderboard' ? (
           <LeaderboardView appConfig={appConfig} />
@@ -1005,7 +1010,7 @@ function LeaderboardView({ appConfig }) {
               </div>
               {p.scoreUpdatedAt && (
                 <div className="font-mono text-[9px] text-slate-400 tracking-widest font-bold mt-1">
-                  {new Date(p.scoreUpdatedAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(typeof p.scoreUpdatedAt.toDate === 'function' ? p.scoreUpdatedAt.toDate() : p.scoreUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               )}
             </div>
