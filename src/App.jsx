@@ -255,9 +255,15 @@ export default function App() {
     try {
       const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
-      alert("ZALOGOWANO!\n\nTwoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
-      console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
-      console.log(myUid);
+      
+      if (myUid === OWNER_UID) {
+        window.history.pushState({}, '', '?admin=true');
+        setView('admin');
+      } else {
+        alert("ZALOGOWANO!\n\nTwoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
+        console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
+        console.log(myUid);
+      }
     } catch (error) {
       console.error("Błąd logowania admina:", error);
       alert("Nie udało się zalogować.\nPowód błędu: " + error.message + "\n\nSprawdź konsolę (F12) po więcej szczegółów.");
