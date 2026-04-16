@@ -22,8 +22,9 @@ import {
   signInWithCustomToken,
   signInWithEmailAndPassword,
   signOut,
-  setPersistence,
-  browserLocalPersistence
+  setPersistence, // This is the function to set persistence
+  browserLocalPersistence, // This is the type of persistence
+  inMemoryPersistence // Import in-memory persistence as a fallback
 } from 'firebase/auth';
 import { 
   User, Trophy, Coffee, Shield, Heart, Zap, Megaphone, Lock, Info,
@@ -83,13 +84,27 @@ export default function App() {
 
     const initAuth = async () => {
       try {
+        // Try to set local persistence which is best for keeping users signed in.
         await setPersistence(auth, browserLocalPersistence);
+      } catch (err) {
+        // This can fail in some environments (e.g., private browsing in Edge/Firefox).
+        // Fallback to in-memory persistence.
+        console.warn('Błąd przy ustawianiu utrwalania sesji (local), przechodzę na tryb w pamięci (in-memory).', err);
+        try {
+          await setPersistence(auth, inMemoryPersistence);
+        } catch (fallbackErr) {
+          console.error('Nie udało się ustawić żadnego trybu utrwalania sesji.', fallbackErr);
+        }
+      }
+
+      // After attempting to set persistence, manage the sign-in state.
+      try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
+        } else if (!auth.currentUser) { // Only sign in if persistence didn't restore a user.
           await signInAnonymously(auth);
         }
-      } catch (err) { console.error(err); }
+      } catch (err) { console.error("Błąd logowania:", err); }
     };
     initAuth();
 
@@ -105,14 +120,19 @@ export default function App() {
     setStations(null); // Reset stations to show loading indicator
 
     // 1. Sprawdź cache
-    const cachedItem = localStorage.getItem(STATIONS_CACHE_KEY);
-    if (cachedItem) {
-      const { timestamp, data } = JSON.parse(cachedItem);
-      if (Date.now() - timestamp < CACHE_EXPIRATION_MS) {
-        console.log("Ładowanie stacji z cache...");
-        setStations(data);
-        return;
+    try {
+      const cachedItem = localStorage.getItem(STATIONS_CACHE_KEY);
+      if (cachedItem) {
+        const { timestamp, data } = JSON.parse(cachedItem);
+        if (Date.now() - timestamp < CACHE_EXPIRATION_MS) {
+          console.log("Ładowanie stacji z cache...");
+          setStations(data);
+          return;
+        }
       }
+    } catch (e) {
+      console.warn("Nie udało się załadować stacji z cache (może być uszkodzony). Pobieram z sieci.", e);
+      localStorage.removeItem(STATIONS_CACHE_KEY);
     }
 
     const iconMap = { coffee: Coffee, shield: Shield, heart: Heart, zap: Zap };

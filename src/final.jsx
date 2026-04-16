@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, increment, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs } from 'firebase/firestore';
 import { Trophy, Radio, Activity, ChevronRight } from 'lucide-react';
 
 // Custom Classes Neo-Brutalism
@@ -40,13 +40,21 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
   const setEligible = async (count, stageName) => {
     if (!window.confirm(`Czy na pewno chcesz pobrać TOP ${count} z rankingu i ustawić ich jako graczy do etapu: ${stageName}?`)) return;
-    const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'participants'), orderBy('totalPoints', 'desc'), limit(count));
-    const snap = await getDocs(q);
-    const uids = snap.docs.map(d => d.id);
     
-    const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-    await setDoc(liveRef, { eligibleUids: uids, stageName }, { merge: true });
-    alert(`Ustawiono ${uids.length} autoryzowanych graczy dla: ${stageName}!`);
+    try {
+      const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
+      const snap = await getDocs(q);
+      const all = snap.docs.map(d => d.data());
+      all.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
+      const uids = all.slice(0, count).map(d => d.uid);
+      
+      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+      await setDoc(liveRef, { eligibleUids: uids, stageName }, { merge: true });
+      alert(`Ustawiono ${uids.length} autoryzowanych graczy dla: ${stageName}!`);
+    } catch (error) {
+      console.error(error);
+      alert("Błąd podczas ustawiania graczy: " + error.message);
+    }
   };
 
   if (isAdmin) {
@@ -82,8 +90,10 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <button
                     onClick={async () => {
-                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                      await updateDoc(liveRef, { isLiveModeVisible: true, active: false });
+                      try {
+                        const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                        await setDoc(liveRef, { isLiveModeVisible: true, active: false }, { merge: true });
+                      } catch(e) { alert(e.message); }
                     }}
                     className={`${neoBtn} w-full py-4 bg-red-600 text-white`}
                   >
@@ -92,8 +102,10 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                   <button
                     onClick={async () => {
                       if(!window.confirm("Czy na pewno chcesz wyłączyć Finał i przywrócić widok mapy wszystkim użytkownikom?")) return;
-                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                      await updateDoc(liveRef, { isLiveModeVisible: false, active: false });
+                      try {
+                        const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                        await setDoc(liveRef, { isLiveModeVisible: false, active: false }, { merge: true });
+                      } catch(e) { alert(e.message); }
                     }}
                     className={`${neoBtn} w-full py-4 bg-slate-800 text-white`}
                   >
@@ -103,8 +115,10 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
                     onClick={async () => {
-                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                      await updateDoc(liveRef, { active: false });
+                      try {
+                        const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                        await setDoc(liveRef, { active: false }, { merge: true });
+                      } catch(e) { alert(e.message); }
                     }}
                     className={`${neoBtn} w-full py-4 bg-black text-white`}
                   >
@@ -112,8 +126,10 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                   </button>
                   <button
                     onClick={async () => {
-                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                      await updateDoc(liveRef, { showAnswer: true });
+                      try {
+                        const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                        await setDoc(liveRef, { showAnswer: true }, { merge: true });
+                      } catch(e) { alert(e.message); }
                     }}
                     className={`${neoBtn} w-full py-4 bg-green-400 text-black`}
                   >
@@ -249,10 +265,10 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
       });
 
       if (earned > 0) {
-        await updateDoc(participantRef, {
+        await setDoc(participantRef, {
           totalPoints: increment(earned),
           scoreUpdatedAt: serverTimestamp()
-        });
+        }, { merge: true });
       }
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
@@ -330,29 +346,41 @@ function Leaderboard({ db, appId, isAdmin, liveStage }) {
   const [leaders, setLeaders] = useState([]);
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'artifacts', appId, 'public', 'data', 'participants'),
-      orderBy('totalPoints', 'desc'),
-      limit(20)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setLeaders(snap.docs.map(d => d.data()));
-    });
+    const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
+    const unsub = onSnapshot(q, (snapshot) => {
+      const all = snapshot.docs.map(d => d.data());
+      all.sort((a, b) => {
+        const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        const aTime = a.scoreUpdatedAt?.toMillis ? a.scoreUpdatedAt.toMillis() : a.scoreUpdatedAt ? new Date(a.scoreUpdatedAt).getTime() : 0;
+        const bTime = b.scoreUpdatedAt?.toMillis ? b.scoreUpdatedAt.toMillis() : b.scoreUpdatedAt ? new Date(b.scoreUpdatedAt).getTime() : 0;
+        if (aTime !== bTime) return aTime - bTime;
+        const aCreated = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const bCreated = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return aCreated - bCreated;
+      });
+      setLeaders(all.slice(0, 20));
+    }, (err) => console.error("Ranking error:", err));
     return () => unsub();
   }, [db, appId]);
 
   const togglePlayer = async (uid) => {
     if (!isAdmin) return;
-    const current = liveStage?.eligibleUids || [];
-    const isEligible = current.includes(uid);
-    let next;
-    if (isEligible) {
-      next = current.filter(id => id !== uid);
-    } else {
-      next = [...current, uid];
+    try {
+      const current = liveStage?.eligibleUids || [];
+      const isEligible = current.includes(uid);
+      let next;
+      if (isEligible) {
+        next = current.filter(id => id !== uid);
+      } else {
+        next = [...current, uid];
+      }
+      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+      await setDoc(liveRef, { eligibleUids: next }, { merge: true });
+    } catch (err) {
+      console.error(err);
+      alert("Błąd: " + err.message);
     }
-    const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-    await setDoc(liveRef, { eligibleUids: next }, { merge: true });
   };
 
   return (
