@@ -123,17 +123,22 @@ export default function App() {
   }, [fetchStations]);
 
   useEffect(() => {
+    if (!user) return; // Nasłuchuj dopiero po pomyślnym zalogowaniu (anonimowym lub admina)
     // Nasłuchiwanie na zmiany w konfiguracji aplikacji (ogłoszenia, czas, hasła)
-    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config');
-    const unsubscribe = onSnapshot(configRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setAppConfig(snapshot.data());
-      } else {
-        console.log("Dokument konfiguracyjny nie istnieje!");
-      }
-    });
+    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
+    const unsubscribe = onSnapshot(
+      configRef, 
+      (snapshot) => {
+        if (snapshot.exists()) {
+          setAppConfig(snapshot.data());
+        } else {
+          console.log("Dokument konfiguracyjny nie istnieje!");
+        }
+      },
+      (error) => console.error("Błąd pobierania konfiguracji:", error) // Wyłapywanie błędu braku uprawnień
+    );
     return () => unsubscribe();
-  }, []);
+  }, [user]); // Zależność powoduje, że useEffect uruchomi się ponownie po załadowaniu obiektu user
 
   useEffect(() => {
     // Centralny licznik czasu do końca turnieju
@@ -359,7 +364,7 @@ function AdminView({ appConfig, user }) {
   const [newMessage, setNewMessage] = useState('');
   const [staffMessage, setStaffMessage] = useState('');
 
-  const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config');
+  const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
 
   const handleUpdateConfig = async (field, value) => {
     try {
