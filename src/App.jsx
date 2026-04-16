@@ -615,6 +615,8 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
   const isDone = userData?.completedStations?.includes(station.id);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [localScore, setLocalScore] = useState(0);
+  const [questionCode, setQuestionCode] = useState(''); // Nowy stan dla kodu pytania
+  const [unlockedQuestions, setUnlockedQuestions] = useState(new Set()); // Nowy stan do śledzenia odblokowanych pytań
   const [selectedOption, setSelectedOption] = useState(null); // Do animacji kolorów
 
   if (isDone) return (
@@ -631,7 +633,7 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
   const maxPoints = station.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
 
   const handleOptionClick = (idx) => {
-    if (selectedOption !== null || submitting) return; // Zapobiega podwójnemu kliknięciu
+    if (selectedOption !== null || submitting || !unlockedQuestions.has(currentIdx)) return; // Dodano sprawdzenie, czy pytanie jest odblokowane
     setSelectedOption(idx);
 
     const isCorrect = idx === currentQ.correct;
@@ -643,11 +645,25 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
         setLocalScore(newScore);
         setCurrentIdx(currentIdx + 1);
         setSelectedOption(null); // Reset wyboru dla nowego pytania
+        setQuestionCode(''); // Wyczyść pole kodu dla następnego pytania
       } else {
         // Koniec quizu na tej stacji
         handleStationComplete(newScore);
       }
     }, 1000);
+  };
+  
+  const handleUnlockQuestion = () => {
+    if (!currentQ || !currentQ.code) {
+      alert("Błąd: Brak kodu dla tego pytania.");
+      return;
+    }
+    if (questionCode.toUpperCase() === currentQ.code.toUpperCase()) {
+      setUnlockedQuestions(prev => new Set(prev).add(currentIdx));
+      setQuestionCode(''); // Wyczyść pole po poprawnym odblokowaniu
+    } else {
+      alert("ZŁY KOD! ZAPYTAJ INSTRUKTORA O POPRAWNY.");
+    }
   };
 
   if (!currentQ) return (
@@ -658,6 +674,8 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
       </button>
     </div>
   );
+
+  const isCurrentQuestionUnlocked = unlockedQuestions.has(currentIdx);
 
   return (
     <div className="animate-in slide-in-from-bottom-12 duration-500">
@@ -677,24 +695,57 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
 
       <div className={`${neoCard} bg-white p-10`}>
         <h4 className="text-2xl font-[900] uppercase mb-10 leading-tight border-l-8 border-black pl-6">{currentQ.question}</h4>
-        <div className="grid grid-cols-1 gap-4">
-          {currentQ.options.map((opt, idx) => {
-            // Logika podświetlania poprawnych i błędnych odpowiedzi
-            let btnStyle = "bg-white text-black";
-            if (selectedOption !== null) {
-              if (idx === currentQ.correct) btnStyle = "bg-green-500 text-white border-green-700 shadow-none translate-y-[2px] translate-x-[2px]";
-              else if (idx === selectedOption) btnStyle = "bg-red-500 text-white border-red-700 shadow-none translate-y-[2px] translate-x-[2px]";
-            }
 
-            return (
-              <button 
-                key={idx}
-                disabled={submitting || selectedOption !== null}
-                onClick={() => handleOptionClick(idx)}
-                className={`${neoBtn} ${btnStyle} text-left p-6 font-[900] uppercase text-lg flex justify-between items-center group`}
-              >
-                <span>{opt}</span>
-                <ChevronRight className={`w-6 h-6 ${selectedOption === null ? 'group-hover:translate-x-2' : ''} transition-transform`} />
+        {!isCurrentQuestionUnlocked ? (
+          <div className="space-y-4">
+            <p className="font-mono text-[11px] text-slate-500 uppercase text-center">Wpisz kod od instruktora, aby odblokować pytanie.</p>
+            <input
+              type="text"
+              placeholder="KOD DO PYTANIA..."
+              className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-yellow-50 text-center"
+              value={questionCode}
+              onChange={(e) => setQuestionCode(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleUnlockQuestion();
+                }
+              }}
+            />
+            <button
+              onClick={handleUnlockQuestion}
+              className={`${neoBtn} w-full py-5 bg-[#EAB308] text-black font-[900] uppercase`}
+            >
+              ODBLOKUJ PYTANIE
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {currentQ.options.map((opt, idx) => {
+              // Logika podświetlania poprawnych i błędnych odpowiedzi
+              let btnStyle = "bg-white text-black";
+              if (selectedOption !== null) {
+                if (idx === currentQ.correct) btnStyle = "bg-green-500 text-white border-green-700 shadow-none translate-y-[2px] translate-x-[2px]";
+                else if (idx === selectedOption) btnStyle = "bg-red-500 text-white border-red-700 shadow-none translate-y-[2px] translate-x-[2px]";
+              }
+
+              return (
+                <button
+                  key={idx}
+                  disabled={submitting || selectedOption !== null}
+                  onClick={() => handleOptionClick(idx)}
+                  className={`${neoBtn} ${btnStyle} text-left p-6 font-[900] uppercase text-lg flex justify-between items-center group`}
+                >
+                  <span>{opt}</span>
+                  <ChevronRight className={`w-6 h-6 ${selectedOption === null ? 'group-hover:translate-x-2' : ''} transition-transform`} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
               </button>
             );
           })}
