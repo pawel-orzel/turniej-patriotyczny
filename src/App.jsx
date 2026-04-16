@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -55,6 +55,7 @@ export default function App() {
   const [userData, setUserData] = useState(null);
   const [nick, setNick] = useState('');
   const [stations, setStations] = useState(null);
+  const [stationsError, setStationsError] = useState(null);
   const [appConfig, setAppConfig] = useState(null);
   const [countdown, setCountdown] = useState('');
   const [currentStationId, setCurrentStationId] = useState(null);
@@ -90,34 +91,36 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const iconMap = {
-        coffee: Coffee,
-        shield: Shield,
-        heart: Heart,
-        zap: Zap
-    };
+  const fetchStations = useCallback(async () => {
+    setStationsError(null);
+    setStations(null); // Reset stations to show loading indicator
+    const iconMap = { coffee: Coffee, shield: Shield, heart: Heart, zap: Zap };
 
-    const fetchStations = async () => {
-        try {
-            const response = await fetch(GOOGLE_SCRIPT_URL);
-            const data = await response.json();
-            
-            const processedStations = {};
-            Object.keys(data.stations).forEach(stationId => {
-                const station = data.stations[stationId];
-                processedStations[stationId] = {
-                    ...station,
-                    icon: iconMap[station.iconName] || Info
-                };
-            });
-            setStations(processedStations);
-        } catch (error) {
-            console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
+    try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        if (!response.ok) {
+          throw new Error(`Błąd sieci: ${response.statusText}`);
         }
-    };
-    fetchStations();
+        const data = await response.json();
+        
+        const processedStations = {};
+        Object.keys(data.stations).forEach(stationId => {
+            const station = data.stations[stationId];
+            processedStations[stationId] = {
+                ...station,
+                icon: iconMap[station.iconName] || Info
+            };
+        });
+        setStations(processedStations);
+    } catch (error) {
+        console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
+        setStationsError("Nie udało się załadować stacji. Sprawdź połączenie z internetem.");
+    }
   }, []);
+
+  useEffect(() => {
+    fetchStations();
+  }, [fetchStations]);
 
   useEffect(() => {
     // Nasłuchiwanie na zmiany w konfiguracji aplikacji (ogłoszenia, czas, hasła)
@@ -242,7 +245,7 @@ export default function App() {
     }
   };
 
-  if (loading || !stations) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
+  if (loading) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
   if (user && !userData && view !== 'admin') {
     return (
@@ -322,7 +325,7 @@ export default function App() {
         ) : view === 'leaderboard' ? (
           <LeaderboardView appConfig={appConfig} />
         ) : (
-          <HomeView userData={userData} appConfig={appConfig} stations={stations} setUnlockingStationId={setUnlockingStationId} />
+          <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} setUnlockingStationId={setUnlockingStationId} />
         )}
       </main>
 
@@ -436,7 +439,7 @@ function AdminView({ appConfig, user }) {
 }
 
 // --- HOME (BENTO BOX LAYOUT) ---
-function HomeView({ userData, appConfig, stations, setUnlockingStationId }) {
+function HomeView({ userData, appConfig, stations, stationsError, refetchStations, setUnlockingStationId }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* BANER GŁÓWNY */}
@@ -462,8 +465,27 @@ function HomeView({ userData, appConfig, stations, setUnlockingStationId }) {
         </div>
       )}
 
+      {/* BŁĄD ŁADOWANIA STACJI */}
+      {stationsError && !stations && (
+        <div className={`${neoCard} bg-red-50 p-8 text-center`}>
+          <h3 className="text-xl font-[900] uppercase text-red-600 mb-4">BŁĄD ŁADOWANIA</h3>
+          <p className="font-mono text-sm text-slate-600 mt-2 mb-6">{stationsError}</p>
+          <button onClick={refetchStations} className={`${neoBtn} bg-black text-white px-8 py-3`}>
+              SPRÓBUJ PONOWNIE
+          </button>
+        </div>
+      )}
+
+      {/* ŁADOWANIE STACJI */}
+      {!stations && !stationsError && (
+        <div className="flex justify-center items-center p-10">
+          <div className="w-10 h-10 border-4 border-black border-t-slate-400 rounded-full animate-spin"></div>
+          <p className="ml-4 font-mono uppercase">Ładowanie stacji...</p>
+        </div>
+      )}
+
       {/* BENTO GRID STACJI */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {stations && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {Object.values(stations).map((st) => {
           const maxPoints = st.questions.reduce((acc, q) => acc + q.points, 0);
           const isDone = userData?.completedStations?.includes(st.id);
@@ -498,7 +520,7 @@ function HomeView({ userData, appConfig, stations, setUnlockingStationId }) {
             </div>
           );
         })}
-      </div>
+      </div>}
 
       <div className={`${neoCard} bg-white p-8 border-dashed flex gap-6 items-center`}>
          <Info className="w-12 h-12 text-[#DC2626] shrink-0" />
