@@ -56,6 +56,7 @@ export default function FinalStage({ db, user, appId, stations }) {
     return (
       <>
         <button
+          id="rezyserka-btn"
           onClick={() => setIsOpen(!isOpen)}
           className={`fixed bottom-24 right-6 z-[100] ${neoBtn} bg-[#DC2626] text-white p-4 flex items-center gap-2`}
         >

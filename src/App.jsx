@@ -559,7 +559,7 @@ function AdminView({ appConfig, user, stations, onLogout }) {
     }
 
     try {
-      await updateDoc(configRef, { [field]: value });
+      await setDoc(configRef, { [field]: value }, { merge: true });
       if (field === 'endTime') {
         setNewTime(value.slice(0, 16));
       }
@@ -660,6 +660,15 @@ function AdminView({ appConfig, user, stations, onLogout }) {
           className={`${neoBtn} bg-black text-white w-full py-3`}
         >
           ZAPISZ CZAS
+        </button>
+      </div>
+
+      {/* ZARZĄDZANIE FINAŁEM */}
+      <div className={`${neoCard} p-8 bg-blue-50 border-dashed border-[#3B82F6] text-center`}>
+        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#3B82F6]">REŻYSERKA FINAŁU</h3>
+        <p className="font-mono text-xs text-slate-600 mb-6">Zarządzaj pytaniami na żywo dla Półfinału i Finału.</p>
+        <button onClick={() => document.getElementById('rezyserka-btn')?.click()} className={`${neoBtn} w-full py-5 bg-[#3B82F6] text-white font-[900] uppercase`}>
+          OTWÓRZ REŻYSERKĘ
         </button>
       </div>
 
