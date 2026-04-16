@@ -18,8 +18,7 @@ import {
   signInAnonymously, 
   onAuthStateChanged,
   signInWithCustomToken,
-  GoogleAuthProvider,
-  signInWithPopup,
+  signInWithEmailAndPassword,
   signOut
 } from 'firebase/auth';
 import { 
@@ -65,6 +64,9 @@ export default function App() {
   const [view, setView] = useState('home'); // 'home' | 'leaderboard' | 'quiz' | 'admin'
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showAdminForm, setShowAdminForm] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
 
 
   useEffect(() => {
@@ -246,9 +248,12 @@ export default function App() {
   };
 
   const handleAdminLogin = async () => {
-    const provider = new GoogleAuthProvider();
+    if (!adminEmail || !adminPassword) {
+      alert("Wpisz email i hasło!");
+      return;
+    }
     try {
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
       alert("ZALOGOWANO!\n\nTwoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
       console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
@@ -277,22 +282,53 @@ export default function App() {
           </div>
           <h1 className="text-4xl font-[900] mb-2 leading-none uppercase tracking-tighter">PASZPORT SKAUTA</h1>
           <p className="font-mono text-[10px] tracking-widest text-slate-500 mb-10 uppercase">Biało-Czerwona 2.0</p>
-          <input 
-            type="text" 
-            placeholder="TWÓJ NICK..." 
-            className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-red-50"
-            value={nick}
-            onChange={(e) => setNick(e.target.value)}
-          />
-          <button 
-            onClick={handleRegister}
-            className={`${neoBtn} w-full py-5 bg-[#DC2626] text-white font-[900] uppercase`}
-          >
-            OTWÓRZ PASZPORT
-          </button>
-          <button onClick={handleAdminLogin} className="mt-6 font-mono text-xs text-slate-400 uppercase tracking-widest">
-            Logowanie dla Sztabu
-          </button>
+          
+          {showAdminForm ? (
+            <>
+              <input 
+                type="email" 
+                placeholder="EMAIL SZTABU..." 
+                className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black outline-none focus:bg-slate-100"
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+              />
+              <input 
+                type="password" 
+                placeholder="HASŁO..." 
+                className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black outline-none focus:bg-slate-100"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+              />
+              <button 
+                onClick={handleAdminLogin}
+                className={`${neoBtn} w-full py-5 bg-black text-white font-[900] uppercase`}
+              >
+                ZALOGUJ DO SZTABU
+              </button>
+              <button onClick={() => setShowAdminForm(false)} className="mt-6 font-mono text-xs text-slate-400 uppercase tracking-widest">
+                Wróć do logowania gracza
+              </button>
+            </>
+          ) : (
+            <>
+              <input 
+                type="text" 
+                placeholder="TWÓJ NICK..." 
+                className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-red-50"
+                value={nick}
+                onChange={(e) => setNick(e.target.value)}
+              />
+              <button 
+                onClick={handleRegister}
+                className={`${neoBtn} w-full py-5 bg-[#DC2626] text-white font-[900] uppercase`}
+              >
+                OTWÓRZ PASZPORT
+              </button>
+              <button onClick={() => setShowAdminForm(true)} className="mt-6 font-mono text-xs text-slate-400 uppercase tracking-widest">
+                Logowanie dla Sztabu
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
