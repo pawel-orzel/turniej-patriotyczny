@@ -717,6 +717,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 // --- QUIZ VIEW ---
 function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const questionRefs = useRef([]); // Ref do przewijania
+  const stationIdRef = useRef(station.id);
   const isDone = userData?.completedStations?.includes(station.id);
   const [localScore, setLocalScore] = useState(0);
   const [questionCodes, setQuestionCodes] = useState({});
@@ -732,7 +733,11 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     const answeredOnStation = new Set(userData?.answeredQuestions?.[station.id] || []);
     setAnsweredQuestions(answeredOnStation);
     setUnlockedQuestions(answeredOnStation); // Odblokowane to co najmniej te, na które już odpowiedziano
-    setSelectedOptions({});
+
+    if (stationIdRef.current !== station.id) {
+      setSelectedOptions({});
+      stationIdRef.current = station.id;
+    }
   }, [station.id, userData]);
 
   useEffect(() => {
