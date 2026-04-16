@@ -579,7 +579,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 function QuizView({ station, userData, handleStationComplete, submitting }) {
   const isDone = userData?.completedStations?.includes(station.id);
   const [localScore, setLocalScore] = useState(0);
-  const [questionCode, setQuestionCode] = useState('');
+  const [questionCodes, setQuestionCodes] = useState({});
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
   const [unlockedQuestions, setUnlockedQuestions] = useState(new Set());
   const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
@@ -587,7 +587,7 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
 
   useEffect(() => {
     setLocalScore(0);
-    setQuestionCode('');
+    setQuestionCodes({});
     setActiveQuestionIdx(null);
     setUnlockedQuestions(new Set());
     setAnsweredQuestions(new Set());
@@ -607,15 +607,27 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
   const maxPoints = station.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
   const isAllAnswered = station.questions?.length > 0 && answeredQuestions.size === station.questions.length;
 
+  const getQuestionCodeValue = (question) => {
+    if (!question) return undefined;
+    const direct = question.code ?? question.Code ?? question.CODE ?? question.questionCode ?? question.QuestionCode;
+    if (direct !== undefined) return direct;
+    const key = Object.keys(question).find((k) => k.toLowerCase() === 'code');
+    if (key) return question[key];
+    const fuzzyKey = Object.keys(question).find((k) => k.toLowerCase().includes('code'));
+    return fuzzyKey ? question[fuzzyKey] : undefined;
+  };
+
   const handleUnlockQuestion = (idx) => {
     const question = station.questions?.[idx];
-    if (!question || !question.code) {
+    const expectedRaw = getQuestionCodeValue(question);
+    if (!question || expectedRaw === undefined || expectedRaw === null || expectedRaw.toString().trim() === '') {
+      console.warn('Brak kodu w obiekcie pytania lub nieznany klucz:', question);
       alert('Błąd: Brak kodu dla tego pytania.');
       return;
     }
 
-    const enteredCode = questionCode.toString().trim().toUpperCase();
-    const expectedCode = question.code.toString().trim().toUpperCase();
+    const enteredCode = (questionCodes[idx] || '').toString().trim().toUpperCase();
+    const expectedCode = expectedRaw.toString().trim().toUpperCase();
 
     if (enteredCode === expectedCode) {
       setUnlockedQuestions((prev) => {
@@ -623,7 +635,7 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
         next.add(idx);
         return next;
       });
-      setQuestionCode('');
+      setQuestionCodes((prev) => ({ ...prev, [idx]: '' }));
     } else {
       alert('ZŁY KOD! ZAPYTAJ INSTRUKTORA O POPRAWNY.');
     }
@@ -694,8 +706,8 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
                         type="text"
                         placeholder="KOD DO PYTANIA..."
                         className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-yellow-50 text-center"
-                        value={questionCode}
-                        onChange={(e) => setQuestionCode(e.target.value)}
+                        value={questionCodes[idx] || ''}
+                        onChange={(e) => setQuestionCodes((prev) => ({ ...prev, [idx]: e.target.value }))}
                         onKeyPress={(e) => {
                           if (e.key === 'Enter') {
                             handleUnlockQuestion(idx);
