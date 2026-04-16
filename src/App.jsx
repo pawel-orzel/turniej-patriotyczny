@@ -19,12 +19,13 @@ import {
   onAuthStateChanged,
   signInWithCustomToken,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  signOut
 } from 'firebase/auth';
 import { 
   User, Trophy, Coffee, Shield, Heart, Zap, Megaphone, Lock, Info,
   CheckCircle, ChevronRight, 
-  Flag, MapPin
+  Flag, MapPin, LogOut
 } from 'lucide-react';
 
 const OWNER_UID = "HPGsaBM2pdSJJVJUrZf7mPkNQFJ3"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
@@ -258,6 +259,13 @@ export default function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      window.location.href = '/'; // Przeładowanie strony uruchomi na nowo ekran startowy
+    } catch (err) { console.error("Błąd wylogowania: ", err); }
+  };
+
   if (loading) return <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
   if (user && !userData && view !== 'admin') {
@@ -324,9 +332,12 @@ export default function App() {
             <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mt-1">STATUS: AKTYWNY</div>
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-right flex flex-col items-end">
           <div className="text-2xl font-[900] leading-none">{userData?.totalPoints} PKT</div>
           <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase font-bold">{countdown}</div>
+          <button onClick={handleLogout} className="mt-1 font-mono text-[9px] font-bold tracking-widest uppercase bg-slate-100 text-black px-2 py-1 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all flex items-center gap-1 shadow-neo-sm">
+            <LogOut className="w-3 h-3" /> WYLOGUJ
+          </button>
         </div>
       </header>
 
@@ -391,11 +402,23 @@ function AdminView({ appConfig, user }) {
     setIsDeleting(false);
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      window.location.href = '/'; // Przeładowanie strony uruchomi na nowo logowanie gracza
+    } catch (err) { console.error("Błąd wylogowania: ", err); }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 mt-8">
-      <div>
-        <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
-        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
+      <div className="flex justify-between items-start gap-4">
+        <div>
+          <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
+          <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
+        </div>
+        <button onClick={handleLogout} className="font-mono text-[10px] font-bold tracking-widest uppercase bg-black text-white px-4 py-3 rounded-xl shadow-neo-sm active:translate-y-1 active:translate-x-1 transition-transform">
+          Wyloguj
+        </button>
       </div>
 
       {/* UID ADMINA */}
