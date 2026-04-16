@@ -578,11 +578,21 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 // --- QUIZ VIEW ---
 function QuizView({ station, userData, handleStationComplete, submitting }) {
   const isDone = userData?.completedStations?.includes(station.id);
-  const [currentIdx, setCurrentIdx] = useState(0);
   const [localScore, setLocalScore] = useState(0);
-  const [questionCode, setQuestionCode] = useState(''); // Nowy stan dla kodu pytania
-  const [unlockedQuestions, setUnlockedQuestions] = useState(new Set()); // Nowy stan do śledzenia odblokowanych pytań
-  const [selectedOption, setSelectedOption] = useState(null); // Do animacji kolorów
+  const [questionCode, setQuestionCode] = useState('');
+  const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
+  const [unlockedQuestions, setUnlockedQuestions] = useState(new Set());
+  const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
+  const [selectedOptions, setSelectedOptions] = useState({});
+
+  useEffect(() => {
+    setLocalScore(0);
+    setQuestionCode('');
+    setActiveQuestionIdx(null);
+    setUnlockedQuestions(new Set());
+    setAnsweredQuestions(new Set());
+    setSelectedOptions({});
+  }, [station.id]);
 
   if (isDone) return (
     <div className="text-center py-20 animate-in zoom-in">
@@ -594,61 +604,52 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
     </div>
   );
 
-  const currentQ = station.questions?.[currentIdx];
   const maxPoints = station.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
+  const isAllAnswered = station.questions?.length > 0 && answeredQuestions.size === station.questions.length;
 
-  const handleOptionClick = (idx) => {
-    if (selectedOption !== null || submitting || !unlockedQuestions.has(currentIdx)) return; // Dodano sprawdzenie, czy pytanie jest odblokowane
-    setSelectedOption(idx);
-
-    const isCorrect = idx === currentQ.correct;
-    const newScore = localScore + (isCorrect ? currentQ.points : 0);
-
-    // Czekamy sekundę, aby gracz zobaczył zielony/czerwony kolor
-    setTimeout(() => {
-      if (currentIdx + 1 < station.questions.length) {
-        setLocalScore(newScore);
-        setCurrentIdx(currentIdx + 1);
-        setSelectedOption(null); // Reset wyboru dla nowego pytania
-        setQuestionCode(''); // Wyczyść pole kodu dla następnego pytania
-      } else {
-        // Koniec quizu na tej stacji
-        handleStationComplete(newScore);
-      }
-    }, 1000);
-  };
-  
-  const handleUnlockQuestion = () => {
-    if (!currentQ || !currentQ.code) {
-      alert("Błąd: Brak kodu dla tego pytania.");
+  const handleUnlockQuestion = (idx) => {
+    const question = station.questions?.[idx];
+    if (!question || !question.code) {
+      alert('Błąd: Brak kodu dla tego pytania.');
       return;
     }
-    if (questionCode.toUpperCase() === currentQ.code.toUpperCase()) {
-      setUnlockedQuestions(prev => new Set(prev).add(currentIdx));
-      setQuestionCode(''); // Wyczyść pole po poprawnym odblokowaniu
+    if (questionCode.toUpperCase() === question.code.toUpperCase()) {
+      setUnlockedQuestions((prev) => {
+        const next = new Set(prev);
+        next.add(idx);
+        return next;
+      });
+      setQuestionCode('');
     } else {
-      alert("ZŁY KOD! ZAPYTAJ INSTRUKTORA O POPRAWNY.");
+      alert('ZŁY KOD! ZAPYTAJ INSTRUKTORA O POPRAWNY.');
     }
   };
 
-  if (!currentQ) return (
-    <div className="text-center py-20 animate-in zoom-in">
-      <h3 className="text-3xl font-[900] uppercase mb-4">Brak Pytań</h3>
-      <button onClick={() => handleStationComplete(localScore)} className={`${neoBtn} mt-4 px-8 py-3 bg-black text-white`}>
-        Wróć do mapy
-      </button>
-    </div>
-  );
+  const handleOptionClick = (questionIdx, optionIdx) => {
+    if (submitting || answeredQuestions.has(questionIdx) || !unlockedQuestions.has(questionIdx)) return;
+    const question = station.questions?.[questionIdx];
+    if (!question) return;
 
-  const isCurrentQuestionUnlocked = unlockedQuestions.has(currentIdx);
+    const isCorrect = optionIdx === question.correct;
+    if (isCorrect) {
+      setLocalScore((prev) => prev + (question.points || 0));
+    }
+
+    setAnsweredQuestions((prev) => {
+      const next = new Set(prev);
+      next.add(questionIdx);
+      return next;
+    });
+    setSelectedOptions((prev) => ({ ...prev, [questionIdx]: optionIdx }));
+  };
 
   return (
-    <div className="animate-in slide-in-from-bottom-12 duration-500">
-      <div style={{backgroundColor: station.color}} className={`${neoCard} p-10 text-white mb-8`}>
+    <div className="space-y-8 animate-in slide-in-from-bottom-12 duration-500">
+      <div style={{backgroundColor: station.color}} className={`${neoCard} p-10 text-white`}>
         <div className="flex justify-between items-center mb-4 opacity-80">
           <div className="font-mono text-[10px] tracking-widest uppercase">WYZWANIE: {station.category}</div>
           <div className="font-mono text-[10px] tracking-widest uppercase font-bold bg-black/20 px-3 py-1 rounded-full">
-            PYTANIE {currentIdx + 1} / {station.questions.length}
+            {answeredQuestions.size} / {station.questions?.length || 0} ODPOWIEDZI
           </div>
         </div>
         <h3 className="text-4xl font-[900] uppercase leading-none mb-4">{station.name}</h3>
@@ -658,55 +659,97 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
         </div>
       </div>
 
-      <div className={`${neoCard} bg-white p-10`}>
-        <h4 className="text-2xl font-[900] uppercase mb-10 leading-tight border-l-8 border-black pl-6">{currentQ.question}</h4>
+      <div className="space-y-6">
+        {station.questions?.map((question, idx) => {
+          const isUnlocked = unlockedQuestions.has(idx);
+          const isAnswered = answeredQuestions.has(idx);
+          const selectedOption = selectedOptions[idx];
+          const isActive = activeQuestionIdx === idx;
+          const isCorrect = selectedOption === question.correct;
 
-        {!isCurrentQuestionUnlocked ? (
-          <div className="space-y-4">
-            <p className="font-mono text-[11px] text-slate-500 uppercase text-center">Wpisz kod od instruktora, aby odblokować pytanie.</p>
-            <input
-              type="text"
-              placeholder="KOD DO PYTANIA..."
-              className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-yellow-50 text-center"
-              value={questionCode}
-              onChange={(e) => setQuestionCode(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleUnlockQuestion();
-                }
-              }}
-            />
-            <button
-              onClick={handleUnlockQuestion}
-              className={`${neoBtn} w-full py-5 bg-[#EAB308] text-black font-[900] uppercase`}
-            >
-              ODBLOKUJ PYTANIE
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {currentQ.options.map((opt, idx) => {
-              // Logika podświetlania poprawnych i błędnych odpowiedzi
-              let btnStyle = "bg-white text-black";
-              if (selectedOption !== null) {
-                if (idx === currentQ.correct) btnStyle = "bg-green-500 text-white border-green-700 shadow-none translate-y-[2px] translate-x-[2px]";
-                else if (idx === selectedOption) btnStyle = "bg-red-500 text-white border-red-700 shadow-none translate-y-[2px] translate-x-[2px]";
-              }
+          return (
+            <div key={idx} className={`${neoCard} bg-white p-6`}>
+              <button type="button" onClick={() => setActiveQuestionIdx(idx)} className="w-full text-left">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400 mb-2">Pytanie {idx + 1}</div>
+                    <h4 className="text-xl font-[900] uppercase leading-tight">{question.question}</h4>
+                  </div>
+                  <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full ${isAnswered ? 'bg-green-100 text-green-700' : isUnlocked ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
+                    {isAnswered ? 'ODPOWIEDZIANE' : isUnlocked ? 'ODKLOKOWANE' : 'KOD PRZY ODPOWIEDZI'}
+                  </div>
+                </div>
+              </button>
 
-              return (
-                <button
-                  key={idx}
-                  disabled={submitting || selectedOption !== null}
-                  onClick={() => handleOptionClick(idx)}
-                  className={`${neoBtn} ${btnStyle} text-left p-6 font-[900] uppercase text-lg flex justify-between items-center group`}
-                >
-                  <span>{opt}</span>
-                  <ChevronRight className={`w-6 h-6 ${selectedOption === null ? 'group-hover:translate-x-2' : ''} transition-transform`} />
-                </button>
-              );
-            })}
-          </div>
-        )}
+              {isActive && (
+                <div className="mt-6 space-y-4">
+                  {!isUnlocked ? (
+                    <>
+                      <p className="font-mono text-[11px] text-slate-500 uppercase text-center">Wpisz kod od instruktora, aby rozpocząć odpowiadanie.</p>
+                      <input
+                        type="text"
+                        placeholder="KOD DO PYTANIA..."
+                        className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-yellow-50 text-center"
+                        value={questionCode}
+                        onChange={(e) => setQuestionCode(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleUnlockQuestion(idx);
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => handleUnlockQuestion(idx)}
+                        className={`${neoBtn} w-full py-5 bg-[#EAB308] text-black font-[900] uppercase`}
+                      >
+                        ODBLOKUJ PYTANIE
+                      </button>
+                    </>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        {question.options.map((opt, optIdx) => {
+                          let btnStyle = 'bg-white text-black';
+                          if (isAnswered) {
+                            if (optIdx === question.correct) btnStyle = 'bg-green-500 text-white border-green-700';
+                            else if (optIdx === selectedOption) btnStyle = 'bg-red-500 text-white border-red-700';
+                          }
+                          return (
+                            <button
+                              key={optIdx}
+                              disabled={submitting || isAnswered}
+                              onClick={() => handleOptionClick(idx, optIdx)}
+                              className={`${neoBtn} ${btnStyle} text-left p-5 font-[900] uppercase text-lg flex justify-between items-center`}
+                            >
+                              <span>{opt}</span>
+                              <ChevronRight className="w-6 h-6 transition-transform" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {isAnswered && (
+                        <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                          {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={`${neoCard} bg-white p-8`}> 
+        <button
+          disabled={!isAllAnswered || submitting}
+          onClick={() => handleStationComplete(localScore)}
+          className={`${neoBtn} w-full py-5 ${isAllAnswered ? 'bg-black text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}
+        >
+          {isAllAnswered ? 'ZAKOŃCZ STACJĘ' : 'ODPOWIEDZ NA WSZYSTKIE PYTANIA'}
+        </button>
+        <p className="font-mono text-[11px] text-slate-500 uppercase">Wszystkie pytania widoczne od razu. Aby odpowiedzieć, wybierz pytanie i wpisz jego kod.</p>
       </div>
     </div>
   );
