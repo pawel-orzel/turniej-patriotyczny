@@ -765,14 +765,6 @@ function QuizView({ station, userData, handleStationComplete, submitting }) {
     </div>
   );
 }
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // --- RANKING VIEW ---
 function LeaderboardView({ appConfig }) {
