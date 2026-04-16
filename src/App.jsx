@@ -442,8 +442,8 @@ export default function App() {
       {/* NAGŁÓWEK */}
       <header className="bg-white border-b-[3px] border-black p-6 sticky top-0 z-50 flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <div className="bg-[#DC2626] border-2 border-black w-12 h-12 rounded-[12px] flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-            <User className="text-white w-6 h-6" />
+          <div className="bg-[#DC2626] border-2 border-black w-12 h-12 rounded-[12px] flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <img src="/favicon.png" alt="Logo aplikacji" className="w-8 h-8 object-contain" />
           </div>
           <div>
             <h2 className="text-xl font-[900] leading-none uppercase">{userData?.nick}</h2>
