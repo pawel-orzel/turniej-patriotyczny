@@ -74,6 +74,7 @@ export default function App() {
   const [showAdminForm, setShowAdminForm] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [showRules, setShowRules] = useState(false);
 
 
   useEffect(() => {
@@ -457,6 +458,9 @@ export default function App() {
               >
                 OTWÓRZ PASZPORT
               </button>
+              <button onClick={() => setShowRules(true)} className="mt-4 font-mono text-[10px] text-slate-500 uppercase tracking-widest underline underline-offset-4 decoration-slate-300">
+                Regulamin i RODO
+              </button>
               <button onClick={() => setShowAdminForm(true)} className="mt-6 font-mono text-xs text-slate-400 uppercase tracking-widest">
                 Logowanie dla Sztabu
               </button>
@@ -471,6 +475,7 @@ export default function App() {
     <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
       <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} />
+      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
       {/* NAGŁÓWEK */}
       <header className="bg-white border-b-[3px] border-black p-6 sticky top-0 z-50 flex justify-between items-center">
@@ -500,7 +505,7 @@ export default function App() {
         ) : view === 'leaderboard' ? (
           <LeaderboardView appConfig={appConfig} />
         ) : (
-          <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} setView={setView} setCurrentStationId={setCurrentStationId} />
+          <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} setView={setView} setCurrentStationId={setCurrentStationId} setShowRules={setShowRules} />
         )}
       </main>
 
@@ -658,7 +663,7 @@ function AdminView({ appConfig, user, stations, onLogout }) {
 }
 
 // --- HOME (BENTO BOX LAYOUT) ---
-function HomeView({ userData, appConfig, stations, stationsError, refetchStations, setView, setCurrentStationId }) {
+function HomeView({ userData, appConfig, stations, stationsError, refetchStations, setView, setCurrentStationId, setShowRules }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* BANER GŁÓWNY */}
@@ -732,11 +737,14 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 
       <div className={`${neoCard} bg-white p-8 border-dashed flex flex-col md:flex-row gap-6 items-start md:items-center`}>
          <Info className="w-12 h-12 text-[#DC2626] shrink-0" />
-         <div className="font-mono text-[11px] leading-relaxed uppercase font-bold text-slate-600 space-y-2">
+         <div className="font-mono text-[11px] leading-relaxed uppercase font-bold text-slate-600 space-y-2 flex-1">
            <p>1. Udaj się do wybranego stanowiska i zeskanuj jego kod QR.</p>
            <p>2. Porozmawiaj ze strażnikiem stacji, aby otrzymać tajny kod do pytania.</p>
            <p>3. O godz. {appConfig?.endTime || '??:??'} zapraszamy TOP 10 graczy na półfinał na scenie głównej!</p>
            <p>4. Po rozstrzygnięciu półfinału rozegramy Wielki Finał dla najlepszych.</p>
+           <button onClick={() => setShowRules(true)} className="mt-2 inline-block px-3 py-2 bg-slate-100 border-2 border-black rounded-lg active:translate-y-[2px] active:translate-x-[2px] transition-all font-[900]">
+             REGULAMIN I RODO
+           </button>
          </div>
       </div>
     </div>
@@ -959,6 +967,42 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
         })}
       </div>
 
+    </div>
+  );
+}
+
+// --- RULES MODAL ---
+function RulesModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
+      <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-6 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
+        <div className="flex justify-between items-center mb-4 shrink-0">
+          <h2 className="text-2xl font-[900] uppercase text-[#DC2626]">Regulamin i RODO</h2>
+        </div>
+        <div className="overflow-y-auto flex-1 border-2 border-black rounded-xl p-5 space-y-5 mb-4 bg-slate-50 text-sm font-medium">
+          <section>
+            <h3 className="font-[900] uppercase mb-2 text-black">1. Zasady Turnieju</h3>
+            <ul className="list-disc pl-4 space-y-2 text-slate-700">
+              <li>Turniej składa się z eliminacji mobilnych oraz półfinału i finału na scenie.</li>
+              <li>W eliminacjach gracze zdobywają punkty za poprawne odpowiedzi na stacjach po uprzednim wpisaniu tajnego kodu od instruktora.</li>
+              <li>O miejscu w rankingu decyduje suma punktów, a w przypadku remisu - czas zdobycia ostatniego punktu (kto pierwszy, ten lepszy). W ostateczności brany jest pod uwagę najkrótszy czas ukończenia gry.</li>
+              <li>Najlepszych graczy awansuje do fazy LIVE (Półfinału i Finału) rozgrywanej na scenie głównej.</li>
+            </ul>
+          </section>
+          <section>
+            <h3 className="font-[900] uppercase mb-2 text-black">2. Ochrona Danych (RODO)</h3>
+            <ul className="list-disc pl-4 space-y-2 text-slate-700">
+              <li>Aplikacja <strong>nie zbiera</strong> danych wrażliwych (takich jak imię, nazwisko, pesel czy adres e-mail).</li>
+              <li>Logowanie opiera się na autoryzacji anonimowej. Wymagane jest jedynie podanie pseudonimu ("Nicku"). Zalecamy używanie nicków, które nie pozwalają na bezpośrednią identyfikację w świecie rzeczywistym.</li>
+              <li>Twój Nick oraz wyniki punktowe i czasowe są przetwarzane wyłącznie na potrzeby realizacji turnieju i są publicznie widoczne w rankingu na żywo dla wszystkich uczestników wydarzenia.</li>
+              <li>Dane przechowywane są w zabezpieczonej bazie chmurowej i zostaną trwale usunięte po zakończeniu imprezy (w procesie resetu bazy).</li>
+            </ul>
+          </section>
+        </div>
+        <button onClick={onClose} className={`${neoBtn} w-full py-4 bg-black text-white flex justify-center items-center text-sm`}>
+          ZROZUMIANO, ZAMKNIJ
+        </button>
+      </div>
     </div>
   );
 }
