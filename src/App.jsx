@@ -468,7 +468,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32">
+    <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
       <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} />
 
@@ -479,7 +479,7 @@ export default function App() {
             <img src="/favicon.png" alt="Logo aplikacji" className="w-8 h-8 object-contain" />
           </div>
           <div>
-            <h2 className="text-xl font-[900] leading-none uppercase">{userData?.nick}</h2>
+            <h2 className="text-xl font-[900] leading-none uppercase truncate max-w-[140px] md:max-w-[250px]">{userData?.nick}</h2>
             <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mt-1">STATUS: AKTYWNY</div>
           </div>
         </div>
@@ -717,7 +717,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
                     ASPEKT<br/>{st.category}
                   </div>
                 </div>
-                <h5 className="text-2xl font-[900] uppercase leading-tight">{st.name}</h5>
+            <h5 className="text-[clamp(1.25rem,5vw,1.5rem)] font-[900] uppercase leading-tight break-words">{st.name}</h5>
               </div>
               <div className="flex justify-between items-center mt-6">
                 <span className="font-mono text-[12px] font-bold text-slate-500">{maxPoints} PKT</span>
@@ -861,7 +861,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
             {answeredQuestions.size} / {station.questions?.length || 0} ODPOWIEDZI
           </div>
         </div>
-        <h3 className="text-4xl font-[900] uppercase leading-none mb-4">{station.name}</h3>
+        <h3 className="text-[clamp(1.75rem,8vw,2.25rem)] font-[900] uppercase leading-none mb-4 break-words">{station.name}</h3>
         <div className="bg-white/20 p-4 rounded-[12px] font-mono text-[12px] font-bold flex justify-between">
           <span>MAX STACJI: {maxPoints} PKT</span>
           <span>ZDOBYTO: {localScore} PKT</span>
@@ -889,7 +889,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400 mb-2">Pytanie {idx + 1}</div>
-                    <h4 className="text-xl font-[900] uppercase leading-tight">{question.question}</h4>
+                    <h4 className="text-[clamp(1.125rem,6vw,1.25rem)] font-[900] uppercase leading-tight break-words">{question.question}</h4>
                   </div>
                   <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full ${isAnswered ? 'bg-green-100 text-green-700' : isUnlocked ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
                     {isAnswered ? 'ODPOWIEDZIANE' : isUnlocked ? 'ODKLOKOWANE' : 'KOD PRZY ODPOWIEDZI'}
@@ -936,10 +936,10 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                                 key={optIdx}
                                 disabled={submitting || isAnswered}
                                 onClick={() => handleOptionClick(idx, optIdx)}
-                                className={`${neoBtn} ${btnStyle} text-left p-5 font-[900] uppercase text-lg flex justify-between items-center`}
+                                className={`${neoBtn} ${btnStyle} text-left p-4 md:p-5 font-[900] uppercase text-[clamp(0.875rem,4.5vw,1.125rem)] flex justify-between items-center gap-3`}
                               >
-                                <span>{opt}</span>
-                                <ChevronRight className="w-6 h-6 transition-transform" />
+                                <span className="min-w-0 break-words">{opt}</span>
+                                <ChevronRight className="w-6 h-6 shrink-0 transition-transform" />
                               </button>
                             );
                           })}
@@ -1016,7 +1016,7 @@ function LeaderboardView({ appConfig }) {
               }`}>
                 {idx + 1}
               </div>
-              <span className="text-xl font-[900] uppercase tracking-tight">{p.nick}</span>
+              <span className="text-xl font-[900] uppercase tracking-tight truncate max-w-[150px] md:max-w-[300px]">{p.nick}</span>
             </div>
             <div className="text-right">
               <div className="text-3xl font-[900] leading-none">{p.totalPoints}</div>

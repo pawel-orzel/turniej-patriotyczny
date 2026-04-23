@@ -61,7 +61,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-[90] bg-[#F9FAFB] overflow-y-auto p-6 pb-32">
+            <div className="fixed inset-0 z-[90] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 pb-32">
             <div className="max-w-2xl mx-auto space-y-8 mt-12">
               <div className="flex justify-between items-center">
                 <h1 className="text-4xl font-[900] uppercase text-[#DC2626]">REŻYSERKA</h1>
@@ -391,14 +391,14 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto p-6 flex flex-col justify-center">
+    <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col justify-center">
       <div className="max-w-md mx-auto w-full space-y-6">
         <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
           <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
           <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
             {isSpectator ? `WIDZ - ${liveStage.stageName || 'LIVE'}` : `GRACZ - ${liveStage.stageName || 'LIVE'}`}
           </div>
-          <h2 className="text-3xl font-[900] uppercase leading-tight">
+          <h2 className="text-[clamp(1.5rem,6vw,1.875rem)] font-[900] uppercase leading-tight break-words">
             {liveStage.question.text}
           </h2>
         </div>
@@ -422,10 +422,10 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
                   key={idx}
                   disabled={isSubmitting || isSpectator || liveStage.showAnswer}
                   onClick={() => handleAnswer(idx)}
-                  className={`${neoBtn} p-6 font-[900] uppercase text-xl flex justify-between items-center text-left transition-all ${btnClass}`}
+                className={`${neoBtn} p-5 md:p-6 font-[900] uppercase text-[clamp(1rem,5vw,1.25rem)] flex justify-between items-center text-left transition-all ${btnClass} gap-3`}
                 >
-                  <span>{opt}</span>
-                  <ChevronRight className="w-8 h-8 opacity-30" />
+                <span className="min-w-0 break-words">{opt}</span>
+                <ChevronRight className="w-8 h-8 opacity-30 shrink-0" />
                 </button>
               );
             })
@@ -490,8 +490,8 @@ function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isA
             {showConfetti && <Confetti />}
             <div className="min-h-full flex flex-col items-center justify-center p-6 py-12">
                 <Trophy className="text-yellow-400 w-24 h-24 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.4)] shrink-0" />
-                <h1 className="text-4xl md:text-5xl font-[900] uppercase text-center mb-2 tracking-tighter shrink-0">{title}</h1>
-                <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8 shrink-0">{subtitle}</p>
+                <h1 className="text-[clamp(1.75rem,8vw,3rem)] font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words">{title}</h1>
+                <p className="font-mono text-[clamp(0.7rem,3vw,0.875rem)] tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words">{subtitle}</p>
                 <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black">
                     <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={true} />
                 </div>
@@ -556,7 +556,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
             >
             <div className="flex items-center gap-4">
               <span className="font-[900] text-xl w-6 text-slate-400">{idx + 1}.</span>
-              <span className="font-[900] uppercase text-lg">{l.nick}</span>
+              <span className="font-[900] uppercase text-lg truncate max-w-[120px] md:max-w-[200px]">{l.nick}</span>
             </div>
             <span className="font-mono font-bold">{l.totalPoints} PKT</span>
           </div>
@@ -689,8 +689,8 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
               return (
                 <div key={p.uid} onClick={() => toggle(p.uid)} className={`flex justify-between items-center p-3 border-2 border-black rounded-lg cursor-pointer active:scale-95 transition-transform ${isSelected ? 'bg-green-400 shadow-neo-sm' : 'bg-white opacity-50'}`}>
                   <div className="flex items-center gap-3">
-                    <div className="font-[900] w-6 text-right opacity-60">{idx + 1}.</div>
-                    <div className="font-[900] uppercase">{p.nick}</div>
+                    <div className="font-[900] w-6 text-right opacity-60 shrink-0">{idx + 1}.</div>
+                    <div className="font-[900] uppercase truncate max-w-[100px] md:max-w-[200px]">{p.nick}</div>
                   </div>
                   <div className="text-right">
                     <div className="font-mono text-xs font-bold">{p.totalPoints} PKT</div>
