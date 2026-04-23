@@ -649,6 +649,23 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, onClose }) {
     }
   };
 
+  const formatDuration = (startTs, endTs) => {
+    if (!startTs || !endTs) return '--';
+    try {
+      const start = new Date(startTs).getTime();
+      const end = typeof endTs.toDate === 'function' ? endTs.toDate().getTime() : new Date(endTs).getTime();
+      if (isNaN(start) || isNaN(end) || end < start) return '--';
+      const diff = end - start;
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      if (h > 0) return `${h}h ${m}m ${s}s`;
+      return `${m}m ${s}s`;
+    } catch (e) {
+      return '--';
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
       <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-6 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
@@ -671,6 +688,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, onClose }) {
                   <div className="text-right">
                     <div className="font-mono text-xs font-bold">{p.totalPoints} PKT</div>
                     <div className="font-mono text-[10px] text-slate-500">{formatTimestamp(p.scoreUpdatedAt)}</div>
+                    <div className="font-mono text-[9px] text-slate-400 uppercase">Czas gry: {formatDuration(p.timestamp, p.scoreUpdatedAt)}</div>
                   </div>
                 </div>
               );
