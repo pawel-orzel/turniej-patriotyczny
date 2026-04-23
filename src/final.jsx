@@ -46,6 +46,8 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
   };
 
   if (isAdmin) {
+    const currentStageLevel = liveStage?.stageName === 'WYNIKI' ? 3 : liveStage?.stageName === 'FINAŁ' ? 2 : liveStage?.stageName === 'PÓŁFINAŁ' ? 1 : 0;
+
     return (
       <>
         <button
@@ -130,10 +132,10 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
               <div className={`${neoCard} p-6 bg-green-50`}>
                 <h2 className="text-xl font-[900] uppercase mb-4 flex items-center gap-2"><Megaphone /> OGŁOSZENIA NA EKRANACH</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onClick={() => setSelectionModal({ stageName: 'PÓŁFINAŁ', count: 10, announcement: { type: 'semifinalists', title: 'PÓŁFINALIŚCI TURNIEJU', subtitle: 'Oto 10 najlepszych graczy z eliminacji!' } })} className={`${neoBtn} py-3 bg-blue-500 text-white text-[11px] lg:text-sm`}>
+                    <button onClick={() => setSelectionModal({ stageName: 'PÓŁFINAŁ', count: 10, announcement: { type: 'semifinalists', title: 'PÓŁFINALIŚCI TURNIEJU', subtitle: 'Oto 10 najlepszych graczy z eliminacji!' } })} className={`${neoBtn} py-3 bg-blue-500 text-white text-[11px] lg:text-sm ${currentStageLevel >= 2 ? 'opacity-50 grayscale' : ''}`}>
                         OGŁOŚ PÓŁFINALISTÓW (TOP 10)
                     </button>
-                    <button onClick={() => setSelectionModal({ stageName: 'FINAŁ', count: 5, announcement: { type: 'finalists', title: 'FINALIŚCI TURNIEJU', subtitle: 'Oto gracze, którzy zmierzą się w wielkim finale!' } })} className={`${neoBtn} py-3 bg-green-600 text-white text-[11px] lg:text-sm`}>
+                    <button onClick={() => setSelectionModal({ stageName: 'FINAŁ', count: 5, announcement: { type: 'finalists', title: 'FINALIŚCI TURNIEJU', subtitle: 'Oto gracze, którzy zmierzą się w wielkim finale!' } })} className={`${neoBtn} py-3 bg-green-600 text-white text-[11px] lg:text-sm ${currentStageLevel >= 3 ? 'opacity-50 grayscale' : ''}`}>
                         OGŁOŚ FINALISTÓW (TOP 5)
                     </button>
                     <button onClick={() => setSelectionModal({ stageName: 'WYNIKI', count: 3, announcement: { type: 'winners', title: 'MISTRZOWIE TURNIEJU', subtitle: 'Gratulacje dla najlepszych!' } })} className={`${neoBtn} py-3 bg-yellow-400 text-black text-[11px] lg:text-sm`}>
@@ -158,8 +160,9 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                   )}
                   {semifinalQuestions.map(q => {
                     const isLive = liveStage?.active && liveStage?.currentId === q.id;
+                    const isAsked = !isLive && liveStage?.askedQuestions?.includes(q.id);
                     return (
-                    <div key={q.id} className={`border-2 border-black p-4 rounded-xl bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all ${isLive ? 'opacity-50 grayscale' : ''}`}>
+                    <div key={q.id} className={`border-2 border-black p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all ${isLive ? 'bg-green-100 border-green-500 shadow-neo-sm scale-[1.02]' : isAsked ? 'bg-slate-100 opacity-50 grayscale' : 'bg-white'}`}>
                       <div>
                         <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400">ID: {q.id}</div>
                         <div className="font-[900] text-lg leading-tight uppercase">{q.text}</div>
@@ -167,7 +170,9 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                       <button
                         disabled={isLive}
                         onClick={async () => {
-                          if (!(await showConfirm("POTWIERDŹ", "Czy na pewno chcesz wypuścić to pytanie?"))) return;
+                          if (!(await showConfirm("POTWIERDŹ", isAsked ? "To pytanie było już zadane. Czy na pewno chcesz je powtórzyć?" : "Czy na pewno chcesz wypuścić to pytanie?"))) return;
+                          const asked = liveStage?.askedQuestions || [];
+                          const newAsked = asked.includes(q.id) ? asked : [...asked, q.id];
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                           await setDoc(liveRef, { 
                             isLiveModeVisible: true, 
@@ -177,12 +182,13 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                             showAnswer: false, 
                             startTime: serverTimestamp(), 
                             stageName: 'PÓŁFINAŁ',
-                            announcement: deleteField()
+                            announcement: deleteField(),
+                            askedQuestions: newAsked
                           }, { merge: true });
                         }}
-                        className={`${neoBtn} bg-[#3B82F6] text-white px-6 py-3 shrink-0 w-full md:w-auto`}
+                        className={`${neoBtn} ${isAsked ? 'bg-slate-500' : 'bg-[#3B82F6]'} text-white px-6 py-3 shrink-0 w-full md:w-auto`}
                       >
-                        {isLive ? 'NA ŻYWO' : 'PUSH PÓŁFINAŁ'}
+                        {isLive ? 'NA ŻYWO' : isAsked ? 'POWTÓRZ' : 'PUSH PÓŁFINAŁ'}
                       </button>
                     </div>
                   )})}
@@ -197,8 +203,9 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                   )}
                   {finalQuestions.map(q => {
                     const isLive = liveStage?.active && liveStage?.currentId === q.id;
+                    const isAsked = !isLive && liveStage?.askedQuestions?.includes(q.id);
                     return (
-                    <div key={q.id} className={`border-2 border-black p-4 rounded-xl bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all ${isLive ? 'opacity-50 grayscale' : ''}`}>
+                    <div key={q.id} className={`border-2 border-black p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all ${isLive ? 'bg-green-100 border-green-500 shadow-neo-sm scale-[1.02]' : isAsked ? 'bg-slate-100 opacity-50 grayscale' : 'bg-white'}`}>
                       <div>
                         <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400">ID: {q.id}</div>
                         <div className="font-[900] text-lg leading-tight uppercase">{q.text}</div>
@@ -206,7 +213,9 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                       <button
                         disabled={isLive}
                         onClick={async () => {
-                          if (!(await showConfirm("POTWIERDŹ", "Czy na pewno chcesz wypuścić to pytanie?"))) return;
+                          if (!(await showConfirm("POTWIERDŹ", isAsked ? "To pytanie było już zadane. Czy na pewno chcesz je powtórzyć?" : "Czy na pewno chcesz wypuścić to pytanie?"))) return;
+                          const asked = liveStage?.askedQuestions || [];
+                          const newAsked = asked.includes(q.id) ? asked : [...asked, q.id];
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                           await setDoc(liveRef, { 
                             isLiveModeVisible: true, 
@@ -216,12 +225,13 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                             showAnswer: false, 
                             startTime: serverTimestamp(), 
                             stageName: 'FINAŁ',
-                            announcement: deleteField()
+                            announcement: deleteField(),
+                            askedQuestions: newAsked
                           }, { merge: true });
                         }}
-                        className={`${neoBtn} bg-[#EAB308] text-black px-6 py-3 shrink-0 w-full md:w-auto`}
+                        className={`${neoBtn} ${isAsked ? 'bg-slate-500 text-white' : 'bg-[#EAB308] text-black'} px-6 py-3 shrink-0 w-full md:w-auto`}
                       >
-                        {isLive ? 'NA ŻYWO' : 'PUSH FINAŁ'}
+                        {isLive ? 'NA ŻYWO' : isAsked ? 'POWTÓRZ' : 'PUSH FINAŁ'}
                       </button>
                     </div>
                   )})}
