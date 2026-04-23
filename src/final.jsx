@@ -40,31 +40,6 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
   const semifinalQuestions = getQuestions('półfinał');
   const finalQuestions = getQuestions('finał');
 
-  const announce = async (type, title, subtitle) => {
-    const limitCount = type === 'semifinalists' ? 10 : (type === 'finalists' ? 5 : 3);
-    let currentEligible = liveStage?.eligibleUids || [];
-    
-    if (currentEligible.length === 0) {
-      try {
-        const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
-        const snap = await getDocs(q);
-        const all = snap.docs.map(d => d.data());
-        all.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
-        currentEligible = all.slice(0, limitCount).map(d => d.uid);
-      } catch (e) { console.error("Błąd przy automatycznym dobieraniu graczy:", e); }
-    }
-
-    if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz wyświetlić to ogłoszenie? Na ekranach pojawi się ${Math.min(currentEligible.length, limitCount)} graczy zaznaczonych aktualnie na zielono.`))) return;
-    
-    const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-    await setDoc(liveRef, {
-        isLiveModeVisible: true,
-        active: false,
-        eligibleUids: currentEligible,
-        announcement: { type, title, subtitle }
-    }, { merge: true });
-  };
-
   const clearAnnouncement = async () => {
       const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
       await setDoc(liveRef, { announcement: deleteField() }, { merge: true });
@@ -155,13 +130,13 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
               <div className={`${neoCard} p-6 bg-green-50`}>
                 <h2 className="text-xl font-[900] uppercase mb-4 flex items-center gap-2"><Megaphone /> OGŁOSZENIA NA EKRANACH</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onClick={() => announce('semifinalists', 'PÓŁFINALIŚCI TURNIEJU', 'Oto 10 najlepszych graczy z eliminacji!')} className={`${neoBtn} py-3 bg-blue-500 text-white text-[11px] lg:text-sm`}>
+                    <button onClick={() => setSelectionModal({ stageName: 'PÓŁFINAŁ', count: 10, announcement: { type: 'semifinalists', title: 'PÓŁFINALIŚCI TURNIEJU', subtitle: 'Oto 10 najlepszych graczy z eliminacji!' } })} className={`${neoBtn} py-3 bg-blue-500 text-white text-[11px] lg:text-sm`}>
                         OGŁOŚ PÓŁFINALISTÓW (TOP 10)
                     </button>
-                    <button onClick={() => announce('finalists', 'FINALIŚCI TURNIEJU', 'Oto gracze, którzy zmierzą się w wielkim finale!')} className={`${neoBtn} py-3 bg-green-600 text-white text-[11px] lg:text-sm`}>
+                    <button onClick={() => setSelectionModal({ stageName: 'FINAŁ', count: 5, announcement: { type: 'finalists', title: 'FINALIŚCI TURNIEJU', subtitle: 'Oto gracze, którzy zmierzą się w wielkim finale!' } })} className={`${neoBtn} py-3 bg-green-600 text-white text-[11px] lg:text-sm`}>
                         OGŁOŚ FINALISTÓW (TOP 5)
                     </button>
-                    <button onClick={() => announce('winners', 'MISTRZOWIE TURNIEJU', 'Gratulacje dla najlepszych!')} className={`${neoBtn} py-3 bg-yellow-400 text-black text-[11px] lg:text-sm`}>
+                    <button onClick={() => setSelectionModal({ stageName: 'WYNIKI', count: 3, announcement: { type: 'winners', title: 'MISTRZOWIE TURNIEJU', subtitle: 'Gratulacje dla najlepszych!' } })} className={`${neoBtn} py-3 bg-yellow-400 text-black text-[11px] lg:text-sm`}>
                         OGŁOŚ ZWYCIĘZCÓW (TOP 3)
                     </button>
                 </div>
@@ -176,12 +151,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
               </div>
 
               <div className={`${neoCard} p-6 bg-blue-50`}>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                  <h2 className="text-2xl font-[900] uppercase">1. PÓŁFINAŁ</h2>
-                  <button onClick={() => setSelectionModal({ stageName: 'PÓŁFINAŁ', count: 10 })} className={`${neoBtn} px-4 py-2 bg-blue-500 text-white text-xs w-full md:w-auto`}>
-                    WERYFIKUJ GRACZY (TOP 10)
-                  </button>
-                </div>
+                <h2 className="text-2xl font-[900] uppercase mb-6">1. PÓŁFINAŁ</h2>
                 <div className="space-y-4">
                   {semifinalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "półfinał" w arkuszu.</div>
@@ -220,12 +190,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
               </div>
 
               <div className={`${neoCard} p-6 bg-yellow-50`}>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                  <h2 className="text-2xl font-[900] uppercase">2. FINAŁ</h2>
-                  <button onClick={() => setSelectionModal({ stageName: 'FINAŁ', count: 5 })} className={`${neoBtn} px-4 py-2 bg-[#EAB308] text-black text-xs w-full md:w-auto`}>
-                    WERYFIKUJ GRACZY (TOP 5)
-                  </button>
-                </div>
+                <h2 className="text-2xl font-[900] uppercase mb-6">2. FINAŁ</h2>
                 <div className="space-y-4">
                   {finalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "finał" w arkuszu.</div>
@@ -273,6 +238,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 appId={appId}
                 stageName={selectionModal.stageName}
                 limitCount={selectionModal.count}
+                announcement={selectionModal.announcement}
                 onClose={() => setSelectionModal(null)}
               />
             )}
@@ -428,25 +394,32 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          {liveStage.question.options.map((opt, idx) => {
-            let btnClass = isSubmitting || isSpectator ? 'bg-white text-black opacity-50' : 'bg-white text-black hover:bg-yellow-50';
-            if (liveStage.showAnswer && idx === liveStage.question.correct) {
-              btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; // Podświetlenie poprawnej odpowiedzi
-            } else if (liveStage.showAnswer) {
-              btnClass = 'bg-white text-black opacity-30 grayscale';
-            }
-            return (
-              <button
-                key={idx}
-                disabled={isSubmitting || isSpectator || liveStage.showAnswer}
-                onClick={() => handleAnswer(idx)}
-                className={`${neoBtn} p-6 font-[900] uppercase text-xl flex justify-between items-center text-left transition-all ${btnClass}`}
-              >
-                <span>{opt}</span>
-                <ChevronRight className="w-8 h-8 opacity-30" />
-              </button>
-            );
-          })}
+          {isSpectator && !liveStage.showAnswer ? (
+            <div className="text-center p-8 bg-white border-[3px] border-black rounded-[24px] shadow-neo-sm opacity-80 mt-4">
+              <div className="font-[900] uppercase text-xl mb-2">Trwa głosowanie...</div>
+              <div className="font-mono text-xs uppercase font-bold text-slate-500">Warianty odpowiedzi są ukryte dla widzów, aby uniknąć podpowiadania.</div>
+            </div>
+          ) : (
+            liveStage.question.options.map((opt, idx) => {
+              let btnClass = isSubmitting || isSpectator ? 'bg-white text-black opacity-50' : 'bg-white text-black hover:bg-yellow-50';
+              if (liveStage.showAnswer && idx === liveStage.question.correct) {
+                btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; // Podświetlenie poprawnej odpowiedzi
+              } else if (liveStage.showAnswer) {
+                btnClass = 'bg-white text-black opacity-30 grayscale';
+              }
+              return (
+                <button
+                  key={idx}
+                  disabled={isSubmitting || isSpectator || liveStage.showAnswer}
+                  onClick={() => handleAnswer(idx)}
+                  className={`${neoBtn} p-6 font-[900] uppercase text-xl flex justify-between items-center text-left transition-all ${btnClass}`}
+                >
+                  <span>{opt}</span>
+                  <ChevronRight className="w-8 h-8 opacity-30" />
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
@@ -589,7 +562,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   );
 }
 
-function PlayerSelectionModal({ db, appId, stageName, limitCount, onClose }) {
+function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, onClose }) {
   const [players, setPlayers] = useState([]);
   const [selectedUids, setSelectedUids] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -643,9 +616,15 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, onClose }) {
   const handleConfirm = async () => {
     try {
       const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-      await setDoc(liveRef, { eligibleUids: selectedUids, stageName }, { merge: true });
+      const payload = { eligibleUids: selectedUids, stageName };
+      if (announcement) {
+        payload.announcement = announcement;
+        payload.isLiveModeVisible = true;
+        payload.active = false;
+      }
+      await setDoc(liveRef, payload, { merge: true });
       onClose();
-      showAlert("SUKCES", `Zatwierdzono listę ${selectedUids.length} graczy dla etapu: ${stageName}!`);
+      showAlert("SUKCES", announcement ? `Zatwierdzono listę ${selectedUids.length} graczy i opublikowano ogłoszenie!` : `Zatwierdzono listę ${selectedUids.length} graczy dla etapu: ${stageName}!`);
     } catch (e) {
       console.error(e);
       showAlert("BŁĄD", e.message);
