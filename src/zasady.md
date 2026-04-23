@@ -10,29 +10,29 @@ Miejsce: Cały teren pikniku (stoiska).
 
 Jak to działa: Na kluczowych stoiskach (np. "Kawa u Andrzeja", "Skauci Króla", "Strefa Gastronomiczna") rozmieszczone są tabliczki z kodami QR.
 
-Zadanie: Uczestnicy skanują kody i rozwiązują krótkie, 3-pytaniowe quizy (np. w Google Forms lub Typeform). Każde stoisko to inna kategoria pytań.
+Zadanie: Uczestnicy skanują kody i rozwiązują zadania bezpośrednio w aplikacji po podaniu tajnego kodu otrzymanego od instruktora stacji. Każde stoisko to inna kategoria pytań.
 
 Cel: Uzyskanie jak największej liczby punktów. Top 10 osób z rankingu przechodzi do półfinału na scenie.
 
 Etap 2: Półfinał na Scenie (15:30 – 15:50)
 
-Miejsce: Scena główna.
+Miejsce: Scena główna. System przechodzi w tryb LIVE w aplikacji.
 
 Czas: Wykorzystujemy slot po występie scholi.
 
 Jak to działa: Zapraszasz na scenę 10 najlepszych osób z eliminacji.
 
-Zadanie: Szybki quiz Kahoot "na żywo" wyświetlany na ekranie. Pytania są trudniejsze i wymagają refleksu.
+Zadanie: Szybki quiz "na żywo" z poziomu zintegrowanej Reżyserki w aplikacji. Pytania są trudniejsze i wymagają refleksu (liczy się czas do 15 sekund!).
 
 Cel: Wyłonienie "Wielkiej Piątki", która zmierzy się w finale.
 
 Etap 3: Wielki Finał (16:45 – 17:00)
 
-Miejsce: Scena główna (tuż przed finałem).
+Miejsce: Scena główna (tuż przed zamknięciem pikniku).
 
-Jak to działa: 5 finalistów staje na scenie.
+Jak to działa: 5 najlepszych graczy z półfinału staje na scenie.
 
-Zadanie: Finałowy "Live Quiz" z najbardziej podchwytliwymi pytaniami o historię parafii, Torunia i Polski.
+Zadanie: Finałowy "Live Quiz" w aplikacji z najbardziej podchwytliwymi pytaniami. Pozostali użytkownicy widzą pytania w telefonach jako "WIDZ", lecz nie mogą na nie odpowiadać.
 
 Cel: Wyłonienie Mistrza Patriotyzmu III Pikniku Skautowego.
 
@@ -76,9 +76,9 @@ Pytanie: Jak nazywa się zakon, który posługuje w parafii św. Józefa? (Redem
 
 💻 Zarządzanie na MacBooku
 
-Arkusze Google: Linkuj wyniki z formularzy QR do jednego arkusza, aby w czasie rzeczywistym widzieć liderów.
+Panel Sztabu: Logujesz się jako Admin (adres e-mail zdefiniowany w kodzie). Masz dostęp do generowania ogłoszeń, edycji czasu, kasowania uczestników.
 
-Obsługa Kahoot: Przygotuj dwa osobne Kahooty – jeden na Półfinał (10 pytań), drugi na Finał (5 pytań).
+Reżyserka Półfinału i Finału: Wbudowana w aplikację. Półfinał i Finał obsługujesz jednym kliknięciem "PUSH PÓŁFINAŁ" lub "PUSH FINAŁ", po wcześniejszym zaciągnięciu odpowiednio Top 10 lub Top 5 użytkowników za pomocą przycisku "USTAW GRACZY".
 
 Muzyka: Miej przygotowaną playlistę "energetyczną" na czas logowania uczestników i "triumfalną" na ogłoszenie zwycięzców.
 
@@ -90,42 +90,32 @@ Muzyka: Miej przygotowaną playlistę "energetyczną" na czas logowania uczestni
 
 15:30 (Wezwanie): "Mamy wyniki! Zapraszam na scenę następujące osoby..." (odczytujesz listę).
 
+📌 Przeprowadzenie dwóch ostatnich etapów (Półfinał i Finał)
 
-
-
-Jasne, opowiem Ci, jak działają i jak należy przeprowadzić dwa ostatnie, kluczowe etapy turnieju, opierając się na przygotowanym kodzie i scenariuszu.
-
-Etap 2: Półfinał na Scenie (15:30 – 15:50)
-Ten etap jest prostszy w obsłudze, ponieważ opiera się na zewnętrznym narzędziu.
-
-Kwalifikacja: Z rankingu w aplikacji wyłaniasz Top 10 osób z największą liczbą punktów po eliminacjach mobilnych.
+Kwalifikacja: W Reżyserce klikasz "Ustaw Graczy (TOP 10)" lub "Ustaw Graczy (TOP 5)". System sam dobiera osoby z najwyższym dorobkiem punktowym.
 Miejsce: Zapraszasz tę dziesiątkę na scenę główną.
-Przebieg:
-Uruchamiasz przygotowany wcześniej quiz w Kahoot. Pytania powinny być wyświetlane na głównym ekranie.
-Zgodnie ze scenariuszem, pytania na tym etapie są trudniejsze i kładą nacisk na refleks uczestników.
-Cel: Z tej dziesiątki wyłaniasz 5 najlepszych osób ("Wielką Piątkę"), które przechodzą do Wielkiego Finału.
-Etap 3: Wielki Finał (16:45 – 17:00)
-Ten etap jest w pełni zautomatyzowany w aplikacji, którą stworzyliśmy. Jest to najbardziej ekscytująca część, kontrolowana na żywo przez Ciebie z panelu "Reżyserki".
-
-Kwalifikacja: 5 finalistów z półfinału staje na scenie.
 
 Przebieg (z perspektywy Admina - "Reżyserki"):
 
 Na swoim telefonie (jako zalogowany admin) otwierasz panel "REŻYSERKA".
 Zobaczysz tam listę przygotowanych, najtrudniejszych pytań finałowych (np. "W którym roku Toruń powrócił do macierzy?").
-Gdy jesteś gotowy, naciskasz przycisk "PUSH PYTANIE" przy wybranym pytaniu.
-W tym momencie pytanie jest "wypychane" do wszystkich uczestników turnieju, a w aplikacji na ich telefonach aktywuje się specjalny panel finałowy.
+Gdy jesteś gotowy, naciskasz przycisk "PUSH FINAŁ/PÓŁFINAŁ" przy wybranym pytaniu.
+W tym momencie pytanie jest "wypychane" do wszystkich uczestników turnieju.
+W panelu można również pokazać uczestnikom poprawną odpowiedź (przycisk "POKAŻ ODP. WIDZOM") oraz wyświetlać komunikaty na całe ekrany graczy z użyciem confetti.
+
 Przebieg (z perspektywy Uczestnika):
 
 W momencie, gdy "wypchniesz" pytanie, na ekranach wszystkich uczestników (nie tylko finalistów na scenie) pojawi się specjalny panel, który przysłoni całą aplikację.
-Na środku ekranu zobaczą pytanie i cztery możliwe odpowiedzi.
-Muszą jak najszybciej zaznaczyć poprawną odpowiedź.
+Gracze biorący udział (status "GRACZ") muszą jak najszybciej zaznaczyć poprawną odpowiedź. Inni mają zablokowany interfejs jako "WIDZ".
+
 System Punktacji: Działa tu zaawansowana formuła:
 1000 punktów za poprawną odpowiedź.
-Do 1000 punktów bonusu za szybkość. Bonus jest obliczany według wzoru max(0, 1000 - (czas odpowiedzi w ms - czas startu) / 10). Oznacza to, że z każdą sekundą zwłoki pula bonusowych punktów maleje.
+Do 1000 punktów bonusu za szybkość. Bonus jest obliczany według wzoru `max(0, 1000 - Math.floor((czas odpowiedzi w ms - czas startu) / 15))`. Oznacza to, że z każdymi 15 milisekundami ubywa 1 punkt. Max bonusu wynosi 15 sekund.
 Po udzieleniu odpowiedzi uczestnik widzi ekran "OCZEKIWANIE NA SYGNAŁ" z informacją o zdobytym wyniku za to konkretne pytanie.
+
 Zakończenie i Ranking:
 
-Po zadaniu wszystkich pytań, jako admin naciskasz przycisk "ZATRZYMAJ LIVE". To wyłącza panel finałowy u wszystkich i wraca ich do normalnego widoku aplikacji.
+Po zadaniu wszystkich pytań, jako admin naciskasz przycisk "ZAMKNIJ PODGLĄD (MAPA)". To wyłącza panel finałowy u wszystkich i wraca ich do normalnego widoku aplikacji.
 W trakcie finału oraz po jego zakończeniu, każdy może wejść w zakładkę "RANKING MISTRZÓW", która pokazuje 15 najlepszych wyników aktualizowanych w czasie rzeczywistym. Dzięki temu od razu widać, kto został zwycięzcą.
-W skrócie: półfinał to klasyczny Kahoot na scenie, a finał to zsynchronizowany, ogólnodostępny quiz w aplikacji, gdzie liczy się nie tylko wiedza, ale i błyskawiczny refleks.
+
+W skrócie: zarówno Półfinał jak i Finał są prowadzone za pośrednictwem wbudowanego trybu LIVE (Reżyserki), w którym liczy się poprawność odpowiedzi i błyskawiczny refleks.
