@@ -634,6 +634,21 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, onClose }) {
     }
   };
 
+  const formatTimestamp = (ts) => {
+    if (!ts) return '--:--:--.---';
+    try {
+      const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+      if (isNaN(d.getTime())) return '--:--:--.---';
+      const h = d.getHours().toString().padStart(2, '0');
+      const m = d.getMinutes().toString().padStart(2, '0');
+      const s = d.getSeconds().toString().padStart(2, '0');
+      const ms = d.getMilliseconds().toString().padStart(3, '0');
+      return `${h}:${m}:${s}.${ms}`;
+    } catch (e) {
+      return '--:--:--.---';
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
       <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-6 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
@@ -653,7 +668,10 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, onClose }) {
                     <div className="font-[900] w-6 text-right opacity-60">{idx + 1}.</div>
                     <div className="font-[900] uppercase">{p.nick}</div>
                   </div>
-                  <div className="font-mono text-xs font-bold">{p.totalPoints} PKT</div>
+                  <div className="text-right">
+                    <div className="font-mono text-xs font-bold">{p.totalPoints} PKT</div>
+                    <div className="font-mono text-[10px] text-slate-500">{formatTimestamp(p.scoreUpdatedAt)}</div>
+                  </div>
                 </div>
               );
             })

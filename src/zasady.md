@@ -36,6 +36,21 @@ Zadanie: Finałowy "Live Quiz" w aplikacji z najbardziej podchwytliwymi pytaniam
 
 Cel: Wyłonienie Mistrza Patriotyzmu III Pikniku Skautowego.
 
+### 🏆 Ranking i Zasady Punktacji
+
+**Etap 1: Eliminacje Mobilne**
+*   Za każdą poprawną odpowiedź na stacji gracz otrzymuje stałą liczbę punktów, zdefiniowaną w panelu pytań.
+*   Punkty sumują się w rankingu ogólnym.
+
+**Etap 2 i 3: Półfinał i Finał (Tryb LIVE)**
+*   **1000 punktów** za poprawną odpowiedź.
+*   Do **1000 punktów** bonusu za szybkość. Bonus maleje z czasem – co 15 milisekund odejmowany jest 1 punkt. Gracz ma 15 sekund na odpowiedź, zanim bonus spadnie do zera.
+
+**Rozstrzyganie Remisów (Kolejność w Rankingu)**
+W przypadku, gdy dwóch lub więcej graczy ma taką samą liczbę punktów, o wyższym miejscu w rankingu decyduje:
+1.  **Czas zdobycia ostatniego punktu:** Gracz, który osiągnął swój wynik **wcześniej**, jest wyżej.
+2.  **Czas rejestracji:** Jeśli powyższy warunek wciąż nie rozstrzyga, wygrywa osoba, która wcześniej zarejestrowała się w aplikacji.
+
 📍 Rozmieszczenie Kodów QR (Eliminacje)
 
 Przygotuj 3-4 punkty kontrolne, aby ludzie krążyli po pikniku:
