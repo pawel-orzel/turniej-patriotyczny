@@ -10,6 +10,7 @@ const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
 export default function FinalStage({ db, user, appId, stations, isAdmin }) {
   const [liveStage, setLiveStage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [selectionModal, setSelectionModal] = useState(null);
 
   useEffect(() => {
     const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
@@ -38,25 +39,6 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
   
   const semifinalQuestions = getQuestions('półfinał');
   const finalQuestions = getQuestions('finał');
-
-  const setEligible = async (count, stageName) => {
-    if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz pobrać TOP ${count} z rankingu i ustawić ich jako graczy do etapu: ${stageName}?`))) return;
-    
-    try {
-      const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
-      const snap = await getDocs(q);
-      const all = snap.docs.map(d => d.data());
-      all.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
-      const uids = all.slice(0, count).map(d => d.uid);
-      
-      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-      await setDoc(liveRef, { eligibleUids: uids, stageName }, { merge: true });
-      await showAlert("SUKCES", `Ustawiono ${uids.length} autoryzowanych graczy dla: ${stageName}!`);
-    } catch (error) {
-      console.error(error);
-      await showAlert("BŁĄD", "Błąd podczas ustawiania graczy: " + error.message);
-    }
-  };
 
   const announce = async (type, title, subtitle) => {
     const limitCount = type === 'semifinalists' ? 10 : (type === 'finalists' ? 5 : 3);
@@ -195,8 +177,8 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
               <div className={`${neoCard} p-6 bg-blue-50`}>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                   <h2 className="text-2xl font-[900] uppercase">1. PÓŁFINAŁ</h2>
-                  <button onClick={() => setEligible(10, 'PÓŁFINAŁ')} className={`${neoBtn} px-4 py-2 bg-blue-500 text-white text-xs w-full md:w-auto`}>
-                    USTAW GRACZY (TOP 10)
+                  <button onClick={() => setSelectionModal({ stageName: 'PÓŁFINAŁ', count: 10 })} className={`${neoBtn} px-4 py-2 bg-blue-500 text-white text-xs w-full md:w-auto`}>
+                    WERYFIKUJ GRACZY (TOP 10)
                   </button>
                 </div>
                 <div className="space-y-4">
@@ -216,7 +198,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                         onClick={async () => {
                           if (!(await showConfirm("POTWIERDŹ", "Czy na pewno chcesz wypuścić to pytanie?"))) return;
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                          await setDoc(liveRef, { active: true, currentId: q.id, question: q, showAnswer: false, startTime: serverTimestamp(), stageName: 'PÓŁFINAŁ' }, { merge: true });
+                          await setDoc(liveRef, { isLiveModeVisible: true, active: true, currentId: q.id, question: q, showAnswer: false, startTime: serverTimestamp(), stageName: 'PÓŁFINAŁ' }, { merge: true });
                         }}
                         className={`${neoBtn} bg-[#3B82F6] text-white px-6 py-3 shrink-0 w-full md:w-auto`}
                       >
@@ -230,8 +212,8 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
               <div className={`${neoCard} p-6 bg-yellow-50`}>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                   <h2 className="text-2xl font-[900] uppercase">2. FINAŁ</h2>
-                  <button onClick={() => setEligible(5, 'FINAŁ')} className={`${neoBtn} px-4 py-2 bg-[#EAB308] text-black text-xs w-full md:w-auto`}>
-                    USTAW GRACZY (TOP 5)
+                  <button onClick={() => setSelectionModal({ stageName: 'FINAŁ', count: 5 })} className={`${neoBtn} px-4 py-2 bg-[#EAB308] text-black text-xs w-full md:w-auto`}>
+                    WERYFIKUJ GRACZY (TOP 5)
                   </button>
                 </div>
                 <div className="space-y-4">
@@ -251,7 +233,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                         onClick={async () => {
                           if (!(await showConfirm("POTWIERDŹ", "Czy na pewno chcesz wypuścić to pytanie?"))) return;
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                          await setDoc(liveRef, { active: true, currentId: q.id, question: q, showAnswer: false, startTime: serverTimestamp(), stageName: 'FINAŁ' }, { merge: true });
+                          await setDoc(liveRef, { isLiveModeVisible: true, active: true, currentId: q.id, question: q, showAnswer: false, startTime: serverTimestamp(), stageName: 'FINAŁ' }, { merge: true });
                         }}
                         className={`${neoBtn} bg-[#EAB308] text-black px-6 py-3 shrink-0 w-full md:w-auto`}
                       >
@@ -265,6 +247,16 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
               <Leaderboard db={db} appId={appId} isAdmin={isAdmin} liveStage={liveStage} />
             </div>
           </div>
+
+          {selectionModal && (
+            <PlayerSelectionModal
+              db={db}
+              appId={appId}
+              stageName={selectionModal.stageName}
+              limitCount={selectionModal.count}
+              onClose={() => setSelectionModal(null)}
+            />
+          )}
         )}
       </>
     );
@@ -534,25 +526,6 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
     return () => unsub();
   }, [db, appId]);
 
-  const togglePlayer = async (uid) => {
-    if (!isAdmin) return;
-    try {
-      const current = liveStage?.eligibleUids || [];
-      const isEligible = current.includes(uid);
-      let next;
-      if (isEligible) {
-        next = current.filter(id => id !== uid);
-      } else {
-        next = [...current, uid];
-      }
-      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-      await setDoc(liveRef, { eligibleUids: next }, { merge: true });
-    } catch (err) {
-      console.error(err);
-      await showAlert("BŁĄD", err.message);
-    }
-  };
-
   let displayedLeaders = leaders;
   if (filterEligible && liveStage?.eligibleUids) {
     displayedLeaders = displayedLeaders.filter(l => liveStage.eligibleUids.includes(l.uid));
@@ -567,7 +540,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
       </h2>
       {isAdmin && (
         <p className="font-mono text-xs text-slate-500 mb-6 uppercase leading-tight">
-          Wybierz graczy do finału klikając w ich nick. Podświetleni na zielono biorą udział w aktywnym etapie.
+          Poniżej znajduje się ogólny ranking na żywo. Podświetleni na zielono biorą aktualnie udział w wybranym etapie. Aby zaktualizować listę, użyj przycisków weryfikacji.
         </p>
       )}
       <div className="space-y-3">
@@ -576,8 +549,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
           return (
             <div 
               key={l.uid} 
-              onClick={() => togglePlayer(l.uid)}
-              className={`flex justify-between items-center p-4 border-2 border-black rounded-xl transition-all ${isAdmin ? 'cursor-pointer active:scale-95 hover:border-[#DC2626]' : ''} ${isEligible ? 'bg-green-100 border-green-600 shadow-neo-sm' : 'bg-slate-50'}`}
+              className={`flex justify-between items-center p-4 border-2 border-black rounded-xl transition-all ${isEligible ? 'bg-green-100 border-green-600 shadow-neo-sm' : 'bg-slate-50'}`}
             >
             <div className="flex items-center gap-4">
               <span className="font-[900] text-xl w-6 text-slate-400">{idx + 1}.</span>
@@ -592,6 +564,105 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
             Brak wyników
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PlayerSelectionModal({ db, appId, stageName, limitCount, onClose }) {
+  const [players, setPlayers] = useState([]);
+  const [selectedUids, setSelectedUids] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
+        const snap = await getDocs(q);
+        const all = snap.docs.map(d => d.data());
+        
+        all.sort((a, b) => {
+          const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
+          if (scoreDiff !== 0) return scoreDiff;
+          const getTime = (ts) => {
+            if (!ts) return 0;
+            try {
+              const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
+              return isNaN(ms) ? 0 : ms;
+            } catch (e) { return 0; }
+          };
+          const aTime = getTime(a.scoreUpdatedAt);
+          const bTime = getTime(b.scoreUpdatedAt);
+          if (aTime !== bTime) return aTime - bTime;
+          const aCreated = getTime(a.timestamp);
+          const bCreated = getTime(b.timestamp);
+          return aCreated - bCreated;
+        });
+
+        // Bierzemy TOP 20 jako pulę do wyboru
+        const top20 = all.slice(0, 20);
+        setPlayers(top20);
+        setSelectedUids(top20.slice(0, limitCount).map(p => p.uid));
+        setLoading(false);
+      } catch (e) {
+        console.error(e);
+        setLoading(false);
+      }
+    };
+    fetchPlayers();
+  }, [db, appId, limitCount]);
+
+  const toggle = (uid) => {
+    if (selectedUids.includes(uid)) {
+      setSelectedUids(prev => prev.filter(id => id !== uid));
+    } else {
+      setSelectedUids(prev => [...prev, uid]);
+    }
+  };
+
+  const handleConfirm = async () => {
+    try {
+      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+      await setDoc(liveRef, { eligibleUids: selectedUids, stageName }, { merge: true });
+      onClose();
+      showAlert("SUKCES", `Zatwierdzono listę ${selectedUids.length} graczy dla etapu: ${stageName}!`);
+    } catch (e) {
+      console.error(e);
+      showAlert("BŁĄD", e.message);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
+      <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-6 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
+        <h2 className="text-3xl font-[900] uppercase mb-2">WERYFIKACJA: {stageName}</h2>
+        <p className="font-mono text-[11px] text-slate-600 mb-4 leading-tight uppercase font-bold">
+          Zaznacz graczy, którzy są obecni na scenie. System domyślnie zaznaczył TOP {limitCount}, ale w razie nieobecności kogoś z czołówki, możesz dobrać osoby z rezerwy (miejsca {limitCount + 1}-20).
+        </p>
+        <div className="overflow-y-auto flex-1 border-2 border-black rounded-xl p-2 space-y-2 mb-4 bg-slate-50">
+          {loading ? (
+            <div className="p-4 text-center font-mono text-sm uppercase font-bold">Pobieranie wyników...</div>
+          ) : (
+            players.map((p, idx) => {
+              const isSelected = selectedUids.includes(p.uid);
+              return (
+                <div key={p.uid} onClick={() => toggle(p.uid)} className={`flex justify-between items-center p-3 border-2 border-black rounded-lg cursor-pointer active:scale-95 transition-transform ${isSelected ? 'bg-green-400 shadow-neo-sm' : 'bg-white opacity-50'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="font-[900] w-6 text-right opacity-60">{idx + 1}.</div>
+                    <div className="font-[900] uppercase">{p.nick}</div>
+                  </div>
+                  <div className="font-mono text-xs font-bold">{p.totalPoints} PKT</div>
+                </div>
+              );
+            })
+          )}
+        </div>
+        <div className="flex gap-4 shrink-0 mt-2">
+           <button onClick={onClose} className={`${neoBtn} w-1/3 py-4 bg-slate-200 text-black text-sm`}>ANULUJ</button>
+           <button onClick={handleConfirm} className={`${neoBtn} w-2/3 py-4 bg-[#DC2626] text-white flex justify-center items-center gap-2 text-sm`}>
+             ZATWIERDŹ <span className="bg-white text-black px-2 py-1 rounded-full text-[10px]">{selectedUids.length}/{limitCount}</span>
+           </button>
+        </div>
       </div>
     </div>
   );
