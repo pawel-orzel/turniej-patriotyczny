@@ -83,7 +83,8 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
         </button>
 
         {isOpen && (
-          <div className="fixed inset-0 z-[90] bg-[#F9FAFB] overflow-y-auto p-6 pb-32">
+          <>
+            <div className="fixed inset-0 z-[90] bg-[#F9FAFB] overflow-y-auto p-6 pb-32">
             <div className="max-w-2xl mx-auto space-y-8 mt-12">
               <div className="flex justify-between items-center">
                 <h1 className="text-4xl font-[900] uppercase text-[#DC2626]">REŻYSERKA</h1>
@@ -248,15 +249,16 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
             </div>
           </div>
 
-          {selectionModal && (
-            <PlayerSelectionModal
-              db={db}
-              appId={appId}
-              stageName={selectionModal.stageName}
-              limitCount={selectionModal.count}
-              onClose={() => setSelectionModal(null)}
-            />
-          )}
+            {selectionModal && (
+              <PlayerSelectionModal
+                db={db}
+                appId={appId}
+                stageName={selectionModal.stageName}
+                limitCount={selectionModal.count}
+                onClose={() => setSelectionModal(null)}
+              />
+            )}
+          </>
         )}
       </>
     );
