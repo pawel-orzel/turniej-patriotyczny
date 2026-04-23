@@ -199,7 +199,16 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                         onClick={async () => {
                           if (!(await showConfirm("POTWIERDŹ", "Czy na pewno chcesz wypuścić to pytanie?"))) return;
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                          await setDoc(liveRef, { isLiveModeVisible: true, active: true, currentId: q.id, question: q, showAnswer: false, startTime: serverTimestamp(), stageName: 'PÓŁFINAŁ' }, { merge: true });
+                          await setDoc(liveRef, { 
+                            isLiveModeVisible: true, 
+                            active: true, 
+                            currentId: q.id, 
+                            question: q, 
+                            showAnswer: false, 
+                            startTime: serverTimestamp(), 
+                            stageName: 'PÓŁFINAŁ',
+                            announcement: deleteField()
+                          }, { merge: true });
                         }}
                         className={`${neoBtn} bg-[#3B82F6] text-white px-6 py-3 shrink-0 w-full md:w-auto`}
                       >
@@ -234,7 +243,16 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                         onClick={async () => {
                           if (!(await showConfirm("POTWIERDŹ", "Czy na pewno chcesz wypuścić to pytanie?"))) return;
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                          await setDoc(liveRef, { isLiveModeVisible: true, active: true, currentId: q.id, question: q, showAnswer: false, startTime: serverTimestamp(), stageName: 'FINAŁ' }, { merge: true });
+                          await setDoc(liveRef, { 
+                            isLiveModeVisible: true, 
+                            active: true, 
+                            currentId: q.id, 
+                            question: q, 
+                            showAnswer: false, 
+                            startTime: serverTimestamp(), 
+                            stageName: 'FINAŁ',
+                            announcement: deleteField()
+                          }, { merge: true });
                         }}
                         className={`${neoBtn} bg-[#EAB308] text-black px-6 py-3 shrink-0 w-full md:w-auto`}
                       >
