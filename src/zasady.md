@@ -134,3 +134,4 @@ Po zadaniu wszystkich pytań, jako admin naciskasz przycisk "ZAMKNIJ PODGLĄD (M
 W trakcie finału oraz po jego zakończeniu, każdy może wejść w zakładkę "RANKING MISTRZÓW", która pokazuje 15 najlepszych wyników aktualizowanych w czasie rzeczywistym. Dzięki temu od razu widać, kto został zwycięzcą.
 
 W skrócie: zarówno Półfinał jak i Finał są prowadzone za pośrednictwem wbudowanego trybu LIVE (Reżyserki), w którym liczy się poprawność odpowiedzi i błyskawiczny refleks.
+.
