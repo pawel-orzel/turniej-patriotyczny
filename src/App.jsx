@@ -813,6 +813,11 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     return fuzzyKey ? question[fuzzyKey] : undefined;
   };
 
+  const requiresCode = (question) => {
+    const code = getQuestionCodeValue(question);
+    return code !== undefined && code !== null && code.toString().trim() !== '';
+  };
+
   const handleUnlockQuestion = async (idx) => {
     const question = station.questions?.[idx];
     const expectedRaw = getQuestionCodeValue(question);
@@ -880,7 +885,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
       <div className="space-y-6">
         {station.questions?.map((question, idx) => {
-          const isUnlocked = unlockedQuestions.has(idx) || answeredQuestions.has(idx);
+          const isUnlocked = unlockedQuestions.has(idx) || answeredQuestions.has(idx) || !requiresCode(question);
           const isAnswered = answeredQuestions.has(idx);
           const selectedOption = selectedOptions[idx];
           const isActive = activeQuestionIdx === idx;
@@ -902,7 +907,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                     <h4 className="text-[clamp(1.125rem,6vw,1.25rem)] font-[900] uppercase leading-tight break-words">{question.question}</h4>
                   </div>
                   <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full ${isAnswered ? 'bg-green-100 text-green-700' : isUnlocked ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
-                    {isAnswered ? 'ODPOWIEDZIANE' : isUnlocked ? 'ODKLOKOWANE' : 'KOD PRZY ODPOWIEDZI'}
+                    {isAnswered ? 'ODPOWIEDZIANE' : isUnlocked ? 'ODBLOKOWANE' : 'KOD PRZY ODPOWIEDZI'}
                   </div>
                 </div>
               </button>
