@@ -844,9 +844,10 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   };
 
   const handleOptionClick = (questionIdx, optionIdx) => {
-    if (submitting || answeredQuestions.has(questionIdx) || !unlockedQuestions.has(questionIdx)) return;
+    if (submitting || answeredQuestions.has(questionIdx)) return;
     const question = station.questions?.[questionIdx];
     if (!question) return;
+    if (!unlockedQuestions.has(questionIdx) && requiresCode(question)) return;
 
     const isCorrect = optionIdx === question.correct;
     if (isCorrect) {
