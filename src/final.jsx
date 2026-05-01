@@ -163,9 +163,9 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                     const isAsked = !isLive && liveStage?.askedQuestions?.includes(q.id);
                     return (
                     <div key={q.id} className={`border-2 border-black p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all ${isLive ? 'bg-green-100 border-green-500 shadow-neo-sm scale-[1.02]' : isAsked ? 'bg-slate-100 opacity-50 grayscale' : 'bg-white'}`}>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400">ID: {q.id}</div>
-                        <div className="font-[900] text-lg leading-tight uppercase">{q.text}</div>
+                        <div className="font-[900] text-lg leading-tight uppercase break-words whitespace-normal">{q.text}</div>
                       </div>
                       <button
                         disabled={isLive}
@@ -206,9 +206,9 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                     const isAsked = !isLive && liveStage?.askedQuestions?.includes(q.id);
                     return (
                     <div key={q.id} className={`border-2 border-black p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all ${isLive ? 'bg-green-100 border-green-500 shadow-neo-sm scale-[1.02]' : isAsked ? 'bg-slate-100 opacity-50 grayscale' : 'bg-white'}`}>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400">ID: {q.id}</div>
-                        <div className="font-[900] text-lg leading-tight uppercase">{q.text}</div>
+                        <div className="font-[900] text-lg leading-tight uppercase break-words whitespace-normal">{q.text}</div>
                       </div>
                       <button
                         disabled={isLive}
@@ -366,39 +366,41 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
 
   if (!liveStage.active || (answered && !isSpectator)) {
     return (
-      <div className="fixed inset-0 z-[100] bg-[#DC2626] flex flex-col items-center justify-center p-6 text-white animate-in fade-in zoom-in duration-300">
-        <div className="bg-white border-[3px] border-black w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-          {liveStage.active ? <Trophy className="text-[#EAB308] w-16 h-16" /> : <Activity className="text-[#EAB308] w-16 h-16 animate-pulse" />}
-        </div>
-        <h2 className="text-4xl font-[900] uppercase text-center mb-2 tracking-tighter">
-          {liveStage.active ? "OCZEKIWANIE NA WIDZÓW" : "SCENA GŁÓWNA"}
-        </h2>
-        <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8">
-          {liveStage.active ? "Gotuj się na następne wyzwanie!" : "Oczekuj na sygnał od prowadzącego!"}
-        </p>
-
-        {result && !isSpectator && (
-          <div className="bg-black/20 p-6 rounded-[24px] border-[3px] border-black text-center w-full max-w-sm">
-            <div className="font-mono text-[10px] tracking-widest uppercase mb-1">TWÓJ WYNIK ZA PYTANIE</div>
-            <div className="text-4xl font-[900] text-[#EAB308]">{result.earned} PKT</div>
-            <div className="font-mono text-xs uppercase mt-2 opacity-70">
-              {result.correct ? 'Poprawna odpowiedź!' : 'Niestety, błąd.'}
-            </div>
+      <div className="fixed inset-0 z-[100] bg-[#DC2626] overflow-y-auto p-6 text-white animate-in fade-in zoom-in duration-300 flex flex-col">
+        <div className="my-auto flex flex-col items-center justify-center py-8 shrink-0">
+          <div className="bg-white border-[3px] border-black w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-8 shrink-0 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            {liveStage.active ? <Trophy className="text-[#EAB308] w-16 h-16" /> : <Activity className="text-[#EAB308] w-16 h-16 animate-pulse" />}
           </div>
-        )}
+          <h2 className="text-4xl font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words whitespace-normal">
+            {liveStage.active ? "OCZEKIWANIE NA WIDZÓW" : "SCENA GŁÓWNA"}
+          </h2>
+          <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words whitespace-normal">
+            {liveStage.active ? "Gotuj się na następne wyzwanie!" : "Oczekuj na sygnał od prowadzącego!"}
+          </p>
+
+          {result && !isSpectator && (
+            <div className="bg-black/20 p-6 rounded-[24px] border-[3px] border-black text-center w-full max-w-sm shrink-0">
+              <div className="font-mono text-[10px] tracking-widest uppercase mb-1">TWÓJ WYNIK ZA PYTANIE</div>
+              <div className="text-4xl font-[900] text-[#EAB308]">{result.earned} PKT</div>
+              <div className="font-mono text-xs uppercase mt-2 opacity-70">
+                {result.correct ? 'Poprawna odpowiedź!' : 'Niestety, błąd.'}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col justify-center">
-      <div className="max-w-md mx-auto w-full space-y-6">
+    <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
+      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0">
         <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
           <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
           <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
             {isSpectator ? `WIDZ - ${liveStage.stageName || 'LIVE'}` : `GRACZ - ${liveStage.stageName || 'LIVE'}`}
           </div>
-          <h2 className="text-[clamp(1.5rem,6vw,1.875rem)] font-[900] uppercase leading-tight break-words">
+          <h2 className="text-[clamp(1.5rem,6vw,1.875rem)] font-[900] uppercase leading-tight break-words whitespace-normal">
             {liveStage.question.text}
           </h2>
         </div>
@@ -424,7 +426,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
                   onClick={() => handleAnswer(idx)}
                 className={`${neoBtn} p-5 md:p-6 font-[900] uppercase text-[clamp(1rem,5vw,1.25rem)] flex justify-between items-center text-left transition-all ${btnClass} gap-3`}
                 >
-                <span className="min-w-0 break-words">{opt}</span>
+              <span className="min-w-0 break-words whitespace-normal">{opt}</span>
                 <ChevronRight className="w-8 h-8 opacity-30 shrink-0" />
                 </button>
               );
@@ -486,9 +488,9 @@ function Confetti() {
 function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isAdmin, liveStage }) {
     const limit = type === 'semifinalists' ? 10 : (type === 'finalists' ? 5 : 3);
     return (
-        <div className="fixed inset-0 z-[100] bg-black text-white animate-in fade-in zoom-in duration-500 overflow-y-auto">
+        <div className="fixed inset-0 z-[100] bg-black text-white animate-in fade-in zoom-in duration-500 overflow-y-auto flex flex-col">
             {showConfetti && <Confetti />}
-            <div className="min-h-full flex flex-col items-center justify-center p-6 py-12">
+            <div className="my-auto flex flex-col items-center justify-center p-6 py-12 shrink-0">
                 <Trophy className="text-yellow-400 w-24 h-24 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.4)] shrink-0" />
                 <h1 className="text-[clamp(1.75rem,8vw,3rem)] font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words">{title}</h1>
                 <p className="font-mono text-[clamp(0.7rem,3vw,0.875rem)] tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words">{subtitle}</p>

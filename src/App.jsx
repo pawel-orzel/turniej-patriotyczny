@@ -76,7 +76,46 @@ export default function App() {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showRules, setShowRules] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState('00:00');
 
+  // --- LICZNIK CZASU ---
+  useEffect(() => {
+    if (!userData?.timestamp) {
+      setElapsedTime('00:00');
+      return;
+    }
+    const startTime = new Date(userData.timestamp).getTime();
+    
+    // Sprawdzamy czy gracz ukończył wszystkie standardowe stacje (eliminacyjne)
+    let endTime = null;
+    if (stations && userData?.completedStations) {
+      const standardStationsCount = Object.values(stations).filter(
+        st => st?.id && st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał'
+      ).length;
+      
+      if (standardStationsCount > 0 && userData.completedStations.length >= standardStationsCount) {
+        if (userData.scoreUpdatedAt) {
+           endTime = typeof userData.scoreUpdatedAt.toMillis === 'function' 
+             ? userData.scoreUpdatedAt.toMillis() 
+             : new Date(userData.scoreUpdatedAt).getTime();
+        }
+      }
+    }
+
+    const updateTimer = () => {
+      const now = endTime || Date.now();
+      const diff = Math.max(0, now - startTime);
+      const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+      const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+      const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+      setElapsedTime(h === '00' ? `${m}:${s}` : `${h}:${m}:${s}`);
+    };
+
+    updateTimer(); // Wywołanie od razu, by uniknąć opóźnienia 1s
+    if (endTime) return; // Zatrzymujemy stoper, jeśli gracz skończył grę
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [userData?.timestamp, userData?.scoreUpdatedAt, userData?.completedStations, stations]);
 
   useEffect(() => {
     // Import czcionek
@@ -491,7 +530,14 @@ export default function App() {
           </div>
         </div>
         <div className="text-right flex flex-col items-end">
-          <div className="text-2xl font-[900] leading-none">{userData?.totalPoints} PKT</div>
+          <div className="flex items-center gap-3">
+            {userData?.timestamp && (
+              <div className="font-mono text-[13px] font-bold bg-white text-black px-2 py-0.5 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                ⏱ {elapsedTime}
+              </div>
+            )}
+            <div className="text-2xl font-[900] leading-none">{userData?.totalPoints} PKT</div>
+          </div>
           <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase font-bold">KONIEC: {appConfig?.endTime || '--:--'}</div>
           <button onClick={handleLogout} className="mt-1 font-mono text-[9px] font-bold tracking-widest uppercase bg-slate-100 text-black px-2 py-1 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all flex items-center gap-1 shadow-neo-sm">
             <LogOut className="w-3 h-3" /> WYLOGUJ
@@ -902,12 +948,12 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
               className={`${neoCard} bg-white p-6 transition-all duration-300 ${isAnswered ? 'opacity-60 grayscale' : ''}`}
             >
               <button type="button" onClick={() => setActiveQuestionIdx(isActive ? null : idx)} className="w-full text-left">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
+                <div className="flex items-start justify-between gap-4 w-full">
+                  <div className="flex-1 min-w-0">
                     <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400 mb-2">Pytanie {idx + 1}</div>
-                    <h4 className="text-[clamp(1.125rem,6vw,1.25rem)] font-[900] uppercase leading-tight break-words">{question.question}</h4>
+                    <h4 className="text-[clamp(1.125rem,6vw,1.25rem)] font-[900] uppercase leading-tight break-words whitespace-normal">{question.question}</h4>
                   </div>
-                  <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full ${isAnswered ? 'bg-green-100 text-green-700' : isUnlocked ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
+                  <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full shrink-0 text-center max-w-[120px] md:max-w-none whitespace-normal ${isAnswered ? 'bg-green-100 text-green-700' : isUnlocked ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
                     {isAnswered ? 'ODPOWIEDZIANE' : isUnlocked ? 'ODBLOKOWANE' : 'KOD PRZY ODPOWIEDZI'}
                   </div>
                 </div>
@@ -954,7 +1000,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                                 onClick={() => handleOptionClick(idx, optIdx)}
                                 className={`${neoBtn} ${btnStyle} text-left p-4 md:p-5 font-[900] uppercase text-[clamp(0.875rem,4.5vw,1.125rem)] flex justify-between items-center gap-3`}
                               >
-                                <span className="min-w-0 break-words">{opt}</span>
+                                <span className="min-w-0 break-words whitespace-normal">{opt}</span>
                                 <ChevronRight className="w-6 h-6 shrink-0 transition-transform" />
                               </button>
                             );
