@@ -539,27 +539,27 @@ export default function App() {
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
       {/* NAGŁÓWEK */}
-      <header className="bg-white border-b-[3px] border-black p-6 sticky top-0 z-50 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="bg-[#DC2626] border-2 border-black w-12 h-12 rounded-[12px] flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-            <img src="/favicon.png" alt="Logo aplikacji" className="w-8 h-8 object-contain" />
+      <header className="bg-white border-b-[3px] border-black p-4 md:p-6 sticky top-0 z-50 flex justify-between items-center gap-2">
+        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <div className="bg-[#DC2626] border-2 border-black w-10 h-10 md:w-12 md:h-12 rounded-[10px] md:rounded-[12px] flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden shrink-0">
+            <img src="/favicon.png" alt="Logo aplikacji" className="w-6 h-6 md:w-8 md:h-8 object-contain" />
           </div>
-          <div>
-            <h2 className="text-xl font-[900] leading-none uppercase truncate max-w-[140px] md:max-w-[250px]">{userData?.nick}</h2>
-            <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mt-1">STATUS: AKTYWNY</div>
+          <div className="min-w-0">
+            <h2 className="text-base md:text-xl font-[900] leading-none uppercase truncate max-w-[110px] md:max-w-[250px]">{userData?.nick}</h2>
+            <div className="font-mono text-[8px] md:text-[10px] tracking-widest text-slate-400 uppercase mt-1 truncate">STATUS: AKTYWNY</div>
           </div>
         </div>
-        <div className="text-right flex flex-col items-end">
-          <div className="flex items-center gap-3">
+        <div className="text-right flex flex-col items-end shrink-0">
+          <div className="flex flex-col md:flex-row items-end md:items-center gap-1 md:gap-3 mb-1 md:mb-0">
             {userData?.timestamp && (
-              <div className="font-mono text-[13px] font-bold bg-white text-black px-2 py-0.5 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              <div className="font-mono text-[10px] md:text-[13px] font-bold bg-white text-black px-1.5 md:px-2 py-0.5 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                 ⏱ {elapsedTime}
               </div>
             )}
-            <div className="text-2xl font-[900] leading-none">{userData?.totalPoints} PKT</div>
+            <div className="text-lg md:text-2xl font-[900] leading-none">{userData?.totalPoints} PKT</div>
           </div>
-          <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase font-bold">KONIEC: {appConfig?.endTime || '--:--'}</div>
-          <button onClick={handleLogout} className="mt-1 font-mono text-[9px] font-bold tracking-widest uppercase bg-slate-100 text-black px-2 py-1 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all flex items-center gap-1 shadow-neo-sm">
+          <div className="font-mono text-[8px] md:text-[10px] tracking-widest text-slate-400 uppercase font-bold mt-0.5">KONIEC: {appConfig?.endTime || '--:--'}</div>
+          <button onClick={handleLogout} className="mt-1 font-mono text-[8px] md:text-[9px] font-bold tracking-widest uppercase bg-slate-100 text-black px-2 py-1 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all flex items-center gap-1 shadow-neo-sm">
             <LogOut className="w-3 h-3" /> WYLOGUJ
           </button>
         </div>
