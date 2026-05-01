@@ -343,15 +343,20 @@ export default function App() {
     if (!nick.trim() || !user) return;
     setSubmitting(true);
     try {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
+      const payload = {
         uid: user.uid,
         nick: nick.toUpperCase(),
-        totalPoints: 0,
-        completedStations: [],
-        answeredQuestions: {},
-        timestamp: new Date().toISOString(),
-        scoreUpdatedAt: serverTimestamp()
-      });
+      };
+      // Pola startowe ustawiamy tylko, jeśli użytkownik ich jeszcze nie ma
+      if (!userData) {
+        payload.totalPoints = 0;
+        payload.completedStations = [];
+        payload.answeredQuestions = {};
+        payload.timestamp = new Date().toISOString();
+        payload.scoreUpdatedAt = serverTimestamp();
+      }
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), payload, { merge: true });
+      setView('home');
     } catch (error) {
       console.error("Błąd podczas rejestracji:", error);
       await showAlert("BŁĄD REJESTRACJI", "Wystąpił błąd przy logowaniu. Sprawdź połączenie.");
@@ -428,26 +433,41 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      setLoading(true);
-      await signOut(auth);
-      setUserData(null);
-      setView('home');
-      setShowAdminForm(false);
-      setAdminEmail('');
-      setAdminPassword('');
-      // Wyczyść URL w przeglądarce ze starych parametrów bez odświeżania strony
-      window.history.replaceState({}, '', window.location.pathname);
-      
-      await signInAnonymously(auth);
+      if (user?.uid === OWNER_UID) {
+        // Prawdziwe wylogowanie tylko dla administratora
+        setLoading(true);
+        await signOut(auth);
+        setUserData(null);
+        setView('home');
+        setShowAdminForm(false);
+        setAdminEmail('');
+        setAdminPassword('');
+        window.history.replaceState({}, '', window.location.pathname);
+        await signInAnonymously(auth);
+      } else {
+        // Udawane wylogowanie dla gracza (wraca do ekranu Paszportu i czysci URL z ewentualnych stacji)
+        setView('passport');
+        setShowAdminForm(false);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     } catch (err) { 
       console.error("Błąd wylogowania: ", err); 
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    // Jeśli użytkownik ma już nick, załaduj go do pola input na ekranie logowania
+    if (userData?.nick && !nick) {
+      setNick(userData.nick);
+    }
+  }, [userData?.nick, nick]);
+
   if (loading) return <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
-  if (user && !userData && view !== 'admin') {
+  const isPassportScreen = view === 'passport' || (user && !userData && view !== 'admin');
+
+  if (isPassportScreen) {
     return (
       <div className="min-h-[100dvh] bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
         {showRules && <RulesModal onClose={() => setShowRules(false)} />}
@@ -497,7 +517,7 @@ export default function App() {
                 onClick={handleRegister}
                 className={`${neoBtn} w-full py-5 bg-[#DC2626] text-white font-[900] uppercase`}
               >
-                OTWÓRZ PASZPORT
+                {userData ? 'ZAPISZ NICK I WRÓĆ' : 'OTWÓRZ PASZPORT'}
               </button>
               <button onClick={() => setShowRules(true)} className="mt-4 w-full py-3 bg-slate-100 border-[3px] border-black rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all font-[900] font-mono text-[11px] uppercase text-slate-700">
                 REGULAMIN I RODO
@@ -626,6 +646,9 @@ function AdminView({ appConfig, user, stations, onLogout }) {
           <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
           <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
         </div>
+          <button onClick={onLogout} className="font-mono text-[10px] font-bold tracking-widest uppercase bg-slate-200 text-black px-3 py-2 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] shadow-neo-sm flex items-center gap-1 shrink-0">
+            <LogOut className="w-4 h-4" /> WYLOGUJ
+          </button>
       </div>
 
       {/* ZARZĄDZANIE CZASEM */}
