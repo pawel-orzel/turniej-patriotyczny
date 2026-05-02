@@ -778,8 +778,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
               key={st.id} 
               onClick={() => {
                 if (!isDone) {
-                  setCurrentStationId(st.id);
-                  setView('quiz');
+                  showAlert("ZESKANUJ KOD QR", "Aby odblokować to wyzwanie, udaj się na wybrane stanowisko i zeskanuj jego kod QR!");
                 }
               }}
               className={`${neoCard} bg-white p-8 flex flex-col justify-between min-h-[220px] transition-all ${isDone ? 'opacity-50 grayscale' : 'cursor-pointer hover:translate-y-[-4px]'}`}
@@ -908,7 +907,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
       setQuestionCodes((prev) => ({ ...prev, [idx]: '' }));
       setActiveQuestionIdx(idx);
     } else {
-      await showAlert("ZŁY KOD", "Zapytaj instruktora o poprawny kod.");
+      await showAlert("ZŁY KOD", "Zapytaj Strażnika pytania o poprawny kod.");
     }
   };
 
@@ -986,7 +985,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                 <div className="mt-6 space-y-4">
                   {!isUnlocked ? (
                     <>
-                      <p className="font-mono text-[11px] text-slate-500 uppercase text-center">Wpisz kod od instruktora, aby rozpocząć odpowiadanie.</p>
+                      <p className="font-mono text-[11px] text-slate-600 font-bold uppercase text-center leading-tight">Kod zyskasz poprzez wykonanie zadania zleconego przez Strażnika pytania – kod daje dostęp do odpowiedzi.</p>
                       <input
                         type="text"
                         placeholder="KOD DO PYTANIA..."
