@@ -209,7 +209,7 @@ export default function App() {
     setStations(null); // Reset stations to show loading indicator
 
     const iconMap = { coffee: Coffee, shield: Shield, heart: Heart, zap: Zap };
-
+    
     // 1. Sprawdź cache
     try {
       const cachedItem = localStorage.getItem(STATIONS_CACHE_KEY);
@@ -235,98 +235,82 @@ export default function App() {
     }
 
     try {
-        const response = await fetch(GOOGLE_SCRIPT_URL);
-        if (!response.ok) {
-          throw new Error(`Błąd sieci: ${response.statusText}`);
-        }
-        const data = await response.json();
+      const response = await fetch(GOOGLE_SCRIPT_URL);
+      if (!response.ok) {
+        throw new Error(`Błąd sieci: ${response.statusText}`);
+      }
+      const data = await response.json();
 
-        const rawStations = data.stations || data.stationList || data.stacje || data.stationData || {};
-        const stationEntries = Array.isArray(rawStations)
-          ? rawStations.reduce((acc, station) => {
-              if (station?.id) acc[station.id] = station;
-              return acc;
-            }, {})
-          : rawStations;
+      const rawStations = data.stations || data.stationList || data.stacje || data.stationData || {};
+      const stationEntries = Array.isArray(rawStations)
+        ? rawStations.reduce((acc, station) => {
+            if (station?.id) acc[station.id] = station;
+            return acc;
+          }, {})
+        : rawStations;
 
-        const questionsSource = data.questions || data.pytania || [];
-        const questionsByStation = {};
-        if (Array.isArray(questionsSource)) {
-          questionsSource.forEach((question) => {
-            const stationId = question.stationId || question.station || question.stationID || question.station_id;
-            if (!stationId) return;
-            const key = String(stationId).trim();
-            if (!questionsByStation[key]) questionsByStation[key] = [];
-            questionsByStation[key].push(question);
+      const questionsSource = data.questions || data.pytania || [];
+      const questionsByStation = {};
+      if (Array.isArray(questionsSource)) {
+        questionsSource.forEach((question) => {
+          const stationId = question.stationId || question.station || question.stationID || question.station_id;
+          if (!stationId) return;
+          const key = String(stationId).trim();
+          if (!questionsByStation[key]) questionsByStation[key] = [];
+          questionsByStation[key].push(question);
+        });
+      }
+
+      const processedStations = {};
+      Object.keys(stationEntries).forEach(stationId => {
+          const station = stationEntries[stationId] || {};
+          const rawQuestions = Array.isArray(station.questions)
+            ? station.questions
+            : questionsByStation[stationId] || [];
+
+          const questions = (Array.isArray(rawQuestions) ? rawQuestions : []).map((q) => {
+            const rawCorrect = Number(q.correct);
+            const normalizedCorrect = Number.isFinite(rawCorrect)
+              ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
+              : 0;
+            const options = (q.options && q.options.length)
+              ? q.options
+              : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
+            return {
+              ...q,
+              options,
+              correct: normalizedCorrect
+            };
           });
-        }
 
-        const processedStations = {};
-        Object.keys(stationEntries).forEach(stationId => {
-            const station = stationEntries[stationId] || {};
-            const rawQuestions = Array.isArray(station.questions)
-              ? station.questions
-              : questionsByStation[stationId] || [];
-
-            const questions = (Array.isArray(rawQuestions) ? rawQuestions : []).map((q) => {
-              const rawCorrect = Number(q.correct);
-              const normalizedCorrect = Number.isFinite(rawCorrect)
-                ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
-                : 0;
-              const options = (q.options && q.options.length)
-                ? q.options
-                : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
-              return {
-                ...q,
-                options,
-                correct: normalizedCorrect
-              };
-            });
-
-            processedStations[stationId] = {
-                id: stationId,
-                ...station,
-                questions,
-                icon: iconMap[(station.iconName || '').toLowerCase()] || Info
-            };
-        });
-
-        Object.keys(questionsByStation).forEach((stationId) => {
-          if (!processedStations[stationId]) {
-            const rawQuestions = questionsByStation[stationId];
-            const questions = rawQuestions.map((q) => {
-              const rawCorrect = Number(q.correct);
-              const normalizedCorrect = Number.isFinite(rawCorrect)
-                ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
-                : 0;
-              const options = (q.options && q.options.length)
-                ? q.options
-                : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
-              return {
-                ...q,
-                options,
-                correct: normalizedCorrect
-              };
-            });
-            processedStations[stationId] = {
+          processedStations[stationId] = {
               id: stationId,
-              name: stationId,
-              category: '',
-              color: '#000000',
-              iconName: 'info',
+              ...station,
               questions,
-              icon: Info
-            };
-          }
-        });
+              icon: iconMap[(station.iconName || '').toLowerCase()] || Info
+          };
+      });
 
-        setStations(processedStations);
-        // Zapisz do cache
-        try {
-          localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
-        } catch {
-          console.warn("Zapis cache zablokowany przez przeglądarkę.");
+      Object.keys(questionsByStation).forEach((stationId) => {
+        if (!processedStations[stationId]) {
+          const rawQuestions = questionsByStation[stationId];
+          const questions = rawQuestions.map((q) => {
+            const rawCorrect = Number(q.correct);
+            const normalizedCorrect = Number.isFinite(rawCorrect) ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect) : 0;
+            const options = (q.options && q.options.length) ? q.options : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
+            return { ...q, options, correct: normalizedCorrect };
+          });
+          processedStations[stationId] = { id: stationId, name: stationId, category: '', color: '#000000', iconName: 'info', questions, icon: Info };
         }
+      });
+
+      setStations(processedStations);
+      // Zapisz do cache
+      try {
+        localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
+      } catch {
+        console.warn("Zapis cache zablokowany przez przeglądarkę.");
+      }
     } catch (error) {
         console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
         setStationsError("Nie udało się załadować stacji. Sprawdź połączenie z internetem.");
@@ -514,13 +498,6 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    // Jeśli użytkownik ma już nick, załaduj go do pola input na ekranie logowania
-    if (userData?.nick && !nick) {
-      setNick(userData.nick);
-    }
-  }, [userData?.nick, nick]);
-
   if (loading) return (
     <ErrorBoundary>
       <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>
@@ -528,7 +505,7 @@ export default function App() {
   );
 
   const isPassportScreen = !user || view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm) || (user && !user.isAnonymous && !userData && !showAdminForm);
-
+  
   if (isPassportScreen) {
     return (
       <ErrorBoundary>
@@ -585,7 +562,7 @@ export default function App() {
                 type="text" 
                 placeholder="TWÓJ NICK..." 
                 className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-red-50"
-                value={nick}
+                defaultValue={userData?.nick || nick}
                 onChange={(e) => setNick(e.target.value)}
               />
               <button 
