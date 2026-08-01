@@ -61,8 +61,8 @@ const STATIONS_CACHE_KEY = 'stations_cache';
 const CACHE_EXPIRATION_MS = 2 * 60 * 1000; // 2 minuty
 const STAFF_SESSION_KEY = 'staff_session';
 const GOOGLE_SCRIPT_URL = typeof window !== 'undefined'
-  ? (window.__stations_url || import.meta.env.VITE_STATIONS_URL || '')
-  : (import.meta.env.VITE_STATIONS_URL || '');
+  ? (window.__stations_url || import.meta.env.VITE_STATIONS_URL || 'https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec')
+  : (import.meta.env.VITE_STATIONS_URL || 'https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec');
 
 export default function App() {
   const [user, setUser] = useState(null);
