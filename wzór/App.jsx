@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, 
   doc, 
   setDoc, 
+  getDoc, 
   collection, 
   onSnapshot, 
   updateDoc,
   arrayUnion,
   increment,
   serverTimestamp,
+  query,
   getDocs,
   deleteDoc
 } from 'firebase/firestore';
@@ -26,32 +28,31 @@ import {
 } from 'firebase/auth';
 import { 
   User, Trophy, Coffee, Shield, Heart, Zap, Megaphone, Lock, Info,
-  CheckCircle, ChevronRight, Activity,
+  CheckCircle, ChevronRight, 
   Flag, MapPin, LogOut
 } from 'lucide-react';
 
 import FinalStage from './final';
 import { showAlert, showConfirm } from './modal';
 import RegRodo from './reg.RODO';
-import { AUTH_ROLES, canAccessAdminPanel, getAuthRole } from './authHelpers';
 
-const OWNER_UID = "fIGFNjIUm6Onldwe27qb7R9vvB63"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
-
+const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyCmfjCLK4zpMW95PQ5JnRosdFtwzRLcB80",
-  authDomain: "aplikacje-lw.firebaseapp.com",
-  projectId: "aplikacje-lw",
-  storageBucket: "aplikacje-lw.appspot.com",
-  messagingSenderId: "1091933939899",
-  appId: "1:1091933939899:web:5b3c12c392b3e513ed855c",
-  measurementId: "G-C5S0J6J0CR"
+  authDomain: "liturgiczne-labirynty-wiary.firebaseapp.com",
+  projectId: "liturgiczne-labirynty-wiary",
+  storageBucket: "liturgiczne-labirynty-wiary.firebasestorage.app",
+  messagingSenderId: "729398904317",
+  appId: "1:729398904317:web:c5ba0375a7c42aa3280594",
+  measurementId: "G-XXZR5KK5BD"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = 'turniej-orzel';
+const appId = 'turniej-2-0-torun';
 
 // --- STYL NEO-BRUTALISTYCZNY (CUSTOM CLASSES) ---
 const neoCard = "border-[3px] border-black shadow-neo rounded-[32px]";
@@ -59,10 +60,6 @@ const neoBtn = "border-[3px] border-black shadow-neo-sm active:shadow-none activ
 const neoTag = "font-mono text-[10px] tracking-widest uppercase border-2 border-black px-3 py-1 rounded-full inline-block";
 const STATIONS_CACHE_KEY = 'stations_cache';
 const CACHE_EXPIRATION_MS = 2 * 60 * 1000; // 2 minuty
-const STAFF_SESSION_KEY = 'staff_session';
-const GOOGLE_SCRIPT_URL = typeof window !== 'undefined'
-  ? (window.__stations_url || import.meta.env.VITE_STATIONS_URL || 'https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec')
-  : (import.meta.env.VITE_STATIONS_URL || 'https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec');
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -76,82 +73,49 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showAdminForm, setShowAdminForm] = useState(false);
-  const [adminEmail, setAdminEmail] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    try {
-      const stored = window.localStorage.getItem(STAFF_SESSION_KEY);
-      if (!stored) return '';
-      const parsed = JSON.parse(stored);
-      return typeof parsed?.email === 'string' ? parsed.email : '';
-    } catch {
-      return '';
-    }
-  });
+  const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
-  const [adminLoginError, setAdminLoginError] = useState(null);
-  const [adminAuthLastResponse, setAdminAuthLastResponse] = useState(null);
   const [showRules, setShowRules] = useState(false);
-  const [stationsClickable, setStationsClickable] = useState(false);
-  const [isReżyserkaOpen, setIsReżyserkaOpen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('00:00');
-
-  const isDevAdmin = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const [isAdminSession, setIsAdminSession] = useState(false);
-  const currentRole = getAuthRole(user, OWNER_UID, isDevAdmin);
-  const canAccessAdmin = canAccessAdminPanel(user, isDevAdmin, isAdminSession, OWNER_UID);
-  // Debug: safe log after state initialization
-  console.log('App render', { view: undefined, loading: undefined, user: !!user, userDataLoaded: !!userData, isReżyserkaOpen, isDevAdmin });
-
-  const getTimestampMs = useCallback((value) => {
-    if (!value) return null;
-    if (typeof value?.toDate === 'function') return value.toDate().getTime();
-    const parsed = new Date(value).getTime();
-    return Number.isNaN(parsed) ? null : parsed;
-  }, []);
 
   // --- LICZNIK CZASU ---
   useEffect(() => {
-    const startValue = userData?.firstLoginAt || userData?.timestamp || user?.metadata?.creationTime;
-    const startTime = getTimestampMs(startValue);
-
-    if (!startTime) {
+    if (!userData?.timestamp) {
       setElapsedTime('00:00');
       return;
     }
+    const startTime = new Date(userData.timestamp).getTime();
+    
+    // Sprawdzamy czy gracz ukończył wszystkie standardowe stacje (eliminacyjne)
+    let endTime = null;
+    if (stations && userData?.completedStations) {
+      const standardStationsCount = Object.values(stations).filter(
+        st => st?.id && st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał'
+      ).length;
+      
+      if (standardStationsCount > 0 && userData.completedStations.length >= standardStationsCount) {
+        if (userData.scoreUpdatedAt) {
+           endTime = typeof userData.scoreUpdatedAt.toMillis === 'function' 
+             ? userData.scoreUpdatedAt.toMillis() 
+             : new Date(userData.scoreUpdatedAt).getTime();
+        }
+      }
+    }
 
     const updateTimer = () => {
-      const now = Date.now();
+      const now = endTime || Date.now();
       const diff = Math.max(0, now - startTime);
       const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
       const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
       const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-      setElapsedTime(`${h}:${m}:${s}`);
+      setElapsedTime(h === '00' ? `${m}:${s}` : `${h}:${m}:${s}`);
     };
 
-    updateTimer();
+    updateTimer(); // Wywołanie od razu, by uniknąć opóźnienia 1s
+    if (endTime) return; // Zatrzymujemy stoper, jeśli gracz skończył grę
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [getTimestampMs, user, userData?.firstLoginAt, userData?.timestamp]);
-
-  const waitForAuthState = useCallback((predicate, timeoutMs = 4000) => new Promise((resolve) => {
-    let settled = false;
-    const timeout = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        unsubscribe();
-        resolve();
-      }
-    }, timeoutMs);
-
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (!settled && predicate(u)) {
-        settled = true;
-        clearTimeout(timeout);
-        unsubscribe();
-        resolve();
-      }
-    });
-  }), []);
+  }, [userData?.timestamp, userData?.scoreUpdatedAt, userData?.completedStations, stations]);
 
   useEffect(() => {
     // Import czcionek
@@ -161,156 +125,165 @@ export default function App() {
     document.head.appendChild(link);
 
     const initAuth = async () => {
-      // Czekaj, aż obiekt auth będzie w pełni gotowy
-      await auth.authStateReady();
-      const currentUser = auth.currentUser;
-
-      if (!currentUser) {
+      try {
+        // Try to set local persistence which is best for keeping users signed in.
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (err) {
+        // This can fail in some environments (e.g., private browsing in Edge/Firefox).
+        // Fallback to in-memory persistence.
+        console.warn('Błąd przy ustawianiu utrwalania sesji (local), przechodzę na tryb w pamięci (in-memory).', err);
         try {
-          await setPersistence(auth, browserLocalPersistence);
-          await signInAnonymously(auth);
-        } catch (err) {
-          console.error("Błąd logowania anonimowego:", err);
-          setLoading(false);
-          return;
+          await setPersistence(auth, inMemoryPersistence);
+        } catch (fallbackErr) {
+          console.error('Nie udało się ustawić żadnego trybu utrwalania sesji.', fallbackErr);
         }
       }
-      // Ustaw użytkownika i zakończ ładowanie dopiero po ustabilizowaniu stanu
-      setUser(auth.currentUser);
-      setLoading(false);
+
+      // After attempting to set persistence, manage the sign-in state.
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else if (!auth.currentUser) { // Only sign in if persistence didn't restore a user.
+          await signInAnonymously(auth);
+        }
+      } catch (err) { console.error("Błąd logowania:", err); }
+      
+      if (!auth.currentUser) {
+        setLoading(false); // W razie kompletnej porażki zwolnij ekran ładowania
+      }
     };
     initAuth();
 
-    // Intercept fetch calls to capture identitytoolkit responses for debugging
-    try {
-      if (!window.__originalFetch__) window.__originalFetch__ = window.fetch;
-      window.fetch = async (input, init) => {
-        try {
-          const res = await window.__originalFetch__(input, init);
-          try {
-            const url = typeof input === 'string' ? input : input?.url;
-            if (url && url.includes('identitytoolkit.googleapis.com/v1/accounts:signInWithPassword')) {
-              const clone = res.clone();
-              const text = await clone.text();
-              let parsed;
-              try { parsed = JSON.parse(text); } catch { parsed = text; }
-              setAdminAuthLastResponse({ status: res.status, body: parsed });
-            }
-          } catch (inner) { console.warn('Error capturing auth response', inner); }
-          return res;
-        } catch (err) {
-          const url = typeof input === 'string' ? input : input?.url;
-          if (url && url.includes('identitytoolkit.googleapis.com/v1/accounts:signInWithPassword')) {
-            setAdminAuthLastResponse({ networkError: String(err) });
-          }
-          throw err;
-        }
-      };
-    } catch (e) { console.warn('Could not override fetch for debugging', e); }
-
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      try { if (window.__originalFetch__) window.fetch = window.__originalFetch__; } catch (restoreErr) { console.warn('restore original fetch failed', restoreErr); }
-    };
+      setUser(u);
+    });
+    return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    // Synchronizuj stan przełącznika z konfiguracją z Firebase
-    setStationsClickable(!!appConfig?.stationsClickable);
-  }, [appConfig?.stationsClickable]);
 
   const fetchStations = useCallback(async () => {
     setStationsError(null);
-    setStations(null);
+    setStations(null); // Reset stations to show loading indicator
 
     const iconMap = { coffee: Coffee, shield: Shield, heart: Heart, zap: Zap };
 
+    // 1. Sprawdź cache
     try {
       const cachedItem = localStorage.getItem(STATIONS_CACHE_KEY);
       if (cachedItem) {
         const { timestamp, data } = JSON.parse(cachedItem);
         if (Date.now() - timestamp < CACHE_EXPIRATION_MS) {
-          Object.keys(data).forEach((key) => {
+          console.log("Ładowanie stacji z cache...");
+          // Odzyskiwanie referencji do ikon Reacta (JSON ucina komponenty/funkcje)
+          Object.keys(data).forEach(key => {
             data[key].icon = iconMap[(data[key].iconName || '').toLowerCase()] || Info;
           });
           setStations(data);
+          return;
         }
       }
-    } catch (cacheError) {
-      console.warn('Nie udało się odczytać cache stacji.', cacheError);
-    }
-
-    if (!GOOGLE_SCRIPT_URL) {
-      setStationsError('Brak adresu źródła danych stacji. Ustaw VITE_STATIONS_URL lub window.__stations_url.');
-      return;
+    } catch (e) {
+      console.warn("Nie udało się załadować stacji z cache (może być uszkodzony). Pobieram z sieci.", e);
+      try {
+        localStorage.removeItem(STATIONS_CACHE_KEY);
+      } catch (err) {} // Bezpieczne zignorowanie błędu, jeśli przeglądarka blokuje localStorage
     }
 
     try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        headers: { Accept: 'application/json' }
-      });
-      const contentType = response.headers.get('content-type') || '';
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        if (!response.ok) {
+          throw new Error(`Błąd sieci: ${response.statusText}`);
+        }
+        const data = await response.json();
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`Błąd odpowiedzi serwera: ${response.status} ${response.statusText}. Treść: ${errorBody.slice(0, 200)}`);
-      }
+        const rawStations = data.stations || data.stationList || data.stacje || data.stationData || {};
+        const stationEntries = Array.isArray(rawStations)
+          ? rawStations.reduce((acc, station) => {
+              if (station?.id) acc[station.id] = station;
+              return acc;
+            }, {})
+          : rawStations;
 
-      if (!contentType.includes('application/json')) {
-        const body = await response.text();
-        throw new Error(`Odpowiedź źródła danych ma nieprawidłowy format HTML: ${body}`);
-      }
+        const questionsSource = data.questions || data.pytania || [];
+        const questionsByStation = {};
+        if (Array.isArray(questionsSource)) {
+          questionsSource.forEach((question) => {
+            const stationId = question.stationId || question.station || question.stationID || question.station_id;
+            if (!stationId) return;
+            const key = String(stationId).trim();
+            if (!questionsByStation[key]) questionsByStation[key] = [];
+            questionsByStation[key].push(question);
+          });
+        }
 
-      const rawData = await response.json();
-      const data = rawData.payload || rawData;
-      if (!data || typeof data !== 'object' || !data.stations || typeof data.stations !== 'object') {
-        throw new Error(`Źródło danych zwróciło niepoprawny format JSON. Otrzymano: ${JSON.stringify(data).slice(0, 200)}...`);
-      }
+        const processedStations = {};
+        Object.keys(stationEntries).forEach(stationId => {
+            const station = stationEntries[stationId] || {};
+            const rawQuestions = Array.isArray(station.questions)
+              ? station.questions
+              : questionsByStation[stationId] || [];
 
-      const stationsFromSheet = data.stations;
-      const processedStations = {};
-      Object.keys(stationsFromSheet).forEach((stationId) => {
-        const station = stationsFromSheet[stationId] || {};
-        const questions = Array.isArray(station.questions)
-          ? station.questions.map((q) => {
-              const options = Array.isArray(q.options)
-                ? q.options.filter((opt) => opt !== '' && opt !== null && opt !== undefined).map(String)
-                : [q.option1, q.option2, q.option3, q.option4].filter((opt) => opt !== '' && opt !== null && opt !== undefined).map(String);
-
-              const rawCorrect = Number(q.correct); // Zakładamy, że w arkuszu jest 1, 2, 3, 4
-              const normalizedCorrect = Number.isFinite(rawCorrect) && rawCorrect > 0 ? rawCorrect - 1 : 0; // Normalizujemy do 0, 1, 2, 3
-              const rawPoints = Number(q.points);
-              const normalizedPoints = Number.isFinite(rawPoints) ? rawPoints : 0;
-
+            const questions = (Array.isArray(rawQuestions) ? rawQuestions : []).map((q) => {
+              const rawCorrect = Number(q.correct);
+              const normalizedCorrect = Number.isFinite(rawCorrect)
+                ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
+                : 0;
+              const options = (q.options && q.options.length)
+                ? q.options
+                : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
               return {
-                question: String(q.question || q.pytanie || '').trim(),
+                ...q,
                 options,
-                correct: normalizedCorrect, // correct index
-                points: normalizedPoints,
-                code: String(q.code || q.kod || '').trim(),
+                correct: normalizedCorrect
               };
-            })
-          : [];
+            });
 
-        processedStations[stationId] = {
-          id: station.id || stationId,
-          name: station.name || stationId,
-          category: station.category || '',
-          color: station.color || '#000000',
-          iconName: station.iconName || 'info',
-          questions,
-          icon: iconMap[(station.iconName || '').toLowerCase()] || Info
-        };
-      });
+            processedStations[stationId] = {
+                id: stationId,
+                ...station,
+                questions,
+                icon: iconMap[(station.iconName || '').toLowerCase()] || Info
+            };
+        });
 
-      setStations(processedStations);
-      try {
-        localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
-      } catch {
-        console.warn('Zapis cache zablokowany przez przeglądarkę.');
-      }
+        Object.keys(questionsByStation).forEach((stationId) => {
+          if (!processedStations[stationId]) {
+            const rawQuestions = questionsByStation[stationId];
+            const questions = rawQuestions.map((q) => {
+              const rawCorrect = Number(q.correct);
+              const normalizedCorrect = Number.isFinite(rawCorrect)
+                ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
+                : 0;
+              const options = (q.options && q.options.length)
+                ? q.options
+                : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
+              return {
+                ...q,
+                options,
+                correct: normalizedCorrect
+              };
+            });
+            processedStations[stationId] = {
+              id: stationId,
+              name: stationId,
+              category: '',
+              color: '#000000',
+              iconName: 'info',
+              questions,
+              icon: Info
+            };
+          }
+        });
+
+        setStations(processedStations);
+        // Zapisz do cache
+        try {
+          localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
+        } catch (err) {
+          console.warn("Zapis cache zablokowany przez przeglądarkę.");
+        }
     } catch (error) {
-      console.error('Błąd podczas pobierania danych ze źródła zewnętrznego:', error);
-      setStationsError(error.message || 'Nie udało się załadować danych stacji z arkusza.');
+        console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
+        setStationsError("Nie udało się załadować stacji. Sprawdź połączenie z internetem.");
     }
   }, []);
 
@@ -339,16 +312,15 @@ export default function App() {
   useEffect(() => {
     if (!stations) return; // Czekaj aż stacje się załadują
     const params = new URLSearchParams(window.location.search);
-    const sId = params.get('station'); // stationId from URL
+    const sId = params.get('station');
     const adminParam = params.get('admin');
-    if (adminParam === 'true' && canAccessAdmin) {
-      setIsAdminSession(true);
+    if (adminParam === 'true' && user?.uid === OWNER_UID) {
       setView('admin');
     } else if (stations[sId] && userData) {
       setCurrentStationId(sId);
       setView('quiz');
     }
-  }, [user, userData, stations, isDevAdmin]); // Reaguj gdy załaduje się user i jego dane
+  }, [user, userData, stations]); // Reaguj gdy załaduje się user i jego dane
 
   useEffect(() => {
     if (!user) return;
@@ -375,19 +347,15 @@ export default function App() {
         uid: user.uid,
         nick: nick.toUpperCase(),
       };
-      const firstLoginAt = user?.metadata?.creationTime
-        ? new Date(user.metadata.creationTime).toISOString()
-        : new Date().toISOString();
       // Pola startowe ustawiamy tylko, jeśli użytkownik ich jeszcze nie ma
       if (!userData) {
         payload.totalPoints = 0;
         payload.completedStations = [];
         payload.answeredQuestions = {};
-        payload.firstLoginAt = firstLoginAt;
-        payload.timestamp = firstLoginAt;
+        payload.timestamp = new Date().toISOString();
         payload.scoreUpdatedAt = serverTimestamp();
       }
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), payload);
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), payload, { merge: true });
       setView('home');
     } catch (error) {
       console.error("Błąd podczas rejestracji:", error);
@@ -396,15 +364,27 @@ export default function App() {
     setSubmitting(false);
   };
 
-  const handleQuestionAnswered = async ({ stationId, questionIdx, selectedOption, isCorrect, pointsEarned, questionCount }) => {
+  const handleStationComplete = async (pointsEarned) => {
+    if (!user || !userData || !currentStationId) return;
+
+    setSubmitting(true);
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
+      totalPoints: userData.totalPoints + pointsEarned,
+      completedStations: arrayUnion(currentStationId)
+    });
+    setSubmitting(false);
+    setView('home');
+    setCurrentStationId(null);
+  };
+
+  const handleQuestionAnswered = async ({ stationId, questionIdx, pointsEarned, questionCount }) => {
     if (!user || !userData) return;
     const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
     const currentAnswered = userData.answeredQuestions?.[stationId] || [];
     if (currentAnswered.includes(questionIdx)) return;
 
     const updates = {
-      [`answeredQuestions.${stationId}`]: arrayUnion(questionIdx),
-      [`selectedOptions.${stationId}.${questionIdx}`]: selectedOption
+      [`answeredQuestions.${stationId}`]: arrayUnion(questionIdx)
     };
     if (pointsEarned > 0) {
       updates.totalPoints = increment(pointsEarned);
@@ -423,138 +403,72 @@ export default function App() {
     setSubmitting(false);
   };
 
-  const handleUpdateConfig = async (field, value) => {
-    if (!user || user.uid !== OWNER_UID) return;
-    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
-    try {
-      await setDoc(configRef, { [field]: value }, { merge: true });
-      // Nie pokazujemy alertu, bo to teraz przełącznik UI
-    } catch (err) {
-      await showAlert("BŁĄD", "Błąd aktualizacji konfiguracji!");
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      if (!adminEmail) {
-        window.localStorage.removeItem(STAFF_SESSION_KEY);
-        return;
-      }
-      const nextValue = JSON.stringify({ email: adminEmail });
-      window.localStorage.setItem(STAFF_SESSION_KEY, nextValue);
-    } catch (err) {
-      console.warn('Nie udało się zapisać stanu logowania sztabu w przeglądarce', err);
-    }
-  }, [adminEmail]);
-
   const handleAdminLogin = async () => {
     if (!adminEmail || !adminPassword) {
       await showAlert("BRAK DANYCH", "Wpisz email i hasło!");
       return;
     }
-    const normalizedAdminEmail = adminEmail.trim().toLowerCase();
     setLoading(true);
-    setAdminLoginError(null);
     try {
-      if (auth.currentUser) {
-        await signOut(auth);
-        await waitForAuthState((u) => !u);
-      }
-      await setPersistence(auth, inMemoryPersistence);
       const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
-      const isAuthorizedAdmin = myUid === OWNER_UID || result.user.email?.toLowerCase() === normalizedAdminEmail;
-
-      if (isAuthorizedAdmin) {
-        await waitForAuthState((u) => !!u && u.uid === myUid, 4000);
+      
+      if (myUid === OWNER_UID) {
         window.history.replaceState({}, '', '?admin=true');
-        setAdminEmail('');
-        setAdminPassword('');
-        setIsAdminSession(true);
         setView('admin');
         setShowAdminForm(false);
+        setAdminEmail('');
+        setAdminPassword('');
       } else {
         await showAlert("ZALOGOWANO!", "Twoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
         console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
         console.log(myUid);
-        await signOut(auth);
-        await waitForAuthState((u) => !u);
-        await setPersistence(auth, browserLocalPersistence);
-        await signInAnonymously(auth);
       }
     } catch (error) {
-      console.error("Błąd logowania admina:", error, { code: error.code });
-      const message = `Powód błędu: ${error.code || 'unknown'} - ${error.message}`;
-      setAdminLoginError(message);
-      await showAlert("BŁĄD LOGOWANIA", `Nie udało się zalogować.\n${message}\n\nSprawdź konsolę (F12) po więcej szczegółów.`);
+      console.error("Błąd logowania admina:", error);
+      await showAlert("BŁĄD LOGOWANIA", "Nie udało się zalogować.\nPowód błędu: " + error.message + "\n\nSprawdź konsolę (F12) po więcej szczegółów.");
     }
     setLoading(false);
   };
 
   const handleLogout = async () => {
     try {
-      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === OWNER_UID, isDevAdmin, currentRole });
-      setLoading(true);
-      setShowAdminForm(false);
-      setAdminEmail('');
-      setAdminPassword('');
-      setAdminLoginError(null);
-      try {
-        window.localStorage.removeItem(STAFF_CREDENTIALS_KEY);
-      } catch (err) {
-        console.warn('Nie udało się usunąć zapisanych danych logowania sztabu', err);
-      }
-      setAdminAuthLastResponse(null);
-      window.history.replaceState({}, '', window.location.pathname);
-
-      if (user?.uid === OWNER_UID || currentRole === AUTH_ROLES.admin) {
+      if (user?.uid === OWNER_UID) {
+        // Prawdziwe wylogowanie tylko dla administratora
+        setLoading(true);
         await signOut(auth);
-        await waitForAuthState((u) => !u);
-        await setPersistence(auth, browserLocalPersistence);
-        await signInAnonymously(auth);
         setUserData(null);
-        setNick('');
-        setCurrentStationId(null);
-        setIsAdminSession(false);
         setView('home');
-      } else {
-        await signOut(auth);
-        await waitForAuthState((u) => !u);
-        await setPersistence(auth, browserLocalPersistence);
+        setShowAdminForm(false);
+        setAdminEmail('');
+        setAdminPassword('');
+        window.history.replaceState({}, '', window.location.pathname);
         await signInAnonymously(auth);
-        setUserData(null);
-        setNick('');
-        setCurrentStationId(null);
-        setIsAdminSession(false);
+      } else {
+        // Udawane wylogowanie dla gracza (wraca do ekranu Paszportu i czysci URL z ewentualnych stacji)
         setView('passport');
+        setShowAdminForm(false);
+        window.history.replaceState({}, '', window.location.pathname);
       }
-    } catch (err) {
-      console.error("Błąd wylogowania: ", err);
-    } finally {
+    } catch (err) { 
+      console.error("Błąd wylogowania: ", err); 
       setLoading(false);
-      console.log('handleLogout end - loading set false');
     }
   };
 
-  const handleStationSelect = (stationId) => {
-    if (!stationId) return;
-    setCurrentStationId(stationId);
-    setView('quiz');
-  };
+  useEffect(() => {
+    // Jeśli użytkownik ma już nick, załaduj go do pola input na ekranie logowania
+    if (userData?.nick && !nick) {
+      setNick(userData.nick);
+    }
+  }, [userData?.nick, nick]);
 
-  if (loading) return (
-    <ErrorBoundary>
-      <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>
-    </ErrorBoundary>
-  );
+  if (loading) return <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
-  const isPassportScreen = !user || (user && !userData && view !== 'admin');
-  
+  const isPassportScreen = view === 'passport' || (user && !userData && view !== 'admin');
+
   if (isPassportScreen) {
     return (
-      <ErrorBoundary>
       <div className="min-h-[100dvh] bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
         {showRules && <RulesModal onClose={() => setShowRules(false)} />}
         <div className={`${neoCard} bg-white w-full max-w-sm p-10 text-center`}>
@@ -570,7 +484,6 @@ export default function App() {
                 type="email" 
                 placeholder="EMAIL SZTABU..." 
                 className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black outline-none focus:bg-slate-100"
-                autoComplete="email"
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
               />
@@ -578,22 +491,9 @@ export default function App() {
                 type="password" 
                 placeholder="HASŁO..." 
                 className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black outline-none focus:bg-slate-100"
-                autoComplete="current-password"
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
               />
-              {adminLoginError && (
-                <div className="mb-4 p-3 bg-red-50 border-2 border-red-600 text-red-700 rounded-md text-sm">
-                  <strong>Błąd logowania:</strong>
-                  <div className="mt-1">{adminLoginError}</div>
-                </div>
-              )}
-              {adminAuthLastResponse && (
-                <div className="mb-4 p-3 bg-yellow-50 border-2 border-yellow-600 text-yellow-700 rounded-md text-sm text-left">
-                  <strong>Diagnoza żądania auth:</strong>
-                  <pre className="mt-1 overflow-auto text-xs max-h-48">{JSON.stringify(adminAuthLastResponse, null, 2)}</pre>
-                </div>
-              )}
               <button 
                 onClick={handleAdminLogin}
                 className={`${neoBtn} w-full py-5 bg-black text-white font-[900] uppercase`}
@@ -610,14 +510,14 @@ export default function App() {
                 type="text" 
                 placeholder="TWÓJ NICK..." 
                 className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-red-50"
-                defaultValue={nick || userData?.nick}
+                value={nick}
                 onChange={(e) => setNick(e.target.value)}
               />
               <button 
                 onClick={handleRegister}
                 className={`${neoBtn} w-full py-5 bg-[#DC2626] text-white font-[900] uppercase`}
               >
-                {userData?.nick ? 'ZAPISZ NICK I WRÓĆ' : 'OTWÓRZ PASZPORT'}
+                {userData ? 'ZAPISZ NICK I WRÓĆ' : 'OTWÓRZ PASZPORT'}
               </button>
               <button onClick={() => setShowRules(true)} className="mt-4 w-full py-3 bg-slate-100 border-[3px] border-black rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all font-[900] font-mono text-[11px] uppercase text-slate-700">
                 REGULAMIN I RODO
@@ -629,17 +529,13 @@ export default function App() {
           )}
         </div>
       </div>
-      </ErrorBoundary>
     );
   }
 
-    return (
-    <ErrorBoundary>
+  return (
     <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
-      {/* Ten komponent został przypadkowo usunięty w poprzedniej wersji, co powodowało błąd. */}
-      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={canAccessAdmin} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
-
+      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} />
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
       {/* NAGŁÓWEK */}
@@ -670,46 +566,16 @@ export default function App() {
       </header>
 
       <main className="max-w-4xl mx-auto p-6">
-        {view === 'admin' && canAccessAdmin ? (
-          <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} handleUpdateConfig={handleUpdateConfig} />
+        {view === 'admin' && user?.uid === OWNER_UID ? (
+          <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
-          <QuizView key={currentStationId} station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
+          <QuizView station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
         ) : view === 'leaderboard' ? (
           <LeaderboardView appConfig={appConfig} />
         ) : (
-          <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} onStationSelect={handleStationSelect} setShowRules={setShowRules} />
+          <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} setView={setView} setCurrentStationId={setCurrentStationId} setShowRules={setShowRules} />
         )}
       </main>
-
-      {/* Pływający przycisk REŻYSERKA dla admina */}
-      {canAccessAdmin && (
-        <button
-          onClick={() => {
-            console.log('Toggling reżyserka. current:', isReżyserkaOpen);
-            setIsReżyserkaOpen(prev => !prev);
-          }}
-          className={`fixed bottom-24 right-6 z-[100] ${neoBtn} bg-[#DC2626] text-white p-4 flex items-center gap-2`}
-        >
-          <Activity className="w-6 h-6 animate-pulse" />
-          REŻYSERKA
-        </button>
-      )}
-
-      {/* Pływający przełącznik QR/KLIK dla admina */}
-      {canAccessAdmin && (
-        <div
-          className={`fixed bottom-24 left-6 z-[100] ${neoBtn} bg-white text-black p-2 flex items-center gap-2 text-xs`}
-        >
-          <span className={`font-bold uppercase ${!stationsClickable ? 'text-black' : 'text-slate-400'}`}>QR</span>
-          <button
-            onClick={() => handleUpdateConfig('stationsClickable', !stationsClickable)}
-            className={`w-12 h-6 rounded-full p-0.5 transition-colors ${stationsClickable ? 'bg-green-500' : 'bg-slate-300'}`}
-          >
-            <span className={`block w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${stationsClickable ? 'translate-x-6' : 'translate-x-0'}`} />
-          </button>
-          <span className={`font-bold uppercase ${stationsClickable ? 'text-black' : 'text-slate-400'}`}>KLIK</span>
-        </div>
-      )}
 
       {/* MENU DOLNE */}
       {view !== 'admin' && (
@@ -726,45 +592,37 @@ export default function App() {
           </nav>
         </div>
       )}
-      </div>
-    </ErrorBoundary>
-    );
-}
-
-// Simple Error Boundary to catch render errors and display them instead of a white screen
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, info) {
-    console.error('ErrorBoundary caught an error', error, info);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-[100dvh] bg-white p-8 text-black flex items-center justify-center">
-          <div className="max-w-xl">
-            <h2 className="text-2xl font-bold mb-4">Wystąpił błąd aplikacji</h2>
-            <pre className="bg-slate-100 p-4 rounded">{String(this.state.error && this.state.error.toString())}</pre>
-            <p className="mt-4">Sprawdź konsolę deweloperską (F12) po więcej informacji.</p>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+    </div>
+  );
 }
 
 // --- ADMIN VIEW ---
-function AdminView({ stations }) {
+function AdminView({ appConfig, user, stations, onLogout }) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [newTime, setNewTime] = useState('');
+  const [copiedUrl, setCopiedUrl] = useState('');
+
+  const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
+
+  useEffect(() => {
+    setNewTime(appConfig?.endTime || '');
+  }, [appConfig?.endTime]);
+
+  const handleUpdateConfig = async (field, value) => {
+    try {
+      await setDoc(configRef, { [field]: value }, { merge: true });
+      await showAlert("SUKCES", `Pole "${field}" zaktualizowane!`);
+    } catch (err) {
+      await showAlert("BŁĄD", "Błąd aktualizacji!");
+      console.error(err);
+    }
+  };
+
+  const handleCopy = (url) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(url);
+    setTimeout(() => setCopiedUrl(''), 2000); // Reset po 2 sekundach
+  };
 
   const clearDatabase = async () => {
     if (!(await showConfirm("OSTRZEŻENIE", "CZY NA PEWNO CHCESZ USUNĄĆ WSZYSTKICH UCZESTNIKÓW I WYZEROWAĆ RANKING? TEJ OPERACJI NIE MOŻNA COFNĄĆ!"))) return;
@@ -781,14 +639,6 @@ function AdminView({ stations }) {
     setIsDeleting(false);
   };
 
-  const [copiedUrl, setCopiedUrl] = useState('');
-
-  const handleCopy = (url) => {
-    navigator.clipboard.writeText(url);
-    setCopiedUrl(url);
-    setTimeout(() => setCopiedUrl(''), 2000);
-  };
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500 mt-8">
       <div className="flex justify-between items-start gap-4">
@@ -796,6 +646,39 @@ function AdminView({ stations }) {
           <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
           <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
         </div>
+          <button onClick={onLogout} className="font-mono text-[10px] font-bold tracking-widest uppercase bg-slate-200 text-black px-3 py-2 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] shadow-neo-sm flex items-center gap-1 shrink-0">
+            <LogOut className="w-4 h-4" /> WYLOGUJ
+          </button>
+      </div>
+
+      {/* ZARZĄDZANIE CZASEM */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">USTAW CZAS ZAKOŃCZENIA</h3>
+          <div className="font-mono text-[11px] uppercase mb-3 text-slate-600">
+            Wyświetlany czas zakończenia: <span className="font-[900] text-black">{appConfig?.endTime || 'brak'}</span>
+          </div>
+        <input 
+          type="text" 
+          placeholder="np. 15:30"
+          value={newTime} 
+          onChange={e => setNewTime(e.target.value)} 
+          className="w-full p-3 border-[3px] border-black rounded-lg mb-4" 
+        />
+        <button 
+          onClick={() => handleUpdateConfig('endTime', newTime)} 
+          className={`${neoBtn} bg-black text-white w-full py-3`}
+        >
+          ZAPISZ CZAS
+        </button>
+      </div>
+
+      {/* ZARZĄDZANIE FINAŁEM */}
+      <div className={`${neoCard} p-8 bg-blue-50 border-dashed border-[#3B82F6] text-center`}>
+        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#3B82F6]">REŻYSERKA FINAŁU</h3>
+        <p className="font-mono text-xs text-slate-600 mb-6">Zarządzaj pytaniami na żywo dla Półfinału i Finału.</p>
+        <button onClick={() => document.getElementById('rezyserka-btn')?.click()} className={`${neoBtn} w-full py-5 bg-[#3B82F6] text-white font-[900] uppercase`}>
+          OTWÓRZ REŻYSERKĘ
+        </button>
       </div>
 
       {/* LINKI DO STACJI (GENERATOR) */}
@@ -831,6 +714,13 @@ function AdminView({ stations }) {
         </div>
       </div>
 
+      {/* UID ADMINA */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">TWÓJ IDENTYFIKATOR ADMINA</h3>
+        <p className="font-mono text-xs text-slate-500 mb-2">Skopiuj ten identyfikator i wklej go do stałej `OWNER_UID` w pliku App.jsx, aby zabezpieczyć ten panel.</p>
+        <input type="text" readOnly value={user?.uid || 'Brak UID'} className="w-full p-3 bg-slate-100 border-2 border-black rounded-lg font-mono text-sm" />
+      </div>
+
       {/* RESETOWANIE */}
       <div className={`${neoCard} p-8 bg-red-50 border-dashed border-[#DC2626] text-center`}>
         <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#DC2626]">STREFA NIEBEZPIECZNA</h3>
@@ -844,7 +734,7 @@ function AdminView({ stations }) {
 }
 
 // --- HOME (BENTO BOX LAYOUT) ---
-function HomeView({ userData, appConfig, stations, stationsError, refetchStations, onStationSelect, setShowRules }) {
+function HomeView({ userData, appConfig, stations, stationsError, refetchStations, setView, setCurrentStationId, setShowRules }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* BANER GŁÓWNY */}
@@ -887,8 +777,9 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
             <div 
               key={st.id} 
               onClick={() => {
-                if (isDone) return;
-                onStationSelect(st.id);
+                if (!isDone) {
+                  showAlert("ZESKANUJ KOD QR", "Aby odblokować to wyzwanie, udaj się na wybrane stanowisko i zeskanuj jego kod QR!");
+                }
               }}
               className={`${neoCard} bg-white p-8 flex flex-col justify-between min-h-[220px] transition-all ${isDone ? 'opacity-50 grayscale' : 'cursor-pointer hover:translate-y-[-4px]'}`}
             >
@@ -937,7 +828,6 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const isDone = userData?.completedStations?.includes(station.id);
   const [localScore, setLocalScore] = useState(0);
   const [questionCodes, setQuestionCodes] = useState({});
-
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
   const [unlockedQuestions, setUnlockedQuestions] = useState(new Set());
   const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
@@ -950,16 +840,15 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     const answeredOnStation = new Set(userData?.answeredQuestions?.[station.id] || []);
     setAnsweredQuestions(answeredOnStation);
     setUnlockedQuestions(answeredOnStation); // Odblokowane to co najmniej te, na które już odpowiedziano
-    setSelectedOptions(userData?.selectedOptions?.[station.id] || {});
 
     if (stationIdRef.current !== station.id) {
+      setSelectedOptions({});
       stationIdRef.current = station.id;
     }
   }, [station.id, userData]);
 
   useEffect(() => {
     // Przewijanie do aktywnego pytania
-
     if (activeQuestionIdx !== null && questionRefs.current[activeQuestionIdx]) {
       setTimeout(() => {
         questionRefs.current[activeQuestionIdx].scrollIntoView({
@@ -984,33 +873,48 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
   const getQuestionCodeValue = (question) => {
     if (!question) return undefined;
-    return question.code ?? question.Code ?? question.CODE ?? question.questionCode ?? question.QuestionCode;
+    const direct = question.code ?? question.Code ?? question.CODE ?? question.questionCode ?? question.QuestionCode;
+    if (direct !== undefined) return direct;
+    const key = Object.keys(question).find((k) => k.toLowerCase() === 'code');
+    if (key) return question[key];
+    const fuzzyKey = Object.keys(question).find((k) => k.toLowerCase().includes('code'));
+    return fuzzyKey ? question[fuzzyKey] : undefined;
+  };
+
+  const requiresCode = (question) => {
+    const code = getQuestionCodeValue(question);
+    return code !== undefined && code !== null && code.toString().trim() !== '';
   };
 
   const handleUnlockQuestion = async (idx) => {
     const question = station.questions?.[idx];
-    const expectedCode = getQuestionCodeValue(question);
-    if (!question || !expectedCode) {
+    const expectedRaw = getQuestionCodeValue(question);
+    if (!question || expectedRaw === undefined || expectedRaw === null || expectedRaw.toString().trim() === '') {
       console.warn('Brak kodu w obiekcie pytania lub nieznany klucz:', question);
       await showAlert("BŁĄD", "Brak kodu dla tego pytania.");
       return;
     }
 
-    const enteredCode = (questionCodes[idx] || '').toString().trim();
+    const enteredCode = (questionCodes[idx] || '').toString().trim().toUpperCase();
+    const expectedCode = expectedRaw.toString().trim().toUpperCase();
 
     if (enteredCode === expectedCode) {
-      setUnlockedQuestions(prev => new Set(prev).add(idx));
+      setUnlockedQuestions((prev) => {
+        const next = new Set(prev);
+        next.add(idx);
+        return next;
+      });
       setQuestionCodes((prev) => ({ ...prev, [idx]: '' }));
       setActiveQuestionIdx(idx);
     } else {
       await showAlert("ZŁY KOD", "Zapytaj Strażnika pytania o poprawny kod.");
     }
   };
+
   const handleOptionClick = (questionIdx, optionIdx) => {
     if (submitting || answeredQuestions.has(questionIdx)) return;
     const question = station.questions?.[questionIdx];
     if (!question) return;
-
     if (!unlockedQuestions.has(questionIdx) && requiresCode(question)) return;
 
     const isCorrect = optionIdx === question.correct;
@@ -1027,15 +931,9 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     handleQuestionAnswered({
       stationId: station.id,
       questionIdx,
-      selectedOption: optionIdx,
       pointsEarned: isCorrect ? (question.points || 0) : 0,
       questionCount: station.questions?.length || 0
     });
-  };
-
-  const requiresCode = (question) => {
-    const code = getQuestionCodeValue(question);
-    return code !== undefined && code !== null && String(code).trim() !== '';
   };
 
   return (
@@ -1056,13 +954,14 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
       <div className="space-y-6">
         {station.questions?.map((question, idx) => {
-          const needsCode = requiresCode(question); // Używamy nowej funkcji
-          const isUnlocked = unlockedQuestions.has(idx);
+          const isUnlocked = unlockedQuestions.has(idx) || answeredQuestions.has(idx) || !requiresCode(question);
           const isAnswered = answeredQuestions.has(idx);
           const selectedOption = selectedOptions[idx];
           const isActive = activeQuestionIdx === idx;
           const isCorrect = selectedOption === question.correct;
-          const answerOptions = question.options || [];
+          const answerOptions = (question.options && question.options.length)
+            ? question.options
+            : [question.option1, question.option2, question.option3, question.option4].filter(Boolean);
 
           return (
             <div 
@@ -1111,14 +1010,11 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                       {answerOptions.length ? (
                         <div className="grid grid-cols-1 gap-4">
                           {answerOptions.map((opt, optIdx) => {
-                            const isSelected = selectedOption === optIdx;
-                            const isCorrectAnswer = optIdx === question.correct;
                             let btnStyle = 'bg-white text-black';
                             if (isAnswered) {
                               if (optIdx === question.correct) btnStyle = 'bg-green-500 text-white border-green-700';
                               else if (optIdx === selectedOption) btnStyle = 'bg-red-500 text-white border-red-700';
                             }
-
                             return (
                               <button
                                 key={optIdx}
@@ -1133,11 +1029,11 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                           })}
                         </div>
                       ) : null}
-                    </div>
-                  )}
-                  {isAnswered && (
-                    <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
-                      {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
+                      {isAnswered && (
+                        <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                          {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1193,33 +1089,33 @@ function RulesModal({ onClose }) {
 // --- RANKING VIEW ---
 function LeaderboardView({ appConfig }) {
   const [leaders, setLeaders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const all = snapshot.docs.map(d => d.data());
       all.sort((a, b) => {
-        // 1. Sortuj po punktach (malejąco)
         const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
         if (scoreDiff !== 0) return scoreDiff;
 
-        // 2. W przypadku remisu, sortuj po całkowitym czasie gry (rosnąco)
         const getTime = (ts) => {
           if (!ts) return 0;
           try {
             const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
             return isNaN(ms) ? 0 : ms;
-          } catch { return 0; }
+          } catch (e) { return 0; }
         };
-        const aGameTime = getTime(a.scoreUpdatedAt) - getTime(a.timestamp);
-        const bGameTime = getTime(b.scoreUpdatedAt) - getTime(b.timestamp);
-        if (aGameTime !== bGameTime) return aGameTime - bGameTime;
+        const aTime = getTime(a.scoreUpdatedAt);
+        const bTime = getTime(b.scoreUpdatedAt);
+        if (aTime !== bTime) return aTime - bTime;
 
         const aCreated = getTime(a.timestamp);
         const bCreated = getTime(b.timestamp);
         return aCreated - bCreated;
       });
       setLeaders(all.slice(0, 10));
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -1256,7 +1152,7 @@ function LeaderboardView({ appConfig }) {
                   try {
                     const d = typeof p.scoreUpdatedAt.toDate === 'function' ? p.scoreUpdatedAt.toDate() : new Date(p.scoreUpdatedAt);
                     return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  } catch {
+                  } catch (e) {
                     return '';
                   }
                 })()}
