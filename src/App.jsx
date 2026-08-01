@@ -372,7 +372,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const sId = params.get('station'); // stationId from URL
     const adminParam = params.get('admin');
-    if (adminParam === 'true' && (user?.uid === OWNER_UID || isDevAdmin)) {
+    if (adminParam === 'true' && (user?.uid === ownerUid || isDevAdmin)) {
       setView('admin');
     } else if (stations[sId] && userData) {
       setCurrentStationId(sId);
