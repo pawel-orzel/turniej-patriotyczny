@@ -529,7 +529,7 @@ export default function App() {
     </ErrorBoundary>
   );
 
-  const isPassportScreen = !user || (user && !userData && !showAdminForm && view !== 'admin');
+  const isPassportScreen = !user || (user && !userData && view !== 'admin');
   
   if (isPassportScreen) {
     return (
