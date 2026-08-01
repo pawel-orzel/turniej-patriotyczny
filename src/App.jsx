@@ -1077,13 +1077,6 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     }
     
     const isCorrect = optionIdx === question.correct;
-    if (isCorrect) {
-      setAnsweredCorrectly(prev => {
-        const next = new Set(prev);
-        next.add(questionIdx);
-        return next;
-      });
-    }
 
     const nextAnswered = new Set(answeredQuestions);
     nextAnswered.add(questionIdx);
@@ -1099,6 +1092,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     
     setIsSaving(true);
     setSavedMessage('ZAPISYWANIE...');
+    setAnsweredQuestions(prev => new Set(prev).add(questionIdx)); // Natychmiastowa blokada
     await handleQuestionAnswered({
       stationId: station.id,
       questionIdx,
