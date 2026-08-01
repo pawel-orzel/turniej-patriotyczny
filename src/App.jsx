@@ -60,6 +60,9 @@ const neoTag = "font-mono text-[10px] tracking-widest uppercase border-2 border-
 const STATIONS_CACHE_KEY = 'stations_cache';
 const CACHE_EXPIRATION_MS = 2 * 60 * 1000; // 2 minuty
 const STAFF_SESSION_KEY = 'staff_session';
+const GOOGLE_SCRIPT_URL = typeof window !== 'undefined'
+  ? (window.__stations_url || import.meta.env.VITE_STATIONS_URL || '')
+  : (import.meta.env.VITE_STATIONS_URL || '');
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -232,53 +235,50 @@ export default function App() {
 
   const fetchStations = useCallback(async () => {
     setStationsError(null);
-    setStations(null); // Reset stations to show loading indicator
+    setStations(null);
 
     const iconMap = { coffee: Coffee, shield: Shield, heart: Heart, zap: Zap };
-    
-    // 1. Sprawdź cache
+
     try {
       const cachedItem = localStorage.getItem(STATIONS_CACHE_KEY);
       if (cachedItem) {
         const { timestamp, data } = JSON.parse(cachedItem);
         if (Date.now() - timestamp < CACHE_EXPIRATION_MS) {
-          console.log("Ładowanie stacji z cache...");
-          // Odzyskiwanie referencji do ikon Reacta (JSON ucina komponenty/funkcje)
-          Object.keys(data).forEach(key => {
+          Object.keys(data).forEach((key) => {
             data[key].icon = iconMap[(data[key].iconName || '').toLowerCase()] || Info;
           });
           setStations(data);
-          return;
         }
       }
     } catch (cacheError) {
-      console.warn("Nie udało się załadować stacji z cache (może być uszkodzony). Pobieram z sieci.", cacheError);
-      try {
-        localStorage.removeItem(STATIONS_CACHE_KEY);
-      } catch (removeError) {
-        void removeError;
-      } // Bezpieczne zignorowanie błędu, jeśli przeglądarka blokuje localStorage
+      console.warn('Nie udało się odczytać cache stacji.', cacheError);
+    }
+
+    if (!GOOGLE_SCRIPT_URL) {
+      setStationsError('Brak adresu źródła danych stacji. Ustaw VITE_STATIONS_URL lub window.__stations_url.');
+      return;
     }
 
     try {
-      const response = await fetch(GOOGLE_SCRIPT_URL);
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        headers: { Accept: 'application/json' }
+      });
       const contentType = response.headers.get('content-type') || '';
+
       if (!response.ok) {
         const body = await response.text();
-        console.error('Błąd ładowania skryptu Google Apps Script:', response.status, response.statusText, body);
-        throw new Error(`Błąd ładowania skryptu: ${response.status} ${response.statusText}`);
+        throw new Error(`Błąd pobierania danych stacji: ${response.status} ${response.statusText}${body ? ` - ${body}` : ''}`);
       }
+
       if (contentType.includes('text/html')) {
         const body = await response.text();
-        console.error('Odpowiedź ze skryptu zawiera HTML zamiast JSON:', body);
-        throw new Error('Odpowiedź serwera ma format HTML zamiast JSON. Sprawdź URL i wdrożenie skryptu Google Apps Script.');
+        throw new Error(`Odpowiedź źródła danych ma nieprawidłowy format HTML: ${body}`);
       }
 
       const rawData = await response.json();
       const data = rawData.payload || rawData;
       if (!data || typeof data !== 'object' || !data.stations || typeof data.stations !== 'object') {
-        console.error('Niepoprawny format danych stacji:', rawData);
-        throw new Error('Skrypt zwrócił niepoprawny format danych. Sprawdź treść odpowiedzi i strukturę JSON.');
+        throw new Error('Źródło danych zwróciło niepoprawny format JSON.');
       }
 
       const stationsFromSheet = data.stations;
@@ -321,11 +321,11 @@ export default function App() {
       try {
         localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
       } catch {
-        console.warn("Zapis cache zablokowany przez przeglądarkę.");
+        console.warn('Zapis cache zablokowany przez przeglądarkę.');
       }
     } catch (error) {
-      console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
-      setStationsError(`Nie udało się załadować stacji. ${error.message}`);
+      console.error('Błąd podczas pobierania danych ze źródła zewnętrznego:', error);
+      setStationsError(error.message || 'Nie udało się załadować danych stacji z arkusza.');
     }
   }, []);
 
