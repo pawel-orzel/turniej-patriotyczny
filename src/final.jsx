@@ -3,6 +3,19 @@ import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDoc
 import { Trophy, Radio, Activity, ChevronRight, Megaphone } from 'lucide-react';
 import { showAlert, showConfirm } from './modal';
 
+const CONFETTI_PIECES = Array.from({ length: 150 }).map((_, i) => {
+  return {
+    key: i,
+    style: {
+      left: `${Math.random() * 100}vw`,
+      animationDuration: `${Math.random() * 3 + 2}s`,
+      animationDelay: `${Math.random() * 5}s`,
+      transform: `rotate(${Math.random() * 360}deg)`,
+    },
+    emojiIndex: i % 6,
+  };
+});
+
 // Custom Classes Neo-Brutalism
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
@@ -439,16 +452,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
 }
 
 function Confetti() {
-    const confetti = Array.from({ length: 150 }).map((_, i) => {
-        const style = {
-            left: `${Math.random() * 100}vw`,
-            animationDuration: `${Math.random() * 3 + 2}s`,
-            animationDelay: `${Math.random() * 5}s`,
-            transform: `rotate(${Math.random() * 360}deg)`,
-        };
-        const emojis = ['🎉', '🎊', '🏆', '🥇', '⭐', '🎈'];
-        return <div key={i} className="confetti-piece" style={style}>{emojis[i % emojis.length]}</div>;
-    });
+    const emojis = ['🎉', '🎊', '🏆', '🥇', '⭐', '🎈'];
 
     return (
         <>
@@ -479,13 +483,17 @@ function Confetti() {
                 }
             `}</style>
             <div className="confetti-container">
-                {confetti}
+                {CONFETTI_PIECES.map((piece) => (
+                    <div key={piece.key} className="confetti-piece" style={piece.style}>
+                        {emojis[piece.emojiIndex]}
+                    </div>
+                ))}
             </div>
         </>
     );
 }
 
-function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isAdmin, liveStage }) {
+function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, liveStage }) {
     const limit = type === 'semifinalists' ? 10 : (type === 'finalists' ? 5 : 3);
     return (
         <div className="fixed inset-0 z-[100] bg-black text-white animate-in fade-in zoom-in duration-500 overflow-y-auto flex flex-col">
@@ -517,7 +525,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
           try {
             const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
             return isNaN(ms) ? 0 : ms;
-          } catch (e) { return 0; }
+          } catch { return 0; }
         };
         const aTime = getTime(a.scoreUpdatedAt);
         const bTime = getTime(b.scoreUpdatedAt);
@@ -594,7 +602,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
             try {
               const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
               return isNaN(ms) ? 0 : ms;
-            } catch (e) { return 0; }
+            } catch { return 0; }
           };
           const aTime = getTime(a.scoreUpdatedAt);
           const bTime = getTime(b.scoreUpdatedAt);
@@ -609,8 +617,8 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
         setPlayers(top20);
         setSelectedUids(top20.slice(0, limitCount).map(p => p.uid));
         setLoading(false);
-      } catch (e) {
-        console.error(e);
+      } catch {
+        console.error('Błąd fetchowania graczy');
         setLoading(false);
       }
     };
@@ -637,9 +645,9 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       await setDoc(liveRef, payload, { merge: true });
       onClose();
       showAlert("SUKCES", announcement ? `Zatwierdzono listę ${selectedUids.length} graczy i opublikowano ogłoszenie!` : `Zatwierdzono listę ${selectedUids.length} graczy dla etapu: ${stageName}!`);
-    } catch (e) {
-      console.error(e);
-      showAlert("BŁĄD", e.message);
+    } catch (error) {
+      console.error(error);
+      showAlert("BŁĄD", error.message);
     }
   };
 
@@ -653,7 +661,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       const s = d.getSeconds().toString().padStart(2, '0');
       const ms = d.getMilliseconds().toString().padStart(3, '0');
       return `${h}:${m}:${s}.${ms}`;
-    } catch (e) {
+    } catch {
       return '--:--:--.---';
     }
   };
@@ -670,7 +678,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       const s = Math.floor((diff % 60000) / 1000);
       if (h > 0) return `${h}h ${m}m ${s}s`;
       return `${m}m ${s}s`;
-    } catch (e) {
+    } catch {
       return '--';
     }
   };

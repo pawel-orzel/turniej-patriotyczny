@@ -4,14 +4,12 @@ import {
   getFirestore, 
   doc, 
   setDoc, 
-  getDoc, 
   collection, 
   onSnapshot, 
   updateDoc,
   arrayUnion,
   increment,
   serverTimestamp,
-  query,
   getDocs,
   deleteDoc
 } from 'firebase/firestore';
@@ -141,10 +139,11 @@ export default function App() {
         }
       }
 
+      const customToken = typeof window !== 'undefined' ? window.__initial_auth_token : undefined;
       // After attempting to set persistence, manage the sign-in state.
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
+        if (customToken) {
+          await signInWithCustomToken(auth, customToken);
         } else if (!auth.currentUser) { // Only sign in if persistence didn't restore a user.
           await signInAnonymously(auth);
         }
@@ -188,11 +187,13 @@ export default function App() {
           return;
         }
       }
-    } catch (e) {
-      console.warn("Nie udało się załadować stacji z cache (może być uszkodzony). Pobieram z sieci.", e);
+    } catch (cacheError) {
+      console.warn("Nie udało się załadować stacji z cache (może być uszkodzony). Pobieram z sieci.", cacheError);
       try {
         localStorage.removeItem(STATIONS_CACHE_KEY);
-      } catch (err) {} // Bezpieczne zignorowanie błędu, jeśli przeglądarka blokuje localStorage
+      } catch (removeError) {
+        void removeError;
+      } // Bezpieczne zignorowanie błędu, jeśli przeglądarka blokuje localStorage
     }
 
     try {
@@ -285,7 +286,7 @@ export default function App() {
         // Zapisz do cache
         try {
           localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
-        } catch (err) {
+        } catch {
           console.warn("Zapis cache zablokowany przez przeglądarkę.");
         }
     } catch (error) {
@@ -369,19 +370,6 @@ export default function App() {
       await showAlert("BŁĄD REJESTRACJI", "Wystąpił błąd przy logowaniu. Sprawdź połączenie.");
     }
     setSubmitting(false);
-  };
-
-  const handleStationComplete = async (pointsEarned) => {
-    if (!user || !userData || !currentStationId) return;
-
-    setSubmitting(true);
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
-      totalPoints: userData.totalPoints + pointsEarned,
-      completedStations: arrayUnion(currentStationId)
-    });
-    setSubmitting(false);
-    setView('home');
-    setCurrentStationId(null);
   };
 
   const handleQuestionAnswered = async ({ stationId, questionIdx, pointsEarned, questionCount }) => {
@@ -590,7 +578,7 @@ export default function App() {
         {view === 'admin' && user?.uid === OWNER_UID ? (
           <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} handleUpdateConfig={handleUpdateConfig} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
-          <QuizView station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
+          <QuizView key={currentStationId} station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
         ) : view === 'leaderboard' ? (
           <LeaderboardView appConfig={appConfig} />
         ) : (
@@ -645,7 +633,7 @@ export default function App() {
 }
 
 // --- ADMIN VIEW ---
-function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) {
+function AdminView({ appConfig, stations, onLogout, handleUpdateConfig }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const clearDatabase = async () => {
@@ -663,14 +651,9 @@ function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) 
     setIsDeleting(false);
   };
 
-  const [newTime, setNewTime] = useState('');
+  const [newTime, setNewTime] = useState();
   const [copiedUrl, setCopiedUrl] = useState('');
-
-  useEffect(() => {
-    if (appConfig?.endTime) {
-      setNewTime(appConfig.endTime);
-    }
-  }, [appConfig?.endTime]);
+  const displayedNewTime = newTime !== undefined ? newTime : (appConfig?.endTime || '');
 
   const handleCopy = (url) => {
     navigator.clipboard.writeText(url);
@@ -699,12 +682,12 @@ function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) 
         <input 
           type="text" 
           placeholder="np. 15:30"
-          value={newTime} 
+          value={displayedNewTime} 
           onChange={e => setNewTime(e.target.value)} 
           className="w-full p-3 border-[3px] border-black rounded-lg mb-4" 
         />
         <button 
-          onClick={() => handleUpdateConfig('endTime', newTime)} 
+          onClick={() => handleUpdateConfig('endTime', displayedNewTime)} 
           className={`${neoBtn} bg-black text-white w-full py-3`}
         >
           ZAPISZ CZAS
@@ -851,28 +834,13 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 // --- QUIZ VIEW ---
 function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const questionRefs = useRef([]); // Ref do przewijania
-  const stationIdRef = useRef(station.id);
   const isDone = userData?.completedStations?.includes(station.id);
-  const [localScore, setLocalScore] = useState(0);
+  const [localScore, setLocalScore] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   const [questionCodes, setQuestionCodes] = useState({});
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
-  const [unlockedQuestions, setUnlockedQuestions] = useState(new Set());
-  const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
+  const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
+  const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   const [selectedOptions, setSelectedOptions] = useState({});
-
-  useEffect(() => {
-    setLocalScore(0);
-    setQuestionCodes({});
-    setActiveQuestionIdx(null);
-    const answeredOnStation = new Set(userData?.answeredQuestions?.[station.id] || []);
-    setAnsweredQuestions(answeredOnStation);
-    setUnlockedQuestions(answeredOnStation); // Odblokowane to co najmniej te, na które już odpowiedziano
-
-    if (stationIdRef.current !== station.id) {
-      setSelectedOptions({});
-      stationIdRef.current = station.id;
-    }
-  }, [station.id, userData]);
 
   useEffect(() => {
     // Przewijanie do aktywnego pytania
@@ -1116,7 +1084,6 @@ function RulesModal({ onClose }) {
 // --- RANKING VIEW ---
 function LeaderboardView({ appConfig }) {
   const [leaders, setLeaders] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
@@ -1131,7 +1098,7 @@ function LeaderboardView({ appConfig }) {
           try {
             const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
             return isNaN(ms) ? 0 : ms;
-          } catch (e) { return 0; }
+          } catch { return 0; }
         };
         const aTime = getTime(a.scoreUpdatedAt);
         const bTime = getTime(b.scoreUpdatedAt);
@@ -1142,7 +1109,6 @@ function LeaderboardView({ appConfig }) {
         return aCreated - bCreated;
       });
       setLeaders(all.slice(0, 10));
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -1179,7 +1145,7 @@ function LeaderboardView({ appConfig }) {
                   try {
                     const d = typeof p.scoreUpdatedAt.toDate === 'function' ? p.scoreUpdatedAt.toDate() : new Date(p.scoreUpdatedAt);
                     return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  } catch (e) {
+                  } catch {
                     return '';
                   }
                 })()}
