@@ -97,8 +97,8 @@ export default function App() {
 
   const isDevAdmin = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const [isAdminSession, setIsAdminSession] = useState(false);
-  const currentRole = getAuthRole(user, OWNER_UID, isDevAdmin);
-  const canAccessAdmin = canAccessAdminPanel(user, isDevAdmin, isAdminSession, OWNER_UID);
+  const currentRole = useMemo(() => getAuthRole(user, OWNER_UID, isDevAdmin), [user, isDevAdmin]);
+  const canAccessAdmin = useMemo(() => canAccessAdminPanel(user, isDevAdmin, isAdminSession, OWNER_UID), [user, isDevAdmin, isAdminSession]);
   // Debug: safe log after state initialization
   console.log('App render', { view: undefined, loading: undefined, user: !!user, userDataLoaded: !!userData, isReżyserkaOpen, isDevAdmin });
 
@@ -524,7 +524,7 @@ export default function App() {
       setAdminAuthLastResponse(null);
       window.history.replaceState({}, '', window.location.pathname);
 
-      if (user?.uid === OWNER_UID || currentRole === AUTH_ROLES.admin) {
+      if (currentRole === AUTH_ROLES.admin) {
         await signOut(auth);
         await waitForAuthState((u) => !u);
         await setPersistence(auth, browserLocalPersistence);
@@ -947,6 +947,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const [isSaving, setIsSaving] = useState(false);
   const [questionCodes, setQuestionCodes] = useState({});
   const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set());
+  const [pendingSelection, setPendingSelection] = useState({});
   const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   
   const getQuestionCodeValue = useCallback((question) => {
@@ -1032,35 +1033,44 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
       await showAlert("ZŁY KOD", "Zapytaj Strażnika pytania o poprawny kod.");
     }
   };
-  const handleOptionClick = async (questionIdx, optionIdx) => {
+
+  const handleOptionSelect = (questionIdx, optionIdx) => {
     if (isSaving || submitting || answeredQuestions.has(questionIdx)) return;
+    setPendingSelection(prev => ({
+      ...prev,
+      [questionIdx]: prev[questionIdx] === optionIdx ? undefined : optionIdx
+    }));
+  };
+
+  const handleConfirmAnswer = async (questionIdx) => {
+    const selectedOptionIdx = pendingSelection[questionIdx];
+    if (selectedOptionIdx === undefined || isSaving || submitting || answeredQuestions.has(questionIdx)) return;
+
     const question = station.questions?.[questionIdx];
     if (!question) return;
 
     const needsCode = requiresCode(question);
     const isUnlocked = unlockedQuestions.has(questionIdx);
-
     if (needsCode && !isUnlocked) {
       await showAlert("PYTANIE ZABLOKOWANE", "Musisz najpierw odblokować to pytanie za pomocą poprawnego kodu.");
-      setActiveQuestionIdx(questionIdx); // Otwórz pytanie, żeby pokazać pole na kod
+      setActiveQuestionIdx(questionIdx);
       return;
     }
-    
-    const isCorrect = optionIdx === question.correct;
-    
-    // Natychmiastowa aktualizacja stanu lokalnego, aby zablokować interfejs
+
+    const isCorrect = selectedOptionIdx === question.correct;
+
     setAnsweredQuestions(prev => new Set(prev).add(questionIdx));
-    setSelectedOptions((prev) => ({ ...prev, [questionIdx]: optionIdx }));
+    setSelectedOptions((prev) => ({ ...prev, [questionIdx]: selectedOptionIdx }));
     if (isCorrect) {
       setAnsweredCorrectly(prev => new Set(prev).add(questionIdx));
     }
-    
+
     setIsSaving(true);
     setSavedMessage('ZAPISYWANIE...');
     await handleQuestionAnswered({
       stationId: station.id,
       questionIdx,
-      selectedOption: optionIdx,
+      selectedOption: selectedOptionIdx,
       isCorrect,
       pointsEarned: isCorrect ? (question.points || 0) : 0,
       questionCount: station.questions?.length || 0
@@ -1092,6 +1102,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
           const isAnswered = answeredQuestions.has(idx);
           const selectedOption = selectedOptions[idx];
           const isActive = activeQuestionIdx === idx;
+          const pendingOption = pendingSelection[idx];
           const isCorrect = selectedOption === question.correct;
           const answerOptions = question.options || [];
 
@@ -1142,14 +1153,14 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                       {answerOptions.length ? (
                         <div className="grid grid-cols-1 gap-4">
                           {answerOptions.map((opt, optIdx) => {
-                            const isSelected = selectedOption === optIdx;
+                            const isSelected = isAnswered ? selectedOption === optIdx : pendingOption === optIdx;
                             const isCorrectAnswer = optIdx === question.correct;
-                            let btnStyle = 'bg-white text-black';
+                            let btnStyle = isSelected ? 'bg-yellow-200 border-yellow-500' : 'bg-white text-black';
 
                             if (isAnswered) {
                               if (isCorrectAnswer) {
                                 btnStyle = 'bg-green-600 text-white border-green-700';
-                              } else if (isSelected) {
+                              } else if (selectedOption === optIdx) {
                                 btnStyle = 'bg-red-600 text-white border-red-700';
                               }
                             }
@@ -1158,7 +1169,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                               <button
                                 key={optIdx}
                                 disabled={submitting || isAnswered || isSaving}
-                                onClick={() => handleOptionClick(idx, optIdx)}
+                                onClick={() => handleOptionSelect(idx, optIdx)}
                                 className={`${neoBtn} ${btnStyle} text-left p-4 md:p-5 font-[900] uppercase text-[clamp(0.875rem,4.5vw,1.125rem)] flex justify-between items-center gap-3`}
                               >
                                 <span className="min-w-0 break-words whitespace-normal">{opt}</span>
@@ -1171,6 +1182,15 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                           })}
                         </div>
                       ) : null}
+                      {!isAnswered && pendingOption !== undefined && (
+                        <button
+                          disabled={isSaving}
+                          onClick={() => handleConfirmAnswer(idx)}
+                          className={`${neoBtn} w-full py-5 bg-green-600 text-white font-[900] uppercase mt-4`}
+                        >
+                          {isSaving ? 'ZAPISYWANIE...' : 'ZATWIERDŹ ODPOWIEDŹ'}
+                        </button>
+                      )}
                     </div>
                   )}
                   {isAnswered && (
