@@ -52,6 +52,20 @@ service cloud.firestore {
           allow delete: if isSignedIn() && isOwner();
         }
 
+        // --- PRZYKŁADOWA NOWA KOLEKCJA: DRUŻYNY ---
+        match /teams/{teamId} {
+          // Każdy może odczytać dane drużyny.
+          allow read: if true;
+
+          // Tylko zalogowany użytkownik może stworzyć drużynę,
+          // pod warunkiem, że jest jej właścicielem (creatorUid).
+          // Sprawdzamy, czy pole `creatorUid` w nowym dokumencie zgadza się z UID zalogowanego użytkownika.
+          allow create: if isSignedIn() && request.resource.data.creatorUid == request.auth.uid;
+
+          // Tylko twórca drużyny lub główny admin może ją edytować lub usunąć.
+          allow update, delete: if isSignedIn() && (resource.data.creatorUid == request.auth.uid || isOwner());
+        }
+
         // Wyniki finałowe poszczególnych pytań (szybkość, poprawność)
         match /stageResults/{resultId} {
           allow read: if true;

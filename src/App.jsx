@@ -49,7 +49,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = 'turniej-lw';
+const appId = 'turniej-orzel';
 
 // --- STYL NEO-BRUTALISTYCZNY (CUSTOM CLASSES) ---
 const neoCard = "border-[3px] border-black shadow-neo rounded-[32px]";
