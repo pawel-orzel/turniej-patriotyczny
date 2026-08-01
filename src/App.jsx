@@ -74,6 +74,7 @@ export default function App() {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState(null);
+  const [adminAuthLastResponse, setAdminAuthLastResponse] = useState(null);
   const [showRules, setShowRules] = useState(false);
   const [stationsClickable, setStationsClickable] = useState(false);
   const [isReżyserkaOpen, setIsReżyserkaOpen] = useState(false);
@@ -160,11 +161,41 @@ export default function App() {
     };
     initAuth();
 
+    // Intercept fetch calls to capture identitytoolkit responses for debugging
+    try {
+      if (!window.__originalFetch__) window.__originalFetch__ = window.fetch;
+      window.fetch = async (input, init) => {
+        try {
+          const res = await window.__originalFetch__(input, init);
+          try {
+            const url = typeof input === 'string' ? input : input?.url;
+            if (url && url.includes('identitytoolkit.googleapis.com/v1/accounts:signInWithPassword')) {
+              const clone = res.clone();
+              const text = await clone.text();
+              let parsed;
+              try { parsed = JSON.parse(text); } catch { parsed = text; }
+              setAdminAuthLastResponse({ status: res.status, body: parsed });
+            }
+          } catch (inner) { console.warn('Error capturing auth response', inner); }
+          return res;
+        } catch (err) {
+          const url = typeof input === 'string' ? input : input?.url;
+          if (url && url.includes('identitytoolkit.googleapis.com/v1/accounts:signInWithPassword')) {
+            setAdminAuthLastResponse({ networkError: String(err) });
+          }
+          throw err;
+        }
+      };
+    } catch (e) { console.warn('Could not override fetch for debugging', e); }
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      try { if (window.__originalFetch__) window.fetch = window.__originalFetch__; } catch (restoreErr) { console.warn('restore original fetch failed', restoreErr); }
+    };
   }, []);
 
   useEffect(() => {
@@ -531,6 +562,12 @@ export default function App() {
                 <div className="mb-4 p-3 bg-red-50 border-2 border-red-600 text-red-700 rounded-md text-sm">
                   <strong>Błąd logowania:</strong>
                   <div className="mt-1">{adminLoginError}</div>
+                </div>
+              )}
+              {adminAuthLastResponse && (
+                <div className="mb-4 p-3 bg-yellow-50 border-2 border-yellow-600 text-yellow-700 rounded-md text-sm text-left">
+                  <strong>Diagnoza żądania auth:</strong>
+                  <pre className="mt-1 overflow-auto text-xs max-h-48">{JSON.stringify(adminAuthLastResponse, null, 2)}</pre>
                 </div>
               )}
               <button 
