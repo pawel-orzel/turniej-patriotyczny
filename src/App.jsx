@@ -590,7 +590,10 @@ export default function App() {
       {/* Pływający przycisk REŻYSERKA dla admina */}
       {user?.uid === OWNER_UID && (
         <button
-          onClick={() => setIsReżyserkaOpen(!isReżyserkaOpen)}
+          onClick={() => {
+            console.log('Toggling reżyserka. current:', isReżyserkaOpen);
+            setIsReżyserkaOpen(prev => !prev);
+          }}
           className={`fixed bottom-24 right-6 z-[100] ${neoBtn} bg-[#DC2626] text-white p-4 flex items-center gap-2`}
         >
           <Activity className="w-6 h-6 animate-pulse" />

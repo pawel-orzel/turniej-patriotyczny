@@ -25,6 +25,10 @@ export default function FinalStage({ db, user, appId, stations, isAdmin, isOpen,
   const [selectionModal, setSelectionModal] = useState(null);
 
   useEffect(() => {
+    console.log('FinalStage render - props:', { isOpen, isAdmin, user: !!user });
+  }, [isOpen, isAdmin, user]);
+
+  useEffect(() => {
     const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
     const unsub = onSnapshot(liveRef, (docSnap) => {
       if (docSnap.exists()) {
