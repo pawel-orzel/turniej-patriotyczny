@@ -417,21 +417,31 @@ export default function App() {
     const currentAnswered = userData.answeredQuestions?.[stationId] || [];
     if (currentAnswered.includes(questionIdx)) return;
 
-    const updates = {
-      [`answeredQuestions.${stationId}`]: arrayUnion(questionIdx),
-      [`selectedOptions.${stationId}.${questionIdx}`]: selectedOption
+    // NOWY SPOSÓB: Konstruujemy zagnieżdżony obiekt (omija błąd spacji i kropek w ID stacji)
+    const payload = {
+      answeredQuestions: {
+        [stationId]: arrayUnion(questionIdx)
+      },
+      selectedOptions: {
+        [stationId]: {
+          [questionIdx.toString()]: selectedOption
+        }
+      }
     };
+
     if (pointsEarned > 0) {
-      updates.totalPoints = increment(pointsEarned);
-      updates.scoreUpdatedAt = serverTimestamp();
+      payload.totalPoints = increment(pointsEarned);
+      payload.scoreUpdatedAt = serverTimestamp();
     }
+    
     if (currentAnswered.length + 1 >= questionCount) {
-      updates.completedStations = arrayUnion(stationId);
+      payload.completedStations = arrayUnion(stationId);
     }
 
     setSubmitting(true);
     try {
-      await updateDoc(userRef, updates);
+      // Zmieniamy updateDoc na setDoc z merge: true
+      await setDoc(userRef, payload, { merge: true });
     } catch (err) {
       console.error('Błąd zapisu odpowiedzi:', err);
     }
@@ -1077,6 +1087,16 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     });
     setIsSaving(false);
     setSavedMessage('ODPOWIEDŹ ZAPISANA');
+
+    // Automatyczne przejście do następnego, nieodpowiedzianego pytania
+    const nextUnansweredQuestions = new Set(answeredQuestions);
+    nextUnansweredQuestions.add(questionIdx);
+    const nextIdx = station.questions?.findIndex((q, i) => !nextUnansweredQuestions.has(i));
+    if (nextIdx !== undefined && nextIdx !== -1) {
+      setTimeout(() => {
+        setActiveQuestionIdx(nextIdx);
+      }, 1200);
+    }
   };
 
   return (
@@ -1110,7 +1130,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
             <div 
               key={idx} 
               ref={el => questionRefs.current[idx] = el} // Przypisanie refa
-              className={`${neoCard} bg-white p-6 transition-all duration-300 ${isAnswered ? 'opacity-60 grayscale' : ''}`}
+              className={`${neoCard} bg-white p-6 transition-all duration-300 ${isAnswered ? 'opacity-90' : ''}`}
             >
               <button type="button" onClick={() => setActiveQuestionIdx(isActive ? null : idx)} className="w-full text-left">
                 <div className="flex items-start justify-between gap-4 w-full">
