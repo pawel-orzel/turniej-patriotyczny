@@ -31,9 +31,18 @@ export default function FinalStage({ db, user, appId, stations, isAdmin, isOpen,
   useEffect(() => {
     const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
     const unsub = onSnapshot(liveRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setLiveStage(docSnap.data());
+      try {
+        if (docSnap.exists()) {
+          setLiveStage(docSnap.data());
+        } else {
+          setLiveStage(null);
+        }
+      } catch (err) {
+        console.error('LiveStage snapshot handler error:', err);
       }
+    }, (err) => {
+      console.error('LiveStage onSnapshot error:', err);
+      setLiveStage(null);
     });
     return () => unsub();
   }, [db, appId]);
@@ -329,14 +338,20 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
     if (!liveStage?.currentId || !user?.uid || isSpectator) return;
     const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${liveStage.currentId}_${user.uid}`);
     const unsub = onSnapshot(resultRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setAnswered(true);
-        setResult(docSnap.data());
-      } else {
-        setAnswered(false);
-        setResult(null);
-        setLocalStartTime(Date.now());
+      try {
+        if (docSnap.exists()) {
+          setAnswered(true);
+          setResult(docSnap.data());
+        } else {
+          setAnswered(false);
+          setResult(null);
+          setLocalStartTime(Date.now());
+        }
+      } catch (err) {
+        console.error('stage result snapshot handler error:', err);
       }
+    }, (err) => {
+      console.error('stage result onSnapshot error:', err);
     });
     return () => unsub();
   }, [liveStage?.currentId, user?.uid, db, appId, isSpectator]);
