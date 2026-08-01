@@ -494,7 +494,7 @@ export default function App() {
     </ErrorBoundary>
   );
 
-  const isPassportScreen = !user || (user && !userData && !showAdminForm && view !== 'admin');
+  const isPassportScreen = !user || (user && !userData && !showAdminForm && view !== 'admin') || (user && !user.isAnonymous && !userData && !showAdminForm && view !== 'admin');
   
   if (isPassportScreen) {
     return (
