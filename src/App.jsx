@@ -35,22 +35,22 @@ import { showAlert, showConfirm } from './modal';
 import RegRodo from './reg.RODO';
 
 const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_pS03doT4s_32D3Wv20v_bc3m-iFFCS22W_8XbW_B_iI1n_4o2s-v-ZJbC3y_x-Y/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyCmfjCLK4zpMW95PQ5JnRosdFtwzRLcB80",
-  authDomain: "liturgiczne-labirynty-wiary.firebaseapp.com",
-  projectId: "liturgiczne-labirynty-wiary",
-  storageBucket: "liturgiczne-labirynty-wiary.firebasestorage.app",
-  messagingSenderId: "729398904317",
-  appId: "1:729398904317:web:c5ba0375a7c42aa3280594",
-  measurementId: "G-XXZR5KK5BD"
+  authDomain: "aplikacje-lw.firebaseapp.com",
+  projectId: "aplikacje-lw",
+  storageBucket: "aplikacje-lw.appspot.com",
+  messagingSenderId: "1091933939899",
+  appId: "1:1091933939899:web:5b3c12c392b3e513ed855c",
+  measurementId: "G-C5S0J6J0CR"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = 'turniej-2-0-torun';
+const appId = 'turniej-lw';
 
 // --- STYL NEO-BRUTALISTYCZNY (CUSTOM CLASSES) ---
 const neoCard = "border-[3px] border-black shadow-neo rounded-[32px]";

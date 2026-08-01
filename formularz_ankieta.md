@@ -1,7 +1,7 @@
-# Ankieta: Stwórzmy razem Turniej Patriotyczny! 🇵🇱
+# Ankieta: Stwórzmy razem Turniej!
 
 **Opis do formularza (dla ankietowanych):**
-*Cześć! Przygotowujemy wielki interaktywny quiz na zbliżający się III Piknik Skautowy. Aby pytania były ciekawe, potrzebujemy Twojej pomocy! Poniżej znajdziesz kilka pytań skojarzeniowych – zupełnie jak w teleturnieju Familiada! Odpowiedz pierwszym, co przyjdzie Ci na myśl. Nie ma tu złych odpowiedzi, liczy się to, co wskaże najwięcej osób! Z góry dziękujemy za pomoc!*
+*Cześć! Przygotowujemy wielki interaktywny quiz na zbliżający się turniej. Aby pytania były ciekawe, potrzebujemy Twojej pomocy! Poniżej znajdziesz kilka pytań skojarzeniowych – zupełnie jak w teleturnieju Familiada! Odpowiedz pierwszym, co przyjdzie Ci na myśl. Nie ma tu złych odpowiedzi, liczy się to, co wskaże najwięcej osób! Z góry dziękujemy za pomoc!*
 
 ---
 
