@@ -527,8 +527,11 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
     const unsub = onSnapshot(q, (snapshot) => {
       const all = snapshot.docs.map(d => d.data());
       all.sort((a, b) => {
+        // 1. Sortuj po punktach (malejąco)
         const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
         if (scoreDiff !== 0) return scoreDiff;
+
+        // 2. W przypadku remisu, sortuj po całkowitym czasie gry (rosnąco)
         const getTime = (ts) => {
           if (!ts) return 0;
           try {
@@ -536,9 +539,10 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
             return isNaN(ms) ? 0 : ms;
           } catch { return 0; }
         };
-        const aTime = getTime(a.scoreUpdatedAt);
-        const bTime = getTime(b.scoreUpdatedAt);
-        if (aTime !== bTime) return aTime - bTime;
+        const aGameTime = getTime(a.scoreUpdatedAt) - getTime(a.timestamp);
+        const bGameTime = getTime(b.scoreUpdatedAt) - getTime(b.timestamp);
+        if (aGameTime !== bGameTime) return aGameTime - bGameTime;
+
         const aCreated = getTime(a.timestamp);
         const bCreated = getTime(b.timestamp);
         return aCreated - bCreated;

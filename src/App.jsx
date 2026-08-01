@@ -470,13 +470,15 @@ export default function App() {
         window.history.replaceState({}, '', window.location.pathname);
         await setPersistence(auth, browserLocalPersistence); // Przywróć trwałą sesję dla graczy
       } else {
-        // Udawane wylogowanie dla gracza (wraca do ekranu Paszportu i czysci URL z ewentualnych stacji)
-        console.log('performing fake logout for player');
+        // Prawdziwe wylogowanie dla gracza, aby mógł zacząć od nowa
+        console.log('performing full logout for player');
+        setLoading(true);
+        await signOut(auth); // Wylogowuje anonimowego użytkownika
         setUserData(null);
         setNick('');
         setView('passport');
         setShowAdminForm(false);
-        window.history.replaceState({}, '', window.location.pathname);
+        window.history.replaceState({}, '', window.location.pathname); // Czyści URL
       }
     } catch (err) { 
       console.error("Błąd wylogowania: ", err); 
@@ -492,7 +494,7 @@ export default function App() {
     </ErrorBoundary>
   );
 
-  const isPassportScreen = !user || view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm) || (user && !user.isAnonymous && !userData && !showAdminForm && view !== 'admin');
+  const isPassportScreen = !user || (user && !userData && !showAdminForm && view !== 'admin');
   
   if (isPassportScreen) {
     return (
@@ -552,7 +554,7 @@ export default function App() {
                 type="text" 
                 placeholder="TWÓJ NICK..." 
                 className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black uppercase outline-none focus:bg-red-50"
-                defaultValue={userData?.nick || nick}
+                defaultValue={nick || userData?.nick}
                 onChange={(e) => setNick(e.target.value)}
               />
               <button 
@@ -1136,9 +1138,11 @@ function LeaderboardView({ appConfig }) {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const all = snapshot.docs.map(d => d.data());
       all.sort((a, b) => {
+        // 1. Sortuj po punktach (malejąco)
         const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
         if (scoreDiff !== 0) return scoreDiff;
 
+        // 2. W przypadku remisu, sortuj po całkowitym czasie gry (rosnąco)
         const getTime = (ts) => {
           if (!ts) return 0;
           try {
@@ -1146,9 +1150,9 @@ function LeaderboardView({ appConfig }) {
             return isNaN(ms) ? 0 : ms;
           } catch { return 0; }
         };
-        const aTime = getTime(a.scoreUpdatedAt);
-        const bTime = getTime(b.scoreUpdatedAt);
-        if (aTime !== bTime) return aTime - bTime;
+        const aGameTime = getTime(a.scoreUpdatedAt) - getTime(a.timestamp);
+        const bGameTime = getTime(b.scoreUpdatedAt) - getTime(b.timestamp);
+        if (aGameTime !== bGameTime) return aGameTime - bGameTime;
 
         const aCreated = getTime(a.timestamp);
         const bCreated = getTime(b.timestamp);
