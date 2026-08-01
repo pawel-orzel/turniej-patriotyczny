@@ -291,8 +291,8 @@ export default function App() {
                 ? q.options.filter((opt) => opt !== '' && opt !== null && opt !== undefined).map(String)
                 : [q.option1, q.option2, q.option3, q.option4].filter((opt) => opt !== '' && opt !== null && opt !== undefined).map(String);
 
-              const rawCorrect = Number(q.correct);
-              const normalizedCorrect = Number.isFinite(rawCorrect) ? rawCorrect : 0;
+              const rawCorrect = Number(q.correct); // Zakładamy, że w arkuszu jest 1, 2, 3, 4
+              const normalizedCorrect = Number.isFinite(rawCorrect) && rawCorrect > 0 ? rawCorrect - 1 : 0; // Normalizujemy do 0, 1, 2, 3
               const rawPoints = Number(q.points);
               const normalizedPoints = Number.isFinite(rawPoints) ? rawPoints : 0;
 
@@ -1182,7 +1182,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                       </button>
                     </>
                   ) : (
-                    !isAnswered && <div className="space-y-4">
+                    <div className="space-y-4">
                       {answerOptions.length ? (
                         <div className="grid grid-cols-1 gap-4">
                           {answerOptions.map((opt, optIdx) => {
