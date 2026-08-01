@@ -34,7 +34,6 @@ import FinalStage from './final';
 import { showAlert, showConfirm } from './modal';
 import RegRodo from './reg.RODO';
 
-const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_pS03doT4s_32D3Wv20v_bc3m-iFFCS22W_8XbW_B_iI1n_4o2s-v-ZJbC3y_x-Y/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
@@ -75,6 +74,7 @@ export default function App() {
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState(null);
   const [adminAuthLastResponse, setAdminAuthLastResponse] = useState(null);
+  const [ownerUid, setOwnerUid] = useState(null);
   const [showRules, setShowRules] = useState(false);
   const [stationsClickable, setStationsClickable] = useState(false);
   const [isReżyserkaOpen, setIsReżyserkaOpen] = useState(false);
@@ -196,6 +196,19 @@ export default function App() {
       unsubscribe();
       try { if (window.__originalFetch__) window.fetch = window.__originalFetch__; } catch (restoreErr) { console.warn('restore original fetch failed', restoreErr); }
     };
+  }, []);
+
+  useEffect(() => {
+    const ownerRef = doc(db, 'artifacts', appId, 'internal', 'owner');
+    const unsubscribe = onSnapshot(ownerRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setOwnerUid(snapshot.data().uid);
+      } else {
+        // Ustawienie na pusty string sygnalizuje, że żaden właściciel nie został jeszcze ustawiony
+        setOwnerUid('');
+      }
+    }, () => setOwnerUid('')); // W razie błędu uprawnień, również pozwól na ustawienie
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -357,7 +370,7 @@ export default function App() {
   useEffect(() => {
     if (!stations) return; // Czekaj aż stacje się załadują
     const params = new URLSearchParams(window.location.search);
-    const sId = params.get('station');
+    const sId = params.get('station'); // stationId from URL
     const adminParam = params.get('admin');
     if (adminParam === 'true' && (user?.uid === OWNER_UID || isDevAdmin)) {
       setView('admin');
@@ -365,7 +378,7 @@ export default function App() {
       setCurrentStationId(sId);
       setView('quiz');
     }
-  }, [user, userData, stations, isDevAdmin]); // Reaguj gdy załaduje się user i jego dane
+  }, [user, userData, stations, isDevAdmin, ownerUid]); // Reaguj gdy załaduje się user i jego dane
 
   useEffect(() => {
     if (!user) return;
@@ -436,7 +449,7 @@ export default function App() {
   };
 
   const handleUpdateConfig = async (field, value) => {
-    if (!user || user.uid !== OWNER_UID) return;
+    if (!user || user.uid !== ownerUid) return;
     const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
     try {
       await setDoc(configRef, { [field]: value }, { merge: true });
@@ -458,17 +471,22 @@ export default function App() {
       await setPersistence(auth, inMemoryPersistence); // Ustaw sesję admina jako tymczasową (wygasa po odświeżeniu)
       const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
-      
-      if (myUid === OWNER_UID) {
+
+      if (ownerUid === '') { // Żaden właściciel nie jest jeszcze ustawiony
+        const ownerRef = doc(db, 'artifacts', appId, 'internal', 'owner');
+        await setDoc(ownerRef, { uid: myUid });
+        await showAlert("SUKCES!", "Zostałeś pierwszym administratorem. Od teraz tylko Ty masz dostęp do tego panelu.");
+        // onSnapshot listener automatycznie zaktualizuje `ownerUid` i przyzna dostęp
+      } else if (myUid === ownerUid) {
+        // Poprawny właściciel, przyznaj dostęp
         window.history.replaceState({}, '', '?admin=true');
         setView('admin');
         setShowAdminForm(false);
         setAdminEmail('');
         setAdminPassword('');
       } else {
-        await showAlert("ZALOGOWANO!", "Twoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
-        console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
-        console.log(myUid);
+        await showAlert("BŁĄD DOSTĘPU", "To konto nie ma uprawnień administratora dla tego turnieju.");
+        await signOut(auth);
       }
     } catch (error) {
       console.error("Błąd logowania admina:", error, { code: error.code });
@@ -481,8 +499,8 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === OWNER_UID, isDevAdmin });
-      if (user?.uid === OWNER_UID) {
+      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === ownerUid, isDevAdmin });
+      if (user?.uid === ownerUid) {
         // Prawdziwe wylogowanie tylko dla administratora
         setLoading(true);
         await signOut(auth);
@@ -610,7 +628,7 @@ export default function App() {
     <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
       {/* Ten komponent został przypadkowo usunięty w poprzedniej wersji, co powodowało błąd. */}
-      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={(user?.uid === OWNER_UID) || isDevAdmin} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
+      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={(user?.uid === ownerUid) || isDevAdmin} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
@@ -642,7 +660,7 @@ export default function App() {
       </header>
 
       <main className="max-w-4xl mx-auto p-6">
-        {view === 'admin' && (user?.uid === OWNER_UID || isDevAdmin) ? (
+        {view === 'admin' && (user?.uid === ownerUid || isDevAdmin) ? (
           <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} handleUpdateConfig={handleUpdateConfig} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
           <QuizView key={currentStationId} station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
@@ -654,7 +672,7 @@ export default function App() {
       </main>
 
       {/* Pływający przycisk REŻYSERKA dla admina */}
-      {(user?.uid === OWNER_UID || isDevAdmin) && (
+      {(user?.uid === ownerUid || isDevAdmin) && (
         <button
           onClick={() => {
             console.log('Toggling reżyserka. current:', isReżyserkaOpen);
@@ -668,7 +686,7 @@ export default function App() {
       )}
 
       {/* Pływający przełącznik QR/KLIK dla admina */}
-      {(user?.uid === OWNER_UID || isDevAdmin) && (
+      {(user?.uid === ownerUid || isDevAdmin) && (
         <div
           className={`fixed bottom-24 left-6 z-[100] ${neoBtn} bg-white text-black p-2 flex items-center gap-2 text-xs`}
         >
@@ -735,7 +753,7 @@ class ErrorBoundary extends React.Component {
 }
 
 // --- ADMIN VIEW ---
-function AdminView({ appConfig, stations, onLogout, handleUpdateConfig }) {
+function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const clearDatabase = async () => {
@@ -773,27 +791,6 @@ function AdminView({ appConfig, stations, onLogout, handleUpdateConfig }) {
           <button onClick={onLogout} className="font-mono text-[10px] font-bold tracking-widest uppercase bg-slate-200 text-black px-3 py-2 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] shadow-neo-sm flex items-center gap-1 shrink-0">
             <LogOut className="w-4 h-4" /> WYLOGUJ
           </button>
-      </div>
-
-      {/* ZARZĄDZANIE CZASEM */}
-      <div className={`${neoCard} bg-white p-8`}>
-        <h3 className="text-xl font-[900] uppercase mb-4">USTAW CZAS ZAKOŃCZENIA</h3>
-          <div className="font-mono text-[11px] uppercase mb-3 text-slate-600">
-            Wyświetlany czas zakończenia: <span className="font-[900] text-black">{appConfig?.endTime || 'brak'}</span>
-          </div>
-        <input 
-          type="text" 
-          placeholder="np. 15:30"
-          value={displayedNewTime} 
-          onChange={e => setNewTime(e.target.value)} 
-          className="w-full p-3 border-[3px] border-black rounded-lg mb-4" 
-        />
-        <button 
-          onClick={() => handleUpdateConfig('endTime', displayedNewTime)} 
-          className={`${neoBtn} bg-black text-white w-full py-3`}
-        >
-          ZAPISZ CZAS
-        </button>
       </div>
 
       {/* LINKI DO STACJI (GENERATOR) */}
