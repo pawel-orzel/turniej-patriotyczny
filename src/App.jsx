@@ -937,29 +937,50 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const isDone = userData?.completedStations?.includes(station.id);
   const [localScore, setLocalScore] = useState(0);
   const [questionCodes, setQuestionCodes] = useState({});
+  
+  useEffect(() => {
+    // Resetuj stan, gdy stacja się zmienia
+    setAnsweredQuestions(new Set(userData?.answeredQuestions?.[station.id] || []));
+  }, [station.id, userData?.answeredQuestions]);
 
-  const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
-  const [unlockedQuestions, setUnlockedQuestions] = useState(new Set());
-  const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
-  const [selectedOptions, setSelectedOptions] = useState({});
+  const [activeQuestionIdx, setActiveQuestionIdx] = useState(() => station.questions?.findIndex((q, i) => !answeredQuestions.has(i)) ?? 0);
+  const [selectedOptions, setSelectedOptions] = useState(() => 
+    userData?.selectedOptions?.[station.id] || {}
+  );
+  const [savedMessage, setSavedMessage] = useState('');
+  const [answeredCorrectly, setAnsweredCorrectly] = useState(() => {
+    const initialCorrect = new Set();
+    const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
+    answeredInStation.forEach(qIdx => {
+      const question = station.questions?.[qIdx];
+      const selected = userData.selectedOptions?.[station.id]?.[qIdx];
+      if (question && selected !== undefined && question.correct === selected) {
+        initialCorrect.add(qIdx);
+      }
+    });
+    return initialCorrect;
+  });
 
   useEffect(() => {
-    setLocalScore(0);
-    setQuestionCodes({});
-    setActiveQuestionIdx(null);
-    const answeredOnStation = new Set(userData?.answeredQuestions?.[station.id] || []);
-    setAnsweredQuestions(answeredOnStation);
-    setUnlockedQuestions(answeredOnStation); // Odblokowane to co najmniej te, na które już odpowiedziano
+    const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
+    setAnsweredQuestions(new Set(answeredInStation));
     setSelectedOptions(userData?.selectedOptions?.[station.id] || {});
-
-    if (stationIdRef.current !== station.id) {
-      stationIdRef.current = station.id;
-    }
   }, [station.id, userData]);
+
+  const localScore = useMemo(() => {
+    if (!station.questions || !answeredCorrectly.size) return 0;
+    let score = 0;
+    answeredCorrectly.forEach(questionIdx => {
+      const question = station.questions[questionIdx];
+      if (question) {
+        score += question.points || 0;
+      }
+    });
+    return score;
+  }, [answeredCorrectly, station.questions]);
 
   useEffect(() => {
     // Przewijanie do aktywnego pytania
-
     if (activeQuestionIdx !== null && questionRefs.current[activeQuestionIdx]) {
       setTimeout(() => {
         questionRefs.current[activeQuestionIdx].scrollIntoView({
