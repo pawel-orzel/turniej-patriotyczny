@@ -484,7 +484,7 @@ export default function App() {
 
   if (loading) return <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
-  const isPassportScreen = view === 'passport' || (user && !userData && view !== 'admin');
+  const isPassportScreen = view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm);
 
   if (isPassportScreen) {
     return (
@@ -536,7 +536,7 @@ export default function App() {
                 onClick={handleRegister}
                 className={`${neoBtn} w-full py-5 bg-[#DC2626] text-white font-[900] uppercase`}
               >
-                {userData ? 'ZAPISZ NICK I WRÓĆ' : 'OTWÓRZ PASZPORT'}
+                {userData?.nick ? 'ZAPISZ NICK I WRÓĆ' : 'OTWÓRZ PASZPORT'}
               </button>
               <button onClick={() => setShowRules(true)} className="mt-4 w-full py-3 bg-slate-100 border-[3px] border-black rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all font-[900] font-mono text-[11px] uppercase text-slate-700">
                 REGULAMIN I RODO
@@ -708,15 +708,6 @@ function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) 
         </button>
       </div>
 
-      {/* ZARZĄDZANIE FINAŁEM */}
-      <div className={`${neoCard} p-8 bg-blue-50 border-dashed border-[#3B82F6] text-center`}>
-        <h3 className="text-2xl font-[900] uppercase leading-tight mb-4 text-[#3B82F6]">REŻYSERKA FINAŁU</h3>
-        <p className="font-mono text-xs text-slate-600 mb-6">Zarządzaj pytaniami na żywo dla Półfinału i Finału.</p>
-        <button onClick={() => document.getElementById('rezyserka-btn')?.click()} className={`${neoBtn} w-full py-5 bg-[#3B82F6] text-white font-[900] uppercase`}>
-          OTWÓRZ REŻYSERKĘ
-        </button>
-      </div>
-
       {/* LINKI DO STACJI (GENERATOR) */}
       <div className={`${neoCard} bg-white p-8`}>
         <h3 className="text-xl font-[900] uppercase mb-4">LINKI DO KODÓW QR STACJI</h3>
@@ -748,13 +739,6 @@ function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) 
             );
           })}
         </div>
-      </div>
-
-      {/* UID ADMINA */}
-      <div className={`${neoCard} bg-white p-8`}>
-        <h3 className="text-xl font-[900] uppercase mb-4">TWÓJ IDENTYFIKATOR ADMINA</h3>
-        <p className="font-mono text-xs text-slate-500 mb-2">Skopiuj ten identyfikator i wklej go do stałej `OWNER_UID` w pliku App.jsx, aby zabezpieczyć ten panel.</p>
-        <input type="text" readOnly value={user?.uid || 'Brak UID'} className="w-full p-3 bg-slate-100 border-2 border-black rounded-lg font-mono text-sm" />
       </div>
 
       {/* RESETOWANIE */}
