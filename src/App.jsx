@@ -975,8 +975,13 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
   useEffect(() => {
     const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
-    const nextAnswered = new Set(answeredInStation);
     const nextSelected = userData?.selectedOptions?.[station.id] || {};
+
+    if (!answeredInStation.length && Object.keys(nextSelected).length === 0) {
+      return;
+    }
+
+    const nextAnswered = new Set(answeredInStation);
     const nextCorrect = new Set();
 
     answeredInStation.forEach((qIdx) => {
@@ -986,13 +991,6 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
         nextCorrect.add(qIdx);
       }
     });
-
-    if (answeredInStation.length === 0 && Object.keys(nextSelected).length === 0) {
-      setAnsweredQuestions(new Set());
-      setSelectedOptions({});
-      setAnsweredCorrectly(new Set());
-      return;
-    }
 
     setAnsweredQuestions(prev => {
       const merged = new Set(prev);
