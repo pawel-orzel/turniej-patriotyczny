@@ -896,12 +896,8 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
               key={st.id} 
               onClick={() => {
                 if (isDone) return;
-                if (appConfig?.stationsClickable) {
-                  setCurrentStationId(st.id);
-                  setView('quiz');
-                } else {
-                  showAlert("ZESKANUJ KOD QR", "Aby odblokować to wyzwanie, udaj się na wybrane stanowisko i zeskanuj jego kod QR!");
-                }
+                setCurrentStationId(st.id);
+                setView('quiz');
               }}
               className={`${neoCard} bg-white p-8 flex flex-col justify-between min-h-[220px] transition-all ${isDone ? 'opacity-50 grayscale' : 'cursor-pointer hover:translate-y-[-4px]'}`}
             >
