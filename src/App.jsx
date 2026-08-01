@@ -59,6 +59,7 @@ const neoBtn = "border-[3px] border-black shadow-neo-sm active:shadow-none activ
 const neoTag = "font-mono text-[10px] tracking-widest uppercase border-2 border-black px-3 py-1 rounded-full inline-block";
 const STATIONS_CACHE_KEY = 'stations_cache';
 const CACHE_EXPIRATION_MS = 2 * 60 * 1000; // 2 minuty
+const STAFF_SESSION_KEY = 'staff_session';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -72,7 +73,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showAdminForm, setShowAdminForm] = useState(false);
-  const [adminEmail, setAdminEmail] = useState('');
+  const [adminEmail, setAdminEmail] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const stored = window.localStorage.getItem(STAFF_SESSION_KEY);
+      if (!stored) return '';
+      const parsed = JSON.parse(stored);
+      return typeof parsed?.email === 'string' ? parsed.email : '';
+    } catch {
+      return '';
+    }
+  });
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState(null);
   const [adminAuthLastResponse, setAdminAuthLastResponse] = useState(null);
@@ -438,6 +449,20 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (!adminEmail) {
+        window.localStorage.removeItem(STAFF_SESSION_KEY);
+        return;
+      }
+      const nextValue = JSON.stringify({ email: adminEmail });
+      window.localStorage.setItem(STAFF_SESSION_KEY, nextValue);
+    } catch (err) {
+      console.warn('Nie udało się zapisać stanu logowania sztabu w przeglądarce', err);
+    }
+  }, [adminEmail]);
+
   const handleAdminLogin = async () => {
     if (!adminEmail || !adminPassword) {
       await showAlert("BRAK DANYCH", "Wpisz email i hasło!");
@@ -490,6 +515,11 @@ export default function App() {
       setAdminEmail('');
       setAdminPassword('');
       setAdminLoginError(null);
+      try {
+        window.localStorage.removeItem(STAFF_CREDENTIALS_KEY);
+      } catch (err) {
+        console.warn('Nie udało się usunąć zapisanych danych logowania sztabu', err);
+      }
       setAdminAuthLastResponse(null);
       window.history.replaceState({}, '', window.location.pathname);
 
@@ -923,6 +953,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   const [selectedOptions, setSelectedOptions] = useState({});
+  const [savedMessage, setSavedMessage] = useState('');
 
   useEffect(() => {
     // Przewijanie do aktywnego pytania
@@ -999,12 +1030,12 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
       setLocalScore((prev) => prev + (question.points || 0));
     }
 
-    setAnsweredQuestions((prev) => {
-      const next = new Set(prev);
-      next.add(questionIdx);
-      return next;
-    });
+    const nextAnswered = new Set(answeredQuestions);
+    nextAnswered.add(questionIdx);
+    setAnsweredQuestions(nextAnswered);
     setSelectedOptions((prev) => ({ ...prev, [questionIdx]: optionIdx }));
+    setSavedMessage('ODPOWIEDŹ ZAPISANA');
+
     handleQuestionAnswered({
       stationId: station.id,
       questionIdx,
@@ -1117,6 +1148,11 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                       ) : null}
                       {(isAnswered || selectedOption !== undefined) && (
                         <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                          {savedMessage && isAnswered && (
+                            <div className="mb-2 font-bold uppercase text-[11px] tracking-widest">
+                              {isCorrect ? 'POPRAWNA ODPOWIEDŹ' : 'ZŁA ODPOWIEDŹ'}
+                            </div>
+                          )}
                           {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
                         </div>
                       )}
