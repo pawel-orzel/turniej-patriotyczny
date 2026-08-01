@@ -239,32 +239,32 @@ export default function App() {
       if (!response.ok) {
         throw new Error(`Błąd sieci: ${response.statusText}`);
       }
-      const rawData = await response.json();
+      const rawData = await response.json(); // Pobierz surową odpowiedź
       // Nowy skrypt zwraca dane wewnątrz obiektu `payload`
-      const data = rawData.payload || rawData;
+      const data = rawData.payload || rawData; // Użyj `payload` jeśli istnieje, w przeciwnym razie użyj całego obiektu
 
       // Nowa, uproszczona logika, która pasuje do Twojego skryptu
       const stationsFromSheet = data.stations || {};
 
       const processedStations = {};
       Object.keys(stationsFromSheet).forEach(stationId => {
-        const station = stationsFromSheet[stationId];
+        const station = stationsFromSheet[stationId]; // Pobierz stację
         // Przetwarzanie pytań, aby upewnić się, że format jest poprawny
         const questions = (station.questions || []).map(q => {
           const rawCorrect = Number(q.correct);
-          // Poprawka: Twój skrypt już dostarcza poprawny indeks (0-based), więc nie odejmujemy 1.
+          // Twój skrypt już dostarcza poprawny indeks (0-based), więc nie ma potrzeby odejmowania 1.
           const normalizedCorrect = Number.isFinite(rawCorrect) ? rawCorrect : 0;
           return {
             ...q,
-            options: q.options || [], // Upewnij się, że opcje są tablicą
+            options: q.options || [], // Upewnij się, że `options` to zawsze tablica
             correct: normalizedCorrect
           };
         });
 
         processedStations[stationId] = {
-            ...station,
-            questions,
-            icon: iconMap[(station.iconName || '').toLowerCase()] || Info
+            ...station, // Skopiuj właściwości stacji
+            questions, // Dodaj przetworzone pytania
+            icon: iconMap[(station.iconName || '').toLowerCase()] || Info // Ustaw ikonę
         };
       });
 
@@ -490,6 +490,7 @@ export default function App() {
                 type="email" 
                 placeholder="EMAIL SZTABU..." 
                 className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black outline-none focus:bg-slate-100"
+                autoComplete="email"
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
               />
@@ -497,6 +498,7 @@ export default function App() {
                 type="password" 
                 placeholder="HASŁO..." 
                 className="w-full p-5 border-[3px] border-black rounded-[16px] mb-4 font-black outline-none focus:bg-slate-100"
+                autoComplete="current-password"
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
               />
@@ -716,9 +718,6 @@ function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) 
           <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
           <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
         </div>
-          <button onClick={onLogout} className="font-mono text-[10px] font-bold tracking-widest uppercase bg-slate-200 text-black px-3 py-2 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] shadow-neo-sm flex items-center gap-1 shrink-0">
-            <LogOut className="w-4 h-4" /> WYLOGUJ
-          </button>
       </div>
 
       {/* LINKI DO STACJI (GENERATOR) */}
