@@ -8,7 +8,7 @@ export default function RegRodo() {
         <ul className="list-disc pl-4 space-y-2 text-slate-700 text-sm">
           <li>Turniej składa się z eliminacji mobilnych oraz półfinału i finału na scenie.</li>
           <li>W eliminacjach gracze zdobywają punkty za poprawne odpowiedzi na stacjach po uprzednim wpisaniu tajnego kodu od instruktora.</li>
-          <li>O miejscu w rankingu decyduje suma punktów, a w przypadku remisu - czas zdobycia ostatniego punktu (kto pierwszy, ten lepszy). W ostateczności brany jest pod uwagę najkrótszy czas ukończenia gry.</li>
+          <li>O miejscu w rankingu decyduje suma punktów. W przypadku remisu, wyżej jest gracz, który osiągnął swój wynik w krótszym czasie (licząc od momentu rejestracji do ostatniej odpowiedzi).</li>
           <li>Najlepszych graczy awansuje do fazy LIVE (Półfinału i Finału) rozgrywanej na scenie głównej.</li>
         </ul>
       </section>
