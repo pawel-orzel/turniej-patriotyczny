@@ -946,6 +946,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const isDone = userData?.completedStations?.includes(station.id);
   const [isSaving, setIsSaving] = useState(false);
   const [questionCodes, setQuestionCodes] = useState({});
+  const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set());
   const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   
   const getQuestionCodeValue = useCallback((question) => {
@@ -1021,18 +1022,28 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
     const enteredCode = (questionCodes[idx] || '').toString().trim().toUpperCase();
 
-    if (enteredCode === expectedCode) { // On successful unlock
+    if (enteredCode === expectedCode) {
+      setUnlockedQuestions(prev => new Set(prev).add(idx));
       setQuestionCodes((prev) => ({ ...prev, [idx]: '' }));
       setActiveQuestionIdx(idx);
     } else {
       await showAlert("ZŁY KOD", "Zapytaj Strażnika pytania o poprawny kod.");
     }
   };
-
   const handleOptionClick = async (questionIdx, optionIdx) => {
     if (isSaving || submitting || answeredQuestions.has(questionIdx)) return;
     const question = station.questions?.[questionIdx];
+    if (!question) return;
 
+    const needsCode = requiresCode(question);
+    const isUnlocked = unlockedQuestions.has(questionIdx);
+
+    if (needsCode && !isUnlocked) {
+      await showAlert("PYTANIE ZABLOKOWANE", "Musisz najpierw odblokować to pytanie za pomocą poprawnego kodu.");
+      setActiveQuestionIdx(questionIdx); // Otwórz pytanie, żeby pokazać pole na kod
+      return;
+    }
+    
     const isCorrect = optionIdx === question.correct;
     if (isCorrect) {
       setAnsweredCorrectly(prev => {
@@ -1080,7 +1091,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
       <div className="space-y-6">
         {station.questions?.map((question, idx) => {
           const needsCode = requiresCode(question);
-          const isCodeEntered = (questionCodes[idx] || '').toString().trim().toUpperCase() === (getQuestionCodeValue(question) || '').toString().trim().toUpperCase();
+          const isUnlocked = unlockedQuestions.has(idx);
           const isAnswered = answeredQuestions.has(idx);
           const selectedOption = selectedOptions[idx];
           const isActive = activeQuestionIdx === idx;
@@ -1099,7 +1110,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                     <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400 mb-2">Pytanie {idx + 1}</div>
                     <h4 className="text-[clamp(1.125rem,6vw,1.25rem)] font-[900] uppercase leading-tight break-words whitespace-normal">{question.question}</h4>
                   </div>
-                  <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full shrink-0 text-center max-w-[120px] md:max-w-none whitespace-normal ${isAnswered ? 'bg-green-100 text-green-700' : (needsCode && !isCodeEntered) ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
+                  <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full shrink-0 text-center max-w-[120px] md:max-w-none whitespace-normal ${isAnswered ? 'bg-green-100 text-green-700' : (needsCode && !isUnlocked) ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
                     {isAnswered ? 'ODPOWIEDZIANE' : needsCode ? 'WYMAGA KODU' : 'OTWARTE'}
                   </div>
                 </div>
@@ -1107,7 +1118,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
               {isActive && (
                 <div className="mt-6 space-y-4">
-                  {needsCode && !isAnswered ? (
+                  {needsCode && !isUnlocked && !isAnswered ? (
                     <>
                       <p className="font-mono text-[11px] text-slate-600 font-bold uppercase text-center leading-tight">Kod zyskasz poprzez wykonanie zadania zleconego przez Strażnika pytania – kod daje dostęp do odpowiedzi.</p>
                       <input
