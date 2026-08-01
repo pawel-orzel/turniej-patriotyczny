@@ -1088,11 +1088,18 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                       {answerOptions.length ? (
                         <div className="grid grid-cols-1 gap-4">
                           {answerOptions.map((opt, optIdx) => {
+                            const isSelected = selectedOption === optIdx;
+                            const isCorrectAnswer = optIdx === question.correct;
                             let btnStyle = 'bg-white text-black';
-                            if (isAnswered) {
-                              if (optIdx === question.correct) btnStyle = 'bg-green-500 text-white border-green-700';
-                              else if (optIdx === selectedOption) btnStyle = 'bg-red-500 text-white border-red-700';
+
+                            if (isAnswered || isSelected) {
+                              if (isCorrectAnswer) {
+                                btnStyle = 'bg-green-600 text-white border-green-700';
+                              } else if (isSelected) {
+                                btnStyle = 'bg-red-600 text-white border-red-700';
+                              }
                             }
+
                             return (
                               <button
                                 key={optIdx}
@@ -1107,7 +1114,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                           })}
                         </div>
                       ) : null}
-                      {isAnswered && (
+                      {(isAnswered || selectedOption !== undefined) && (
                         <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
                           {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
                         </div>
