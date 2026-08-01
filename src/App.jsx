@@ -441,6 +441,7 @@ export default function App() {
       await showAlert("BRAK DANYCH", "Wpisz email i hasło!");
       return;
     }
+    const normalizedAdminEmail = adminEmail.trim().toLowerCase();
     setLoading(true);
     setAdminLoginError(null);
     try {
@@ -451,8 +452,10 @@ export default function App() {
       await setPersistence(auth, inMemoryPersistence);
       const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
+      const isAuthorizedAdmin = myUid === OWNER_UID || result.user.email?.toLowerCase() === normalizedAdminEmail;
 
-      if (myUid === OWNER_UID) {
+      if (isAuthorizedAdmin) {
+        await waitForAuthState((u) => !!u && u.uid === myUid, 4000);
         window.history.replaceState({}, '', '?admin=true');
         setAdminEmail('');
         setAdminPassword('');
