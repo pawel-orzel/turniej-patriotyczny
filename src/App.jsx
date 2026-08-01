@@ -36,7 +36,7 @@ import RegRodo from './reg.RODO';
 
 const OWNER_UID = "fIGFNjIUm6Onldwe27qb7R9vvB63"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_pS03doT4s_32D3Wv20v_bc3m-iFFCS22W_8XbW_B_iI1n_4o2s-v-ZJbC3y_x-Y/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
 const firebaseConfig = {
@@ -236,13 +236,26 @@ export default function App() {
 
     try {
       const response = await fetch(GOOGLE_SCRIPT_URL);
+      const contentType = response.headers.get('content-type') || '';
       if (!response.ok) {
-        throw new Error(`Błąd sieci: ${response.statusText}`);
+        const body = await response.text();
+        console.error('Błąd ładowania skryptu Google Apps Script:', response.status, response.statusText, body);
+        throw new Error(`Błąd ładowania skryptu: ${response.status} ${response.statusText}`);
       }
+      if (contentType.includes('text/html')) {
+        const body = await response.text();
+        console.error('Odpowiedź ze skryptu zawiera HTML zamiast JSON:', body);
+        throw new Error('Odpowiedź serwera ma format HTML zamiast JSON. Sprawdź URL i wdrożenie skryptu Google Apps Script.');
+      }
+
       const rawData = await response.json();
       const data = rawData.payload || rawData;
-      const stationsFromSheet = data.stations || {};
+      if (!data || typeof data !== 'object' || !data.stations || typeof data.stations !== 'object') {
+        console.error('Niepoprawny format danych stacji:', rawData);
+        throw new Error('Skrypt zwrócił niepoprawny format danych. Sprawdź treść odpowiedzi i strukturę JSON.');
+      }
 
+      const stationsFromSheet = data.stations;
       const processedStations = {};
       Object.keys(stationsFromSheet).forEach((stationId) => {
         const station = stationsFromSheet[stationId] || {};
@@ -279,7 +292,6 @@ export default function App() {
       });
 
       setStations(processedStations);
-      // Zapisz do cache
       try {
         localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
       } catch {
@@ -287,7 +299,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
-      setStationsError("Nie udało się załadować stacji. Sprawdź połączenie z internetem.");
+      setStationsError(`Nie udało się załadować stacji. ${error.message}`);
     }
   }, []);
 
