@@ -11,28 +11,19 @@ service cloud.firestore {
     }
 
     function ownerUid() {
-      // UID właściciela jest teraz przechowywane w dokumencie, a nie w kodzie.
-      return get(/databases/$(database)/documents/artifacts/$(request.path[2])/internal/owner).data.uid;
+      // Twoje stałe UID właściciela (Główny Admin)
+      // WAŻNE: Musi być identyczne jak OWNER_UID w pliku App.jsx
+      return "fIGFNjIUm6Onldwe27qb7R9vvB63";
     }
 
     function isOwner() {
-      // Sprawdź, czy dokument właściciela istnieje, zanim spróbujesz go odczytać.
-      return exists(/databases/$(database)/documents/artifacts/$(request.path[2])/internal/owner) && isSignedIn() && request.auth.uid == ownerUid();
+      return isSignedIn() && request.auth.uid == ownerUid();
     }
     
     // ==========================================
     // 2. GŁÓWNA STRUKTURA DANYCH APLIKACJI
     // ==========================================
     match /artifacts/{appId} {
-
-      // --- KOLEKCJA WEWNĘTRZNA (np. do przechowywania UID admina) ---
-      match /internal/{document=**} {
-        // Każdy zalogowany może odczytać, kto jest właścicielem.
-        allow read: if isSignedIn();
-        // Zapis jest dozwolony tylko wtedy, gdy dokument właściciela jeszcze nie istnieje (jednorazowe ustawienie).
-        // Lub gdy obecny właściciel chce coś zmienić (choć obecnie nie ma takiej potrzeby).
-        allow write: if isSignedIn() && (!exists(path) || isOwner());
-      }
       
       match /public/data {
 

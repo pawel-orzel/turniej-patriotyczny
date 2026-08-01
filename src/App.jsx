@@ -34,6 +34,8 @@ import FinalStage from './final';
 import { showAlert, showConfirm } from './modal';
 import RegRodo from './reg.RODO';
 
+const OWNER_UID = "fIGFNjIUm6Onldwe27qb7R9vvB63"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
+
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_pS03doT4s_32D3Wv20v_bc3m-iFFCS22W_8XbW_B_iI1n_4o2s-v-ZJbC3y_x-Y/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
@@ -74,7 +76,6 @@ export default function App() {
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState(null);
   const [adminAuthLastResponse, setAdminAuthLastResponse] = useState(null);
-  const [ownerUid, setOwnerUid] = useState(null);
   const [showRules, setShowRules] = useState(false);
   const [stationsClickable, setStationsClickable] = useState(false);
   const [isReżyserkaOpen, setIsReżyserkaOpen] = useState(false);
@@ -196,19 +197,6 @@ export default function App() {
       unsubscribe();
       try { if (window.__originalFetch__) window.fetch = window.__originalFetch__; } catch (restoreErr) { console.warn('restore original fetch failed', restoreErr); }
     };
-  }, []);
-
-  useEffect(() => {
-    const ownerRef = doc(db, 'artifacts', appId, 'internal', 'owner');
-    const unsubscribe = onSnapshot(ownerRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setOwnerUid(snapshot.data().uid);
-      } else {
-        // Ustawienie na pusty string sygnalizuje, że żaden właściciel nie został jeszcze ustawiony
-        setOwnerUid('');
-      }
-    }, () => setOwnerUid('')); // W razie błędu uprawnień, również pozwól na ustawienie
-    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -372,13 +360,13 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const sId = params.get('station'); // stationId from URL
     const adminParam = params.get('admin');
-    if (adminParam === 'true' && (user?.uid === ownerUid || isDevAdmin)) {
+    if (adminParam === 'true' && (user?.uid === OWNER_UID || isDevAdmin)) {
       setView('admin');
     } else if (stations[sId] && userData) {
       setCurrentStationId(sId);
       setView('quiz');
     }
-  }, [user, userData, stations, isDevAdmin, ownerUid]); // Reaguj gdy załaduje się user i jego dane
+  }, [user, userData, stations, isDevAdmin]); // Reaguj gdy załaduje się user i jego dane
 
   useEffect(() => {
     if (!user) return;
@@ -449,7 +437,7 @@ export default function App() {
   };
 
   const handleUpdateConfig = async (field, value) => {
-    if (!user || user.uid !== ownerUid) return;
+    if (!user || user.uid !== OWNER_UID) return;
     const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
     try {
       await setDoc(configRef, { [field]: value }, { merge: true });
@@ -472,12 +460,7 @@ export default function App() {
       const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
 
-      if (ownerUid === '') { // Żaden właściciel nie jest jeszcze ustawiony
-        const ownerRef = doc(db, 'artifacts', appId, 'internal', 'owner');
-        await setDoc(ownerRef, { uid: myUid });
-        await showAlert("SUKCES!", "Zostałeś pierwszym administratorem. Od teraz tylko Ty masz dostęp do tego panelu.");
-        // onSnapshot listener automatycznie zaktualizuje `ownerUid` i przyzna dostęp
-      } else if (myUid === ownerUid) {
+      if (myUid === OWNER_UID) {
         // Poprawny właściciel, przyznaj dostęp
         window.history.replaceState({}, '', '?admin=true');
         setView('admin');
@@ -485,7 +468,9 @@ export default function App() {
         setAdminEmail('');
         setAdminPassword('');
       } else {
-        await showAlert("BŁĄD DOSTĘPU", "To konto nie ma uprawnień administratora dla tego turnieju.");
+        await showAlert("ZALOGOWANO!", "Twoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
+        console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
+        console.log(myUid);
         await signOut(auth);
       }
     } catch (error) {
@@ -499,8 +484,8 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === ownerUid, isDevAdmin });
-      if (user?.uid === ownerUid) {
+      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === OWNER_UID, isDevAdmin });
+      if (user?.uid === OWNER_UID) {
         // Prawdziwe wylogowanie tylko dla administratora
         setLoading(true);
         await signOut(auth);
@@ -542,7 +527,7 @@ export default function App() {
     </ErrorBoundary>
   );
 
-  const isPassportScreen = !user || view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm);
+  const isPassportScreen = !user || view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm) || (user && !user.isAnonymous && !userData && !showAdminForm);
 
   if (isPassportScreen) {
     return (
@@ -628,7 +613,7 @@ export default function App() {
     <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
       {/* Ten komponent został przypadkowo usunięty w poprzedniej wersji, co powodowało błąd. */}
-      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={(user?.uid === ownerUid) || isDevAdmin} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
+      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={(user?.uid === OWNER_UID) || isDevAdmin} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
@@ -660,7 +645,7 @@ export default function App() {
       </header>
 
       <main className="max-w-4xl mx-auto p-6">
-        {view === 'admin' && (user?.uid === ownerUid || isDevAdmin) ? (
+        {view === 'admin' && (user?.uid === OWNER_UID || isDevAdmin) ? (
           <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} handleUpdateConfig={handleUpdateConfig} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
           <QuizView key={currentStationId} station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
@@ -672,7 +657,7 @@ export default function App() {
       </main>
 
       {/* Pływający przycisk REŻYSERKA dla admina */}
-      {(user?.uid === ownerUid || isDevAdmin) && (
+      {(user?.uid === OWNER_UID || isDevAdmin) && (
         <button
           onClick={() => {
             console.log('Toggling reżyserka. current:', isReżyserkaOpen);
@@ -686,7 +671,7 @@ export default function App() {
       )}
 
       {/* Pływający przełącznik QR/KLIK dla admina */}
-      {(user?.uid === ownerUid || isDevAdmin) && (
+      {(user?.uid === OWNER_UID || isDevAdmin) && (
         <div
           className={`fixed bottom-24 left-6 z-[100] ${neoBtn} bg-white text-black p-2 flex items-center gap-2 text-xs`}
         >
