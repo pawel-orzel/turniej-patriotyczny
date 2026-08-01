@@ -973,38 +973,6 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     return initialCorrect;
   });
 
-  useEffect(() => {
-    const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
-    const nextSelected = userData?.selectedOptions?.[station.id] || {};
-
-    if (!answeredInStation.length && Object.keys(nextSelected).length === 0) {
-      return;
-    }
-
-    const nextAnswered = new Set(answeredInStation);
-    const nextCorrect = new Set();
-
-    answeredInStation.forEach((qIdx) => {
-      const question = station.questions?.[qIdx];
-      const selected = nextSelected[qIdx];
-      if (question && selected !== undefined && question.correct === selected) {
-        nextCorrect.add(qIdx);
-      }
-    });
-
-    setAnsweredQuestions(prev => {
-      const merged = new Set(prev);
-      answeredInStation.forEach((qIdx) => merged.add(qIdx));
-      return merged;
-    });
-    setSelectedOptions(prev => ({ ...prev, ...nextSelected }));
-    setAnsweredCorrectly(prev => {
-      const merged = new Set(prev);
-      nextCorrect.forEach((qIdx) => merged.add(qIdx));
-      return merged;
-    });
-  }, [station.id, station.questions, userData?.answeredQuestions, userData?.selectedOptions]);
-
   const localScore = useMemo(() => {
     if (!station.questions || !answeredCorrectly.size) return 0;
     let score = 0;
@@ -1077,22 +1045,16 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     }
     
     const isCorrect = optionIdx === question.correct;
-
-    const nextAnswered = new Set(answeredQuestions);
-    nextAnswered.add(questionIdx);
-    setAnsweredQuestions(nextAnswered);
+    
+    // Natychmiastowa aktualizacja stanu lokalnego, aby zablokować interfejs
+    setAnsweredQuestions(prev => new Set(prev).add(questionIdx));
     setSelectedOptions((prev) => ({ ...prev, [questionIdx]: optionIdx }));
     if (isCorrect) {
-      setAnsweredCorrectly(prev => {
-        const next = new Set(prev);
-        next.add(questionIdx);
-        return next;
-      });
+      setAnsweredCorrectly(prev => new Set(prev).add(questionIdx));
     }
     
     setIsSaving(true);
     setSavedMessage('ZAPISYWANIE...');
-    setAnsweredQuestions(prev => new Set(prev).add(questionIdx)); // Natychmiastowa blokada
     await handleQuestionAnswered({
       stationId: station.id,
       questionIdx,
