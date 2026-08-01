@@ -586,7 +586,7 @@ export default function App() {
 
       <main className="max-w-4xl mx-auto p-6">
         {view === 'admin' && user?.uid === OWNER_UID ? (
-          <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} />
+          <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} handleUpdateConfig={handleUpdateConfig} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
           <QuizView station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
         ) : view === 'leaderboard' ? (
