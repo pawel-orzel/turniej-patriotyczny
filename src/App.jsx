@@ -484,7 +484,7 @@ export default function App() {
 
   if (loading) return <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
 
-  const isPassportScreen = view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm);
+  const isPassportScreen = !user || view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm);
 
   if (isPassportScreen) {
     return (
