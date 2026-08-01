@@ -161,33 +161,23 @@ export default function App() {
     document.head.appendChild(link);
 
     const initAuth = async () => {
-      try {
-        // Try to set local persistence which is best for keeping users signed in.
-        await setPersistence(auth, browserLocalPersistence);
-      } catch (err) {
-        // This can fail in some environments (e.g., private browsing in Edge/Firefox).
-        // Fallback to in-memory persistence.
-        console.warn('Błąd przy ustawianiu utrwalania sesji (local), przechodzę na tryb w pamięci (in-memory).', err);
-        try {
-          await setPersistence(auth, inMemoryPersistence);
-        } catch (fallbackErr) {
-          console.error('Nie udało się ustawić żadnego trybu utrwalania sesji.', fallbackErr);
-        }
-      }
+      // Czekaj, aż obiekt auth będzie w pełni gotowy
+      await auth.authStateReady();
+      const currentUser = auth.currentUser;
 
-      const customToken = typeof window !== 'undefined' ? window.__initial_auth_token : undefined;
-      // After attempting to set persistence, manage the sign-in state.
-      try {
-        if (customToken) {
-          await signInWithCustomToken(auth, customToken);
-        } else if (!auth.currentUser) { // Only sign in if persistence didn't restore a user.
+      if (!currentUser) {
+        try {
+          await setPersistence(auth, browserLocalPersistence);
           await signInAnonymously(auth);
+        } catch (err) {
+          console.error("Błąd logowania anonimowego:", err);
+          setLoading(false);
+          return;
         }
-      } catch (err) { console.error("Błąd logowania:", err); }
-      
-      if (!auth.currentUser) {
-        setLoading(false); // W razie kompletnej porażki zwolnij ekran ładowania
       }
+      // Ustaw użytkownika i zakończ ładowanie dopiero po ustabilizowaniu stanu
+      setUser(auth.currentUser);
+      setLoading(false);
     };
     initAuth();
 
@@ -219,11 +209,6 @@ export default function App() {
     } catch (e) { console.warn('Could not override fetch for debugging', e); }
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return () => {
-      unsubscribe();
       try { if (window.__originalFetch__) window.fetch = window.__originalFetch__; } catch (restoreErr) { console.warn('restore original fetch failed', restoreErr); }
     };
   }, []);
@@ -402,7 +387,7 @@ export default function App() {
         payload.timestamp = firstLoginAt;
         payload.scoreUpdatedAt = serverTimestamp();
       }
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), payload, { merge: true });
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), payload);
       setView('home');
     } catch (error) {
       console.error("Błąd podczas rejestracji:", error);
@@ -949,11 +934,10 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set());
   const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   
-  const getQuestionCodeValue = useCallback((question) => {
-    if (!question) return undefined;
-    const code = question.code ?? question.kod;
-    return (code !== undefined && code !== null && String(code).trim() !== '') ? String(code).trim() : undefined;
-  }, []);
+  useEffect(() => {
+    // Resetuj stan, gdy stacja się zmienia
+    setAnsweredQuestions(new Set(userData?.answeredQuestions?.[station.id] || []));
+  }, [station.id, userData?.answeredQuestions]);
 
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(() => station.questions?.findIndex((q, i) => !answeredQuestions.has(i)) ?? 0);
   const [selectedOptions, setSelectedOptions] = useState(() => 
@@ -972,6 +956,12 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     });
     return initialCorrect;
   });
+
+  useEffect(() => {
+    const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
+    setAnsweredQuestions(new Set(answeredInStation));
+    setSelectedOptions(userData?.selectedOptions?.[station.id] || {});
+  }, [station.id, userData]);
 
   const localScore = useMemo(() => {
     if (!station.questions || !answeredCorrectly.size) return 0;
@@ -1009,7 +999,11 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
   const maxPoints = station.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
 
-  const requiresCode = useCallback((question) => !!getQuestionCodeValue(question), [getQuestionCodeValue]);
+  const getQuestionCodeValue = (question) => {
+    if (!question) return undefined;
+    const code = question.code ?? question.kod;
+    return (code !== undefined && code !== null && String(code).trim() !== '') ? String(code).trim() : undefined;
+  };
 
   const handleUnlockQuestion = async (idx) => {
     const question = station.questions?.[idx];
@@ -1035,7 +1029,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     const question = station.questions?.[questionIdx];
     if (!question) return;
 
-    const needsCode = requiresCode(question);
+    const needsCode = !!getQuestionCodeValue(question);
     const isUnlocked = unlockedQuestions.has(questionIdx);
 
     if (needsCode && !isUnlocked) {
