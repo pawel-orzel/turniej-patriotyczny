@@ -1188,7 +1188,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                             const isCorrectAnswer = optIdx === question.correct;
                             let btnStyle = 'bg-white text-black';
 
-                            if (isAnswered || isSelected) {
+                            if (isAnswered) {
                               if (isCorrectAnswer) {
                                 btnStyle = 'bg-green-600 text-white border-green-700';
                               } else if (isSelected) {
