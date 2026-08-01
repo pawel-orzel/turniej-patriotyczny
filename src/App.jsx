@@ -947,13 +947,25 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const questionRefs = useRef([]); // Ref do przewijania
   const isDone = userData?.completedStations?.includes(station.id);
-  const [localScore, setLocalScore] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   const [questionCodes, setQuestionCodes] = useState({});
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
   const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   const [selectedOptions, setSelectedOptions] = useState({});
   const [savedMessage, setSavedMessage] = useState('');
+  const [answeredCorrectly, setAnsweredCorrectly] = useState(() => new Set());
+
+  const localScore = useMemo(() => {
+    if (!station.questions || !answeredCorrectly.size) return 0;
+    let score = 0;
+    answeredCorrectly.forEach(questionIdx => {
+      const question = station.questions[questionIdx];
+      if (question) {
+        score += question.points || 0;
+      }
+    });
+    return score;
+  }, [answeredCorrectly, station.questions]);
 
   useEffect(() => {
     // Przewijanie do aktywnego pytania
@@ -1027,7 +1039,11 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
     const isCorrect = optionIdx === question.correct;
     if (isCorrect) {
-      setLocalScore((prev) => prev + (question.points || 0));
+      setAnsweredCorrectly(prev => {
+        const next = new Set(prev);
+        next.add(questionIdx);
+        return next;
+      });
     }
 
     const nextAnswered = new Set(answeredQuestions);
