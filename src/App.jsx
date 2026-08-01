@@ -973,6 +973,40 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     return initialCorrect;
   });
 
+  useEffect(() => {
+    const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
+    const nextAnswered = new Set(answeredInStation);
+    const nextSelected = userData?.selectedOptions?.[station.id] || {};
+    const nextCorrect = new Set();
+
+    answeredInStation.forEach((qIdx) => {
+      const question = station.questions?.[qIdx];
+      const selected = nextSelected[qIdx];
+      if (question && selected !== undefined && question.correct === selected) {
+        nextCorrect.add(qIdx);
+      }
+    });
+
+    if (answeredInStation.length === 0 && Object.keys(nextSelected).length === 0) {
+      setAnsweredQuestions(new Set());
+      setSelectedOptions({});
+      setAnsweredCorrectly(new Set());
+      return;
+    }
+
+    setAnsweredQuestions(prev => {
+      const merged = new Set(prev);
+      answeredInStation.forEach((qIdx) => merged.add(qIdx));
+      return merged;
+    });
+    setSelectedOptions(prev => ({ ...prev, ...nextSelected }));
+    setAnsweredCorrectly(prev => {
+      const merged = new Set(prev);
+      nextCorrect.forEach((qIdx) => merged.add(qIdx));
+      return merged;
+    });
+  }, [station.id, station.questions, userData?.answeredQuestions, userData?.selectedOptions]);
+
   const localScore = useMemo(() => {
     if (!station.questions || !answeredCorrectly.size) return 0;
     let score = 0;
@@ -1057,6 +1091,13 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     nextAnswered.add(questionIdx);
     setAnsweredQuestions(nextAnswered);
     setSelectedOptions((prev) => ({ ...prev, [questionIdx]: optionIdx }));
+    if (isCorrect) {
+      setAnsweredCorrectly(prev => {
+        const next = new Set(prev);
+        next.add(questionIdx);
+        return next;
+      });
+    }
     
     setIsSaving(true);
     setSavedMessage('ZAPISYWANIE...');
