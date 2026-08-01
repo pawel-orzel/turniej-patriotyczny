@@ -1099,7 +1099,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                     <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400 mb-2">Pytanie {idx + 1}</div>
                     <h4 className="text-[clamp(1.125rem,6vw,1.25rem)] font-[900] uppercase leading-tight break-words whitespace-normal">{question.question}</h4>
                   </div>
-                  <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full shrink-0 text-center max-w-[120px] md:max-w-none whitespace-normal ${isAnswered ? 'bg-green-100 text-green-700' : isUnlocked ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
+                  <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full shrink-0 text-center max-w-[120px] md:max-w-none whitespace-normal ${isAnswered ? 'bg-green-100 text-green-700' : (needsCode && !isCodeEntered) ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
                     {isAnswered ? 'ODPOWIEDZIANE' : needsCode ? 'WYMAGA KODU' : 'OTWARTE'}
                   </div>
                 </div>
