@@ -60,6 +60,8 @@ const STATIONS_CACHE_KEY = 'stations_cache';
 const CACHE_EXPIRATION_MS = 2 * 60 * 1000; // 2 minuty
 
 export default function App() {
+  // Debug: log high-level render info
+  console.log('App render', { view, loading, user: !!user, userDataLoaded: !!userData, isReżyserkaOpen });
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [nick, setNick] = useState('');
@@ -471,12 +473,17 @@ export default function App() {
     }
   }, [userData?.nick, nick]);
 
-  if (loading) return <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>;
+  if (loading) return (
+    <ErrorBoundary>
+      <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>
+    </ErrorBoundary>
+  );
 
   const isPassportScreen = !user || view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm);
 
   if (isPassportScreen) {
     return (
+      <ErrorBoundary>
       <div className="min-h-[100dvh] bg-[#F9FAFB] flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
         {showRules && <RulesModal onClose={() => setShowRules(false)} />}
         <div className={`${neoCard} bg-white w-full max-w-sm p-10 text-center`}>
@@ -537,10 +544,12 @@ export default function App() {
           )}
         </div>
       </div>
+      </ErrorBoundary>
     );
   }
 
     return (
+    <ErrorBoundary>
     <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
       {/* Ten komponent został przypadkowo usunięty w poprzedniej wersji, co powodowało błąd. */}
@@ -632,8 +641,40 @@ export default function App() {
           </nav>
         </div>
       )}
-    </div>
-  );
+      </div>
+    </ErrorBoundary>
+    );
+}
+
+// Simple Error Boundary to catch render errors and display them instead of a white screen
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error('ErrorBoundary caught an error', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[100dvh] bg-white p-8 text-black flex items-center justify-center">
+          <div className="max-w-xl">
+            <h2 className="text-2xl font-bold mb-4">Wystąpił błąd aplikacji</h2>
+            <pre className="bg-slate-100 p-4 rounded">{String(this.state.error && this.state.error.toString())}</pre>
+            <p className="mt-4">Sprawdź konsolę deweloperską (F12) po więcej informacji.</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 // --- ADMIN VIEW ---
