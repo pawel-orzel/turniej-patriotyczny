@@ -447,10 +447,12 @@ export default function App() {
       if (myUid === OWNER_UID) {
         // Poprawny właściciel, przyznaj dostęp
         window.history.replaceState({}, '', '?admin=true');
-        setView('admin');
-        setShowAdminForm(false);
         setAdminEmail('');
         setAdminPassword('');
+        // Te dwie linijki muszą być na końcu, aby zapewnić płynne przejście
+        // i uniknąć "białego ekranu" lub konieczności odświeżania.
+        setView('admin');
+        setShowAdminForm(false);
       } else {
         await showAlert("ZALOGOWANO!", "Twoje UID to:\n" + myUid + "\n\nSkopiuj je (jest też w konsoli - wciśnij F12) i wklej jako OWNER_UID na samej górze kodu!");
         console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");

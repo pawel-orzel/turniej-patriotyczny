@@ -89,12 +89,6 @@ export default function FinalStage({ db, user, appId, stations, isAdmin, isOpen,
                     <span>ETAP: {liveStage?.stageName || '---'}</span>
                     <span>GRACZY: {liveStage?.eligibleUids?.length || 0}</span>
                   </div>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className={`${neoBtn} bg-black text-white text-xs uppercase px-4 py-2`}
-                  >
-                    ZAMKNIJ
-                  </button>
                 </div>
               </div>
 
