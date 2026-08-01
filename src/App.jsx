@@ -963,13 +963,15 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const [answeredCorrectly, setAnsweredCorrectly] = useState(() => {
     const initialCorrect = new Set();
     const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
-    answeredInStation.forEach(qIdx => {
-      const question = station.questions?.[qIdx];
-      const selected = userData.selectedOptions?.[station.id]?.[qIdx];
-      if (question && selected !== undefined && question.correct === selected) {
-        initialCorrect.add(qIdx);
-      }
-    });
+    if (Array.isArray(answeredInStation)) {
+      answeredInStation.forEach(qIdx => {
+        const question = station.questions?.[qIdx];
+        const selected = userData.selectedOptions?.[station.id]?.[qIdx];
+        if (question && selected !== undefined && question.correct === selected) {
+          initialCorrect.add(qIdx);
+        }
+      });
+    }
     return initialCorrect;
   });
 
