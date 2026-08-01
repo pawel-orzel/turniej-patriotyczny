@@ -33,7 +33,7 @@ import {
 import FinalStage from './final';
 import { showAlert, showConfirm } from './modal';
 import RegRodo from './reg.RODO';
-import { AUTH_ROLES, getAuthRole } from './authHelpers';
+import { AUTH_ROLES, canAccessAdminPanel, getAuthRole } from './authHelpers';
 
 const OWNER_UID = "fIGFNjIUm6Onldwe27qb7R9vvB63"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 
@@ -83,7 +83,9 @@ export default function App() {
   const [elapsedTime, setElapsedTime] = useState('00:00');
 
   const isDevAdmin = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const [isAdminSession, setIsAdminSession] = useState(false);
   const currentRole = getAuthRole(user, OWNER_UID, isDevAdmin);
+  const canAccessAdmin = canAccessAdminPanel(user, isDevAdmin, isAdminSession, OWNER_UID);
   // Debug: safe log after state initialization
   console.log('App render', { view: undefined, loading: undefined, user: !!user, userDataLoaded: !!userData, isReżyserkaOpen, isDevAdmin });
 
@@ -344,7 +346,8 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const sId = params.get('station'); // stationId from URL
     const adminParam = params.get('admin');
-    if (adminParam === 'true' && (user?.uid === OWNER_UID || isDevAdmin)) {
+    if (adminParam === 'true' && canAccessAdmin) {
+      setIsAdminSession(true);
       setView('admin');
     } else if (stations[sId] && userData) {
       setCurrentStationId(sId);
@@ -459,6 +462,7 @@ export default function App() {
         window.history.replaceState({}, '', '?admin=true');
         setAdminEmail('');
         setAdminPassword('');
+        setIsAdminSession(true);
         setView('admin');
         setShowAdminForm(false);
       } else {
@@ -498,6 +502,7 @@ export default function App() {
         setUserData(null);
         setNick('');
         setCurrentStationId(null);
+        setIsAdminSession(false);
         setView('home');
       } else {
         await signOut(auth);
@@ -507,6 +512,7 @@ export default function App() {
         setUserData(null);
         setNick('');
         setCurrentStationId(null);
+        setIsAdminSession(false);
         setView('passport');
       }
     } catch (err) {
@@ -611,7 +617,7 @@ export default function App() {
     <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
       {/* Ten komponent został przypadkowo usunięty w poprzedniej wersji, co powodowało błąd. */}
-      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={(user?.uid === OWNER_UID) || isDevAdmin} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
+      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={canAccessAdmin} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
@@ -643,7 +649,7 @@ export default function App() {
       </header>
 
       <main className="max-w-4xl mx-auto p-6">
-        {view === 'admin' && (user?.uid === OWNER_UID || isDevAdmin) ? (
+        {view === 'admin' && canAccessAdmin ? (
           <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} handleUpdateConfig={handleUpdateConfig} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
           <QuizView key={currentStationId} station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
@@ -655,7 +661,7 @@ export default function App() {
       </main>
 
       {/* Pływający przycisk REŻYSERKA dla admina */}
-      {(user?.uid === OWNER_UID || isDevAdmin) && (
+      {canAccessAdmin && (
         <button
           onClick={() => {
             console.log('Toggling reżyserka. current:', isReżyserkaOpen);
@@ -669,7 +675,7 @@ export default function App() {
       )}
 
       {/* Pływający przełącznik QR/KLIK dla admina */}
-      {(user?.uid === OWNER_UID || isDevAdmin) && (
+      {canAccessAdmin && (
         <div
           className={`fixed bottom-24 left-6 z-[100] ${neoBtn} bg-white text-black p-2 flex items-center gap-2 text-xs`}
         >
