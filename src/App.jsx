@@ -239,32 +239,33 @@ export default function App() {
       if (!response.ok) {
         throw new Error(`Błąd sieci: ${response.statusText}`);
       }
-      const data = await response.json();
+      const rawData = await response.json();
+      // Nowy skrypt zwraca dane wewnątrz obiektu `payload`
+      const data = rawData.payload || rawData;
 
       // Nowa, uproszczona logika, która pasuje do Twojego skryptu
       const stationsFromSheet = data.stations || {};
 
       const processedStations = {};
       Object.keys(stationsFromSheet).forEach(stationId => {
-          const station = stationsFromSheet[stationId];
-          // Przetwarzanie pytań, aby upewnić się, że format jest poprawny
-          const questions = (station.questions || []).map(q => {
-            const rawCorrect = Number(q.correct);
-            const normalizedCorrect = Number.isFinite(rawCorrect)
-              ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
-              : 0;
-            return {
-              ...q,
-              options: q.options || [], // Upewnij się, że opcje są tablicą
-              correct: normalizedCorrect
-            };
-          });
-
-          processedStations[stationId] = {
-              ...station,
-              questions,
-              icon: iconMap[(station.iconName || '').toLowerCase()] || Info
+        const station = stationsFromSheet[stationId];
+        // Przetwarzanie pytań, aby upewnić się, że format jest poprawny
+        const questions = (station.questions || []).map(q => {
+          const rawCorrect = Number(q.correct);
+          // Poprawka: Twój skrypt już dostarcza poprawny indeks (0-based), więc nie odejmujemy 1.
+          const normalizedCorrect = Number.isFinite(rawCorrect) ? rawCorrect : 0;
+          return {
+            ...q,
+            options: q.options || [], // Upewnij się, że opcje są tablicą
+            correct: normalizedCorrect
           };
+        });
+
+        processedStations[stationId] = {
+            ...station,
+            questions,
+            icon: iconMap[(station.iconName || '').toLowerCase()] || Info
+        };
       });
 
       setStations(processedStations);
