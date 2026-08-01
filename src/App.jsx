@@ -75,6 +75,7 @@ export default function App() {
   const [showAdminForm, setShowAdminForm] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [adminLoginError, setAdminLoginError] = useState(null);
   const [showRules, setShowRules] = useState(false);
   const [stationsClickable, setStationsClickable] = useState(false);
   const [isReżyserkaOpen, setIsReżyserkaOpen] = useState(false);
@@ -419,6 +420,7 @@ export default function App() {
       return;
     }
     setLoading(true);
+    setAdminLoginError(null);
     try {
       const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
@@ -435,8 +437,10 @@ export default function App() {
         console.log(myUid);
       }
     } catch (error) {
-      console.error("Błąd logowania admina:", error);
-      await showAlert("BŁĄD LOGOWANIA", "Nie udało się zalogować.\nPowód błędu: " + error.message + "\n\nSprawdź konsolę (F12) po więcej szczegółów.");
+      console.error("Błąd logowania admina:", error, { code: error.code });
+      const message = `Powód błędu: ${error.code || 'unknown'} - ${error.message}`;
+      setAdminLoginError(message);
+      await showAlert("BŁĄD LOGOWANIA", `Nie udało się zalogować.\n${message}\n\nSprawdź konsolę (F12) po więcej szczegółów.`);
     }
     setLoading(false);
   };
@@ -521,6 +525,12 @@ export default function App() {
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
               />
+              {adminLoginError && (
+                <div className="mb-4 p-3 bg-red-50 border-2 border-red-600 text-red-700 rounded-md text-sm">
+                  <strong>Błąd logowania:</strong>
+                  <div className="mt-1">{adminLoginError}</div>
+                </div>
+              )}
               <button 
                 onClick={handleAdminLogin}
                 className={`${neoBtn} w-full py-5 bg-black text-white font-[900] uppercase`}
