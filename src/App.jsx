@@ -299,9 +299,9 @@ export default function App() {
               return {
                 question: String(q.question || q.pytanie || '').trim(),
                 options,
-                correct: normalizedCorrect,
+                correct: normalizedCorrect, // correct index
                 points: normalizedPoints,
-                code: String(q.code || q.kod || '').trim()
+                code: String(q.code || q.kod || '').trim(),
               };
             })
           : [];
@@ -1103,9 +1103,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
           const selectedOption = selectedOptions[idx];
           const isActive = activeQuestionIdx === idx;
           const isCorrect = selectedOption === question.correct;
-          const answerOptions = (question.options && question.options.length)
-            ? question.options
-            : [question.option1, question.option2, question.option3, question.option4].filter(Boolean);
+          const answerOptions = question.options || [];
 
           return (
             <div 
