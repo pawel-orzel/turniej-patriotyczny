@@ -944,10 +944,26 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const questionRefs = useRef([]); // Ref do przewijania
   const isDone = userData?.completedStations?.includes(station.id);
+  const [isSaving, setIsSaving] = useState(false);
   const [questionCodes, setQuestionCodes] = useState({});
-  const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
-  const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
+  
   const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
+  
+  const getQuestionCodeValue = useCallback((question) => {
+    if (!question) return undefined;
+    const code = question.code ?? question.kod;
+    return (code !== undefined && code !== null && String(code).trim() !== '') ? String(code).trim() : undefined;
+  }, []);
+
+  const [unlockedQuestions, setUnlockedQuestions] = useState(() => {
+    const answered = new Set(userData?.answeredQuestions?.[station.id] || []);
+    station.questions?.forEach((q, idx) => {
+      if (!getQuestionCodeValue(q)) answered.add(idx);
+    });
+    return answered;
+  });
+
+  const [activeQuestionIdx, setActiveQuestionIdx] = useState(() => station.questions?.findIndex((q, i) => !answeredQuestions.has(i)) ?? 0);
   const [selectedOptions, setSelectedOptions] = useState(() => 
     userData?.selectedOptions?.[station.id] || {}
   );
@@ -1001,32 +1017,18 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
   const maxPoints = station.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
 
-  const getQuestionCodeValue = (question) => {
-    if (!question) return undefined;
-    const direct = question.code ?? question.Code ?? question.CODE ?? question.questionCode ?? question.QuestionCode;
-    if (direct !== undefined) return direct;
-    const key = Object.keys(question).find((k) => k.toLowerCase() === 'code');
-    if (key) return question[key];
-    const fuzzyKey = Object.keys(question).find((k) => k.toLowerCase().includes('code'));
-    return fuzzyKey ? question[fuzzyKey] : undefined;
-  };
-
-  const requiresCode = (question) => {
-    const code = getQuestionCodeValue(question);
-    return code !== undefined && code !== null && code.toString().trim() !== '';
-  };
+  const requiresCode = useCallback((question) => !!getQuestionCodeValue(question), [getQuestionCodeValue]);
 
   const handleUnlockQuestion = async (idx) => {
     const question = station.questions?.[idx];
-    const expectedRaw = getQuestionCodeValue(question);
-    if (!question || expectedRaw === undefined || expectedRaw === null || expectedRaw.toString().trim() === '') {
+    const expectedCode = getQuestionCodeValue(question);
+    if (!question || !expectedCode) {
       console.warn('Brak kodu w obiekcie pytania lub nieznany klucz:', question);
       await showAlert("BŁĄD", "Brak kodu dla tego pytania.");
       return;
     }
 
     const enteredCode = (questionCodes[idx] || '').toString().trim().toUpperCase();
-    const expectedCode = expectedRaw.toString().trim().toUpperCase();
 
     if (enteredCode === expectedCode) {
       setUnlockedQuestions((prev) => {
@@ -1041,11 +1043,14 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     }
   };
 
-  const handleOptionClick = (questionIdx, optionIdx) => {
-    if (submitting || answeredQuestions.has(questionIdx)) return;
+  const handleOptionClick = async (questionIdx, optionIdx) => {
+    if (isSaving || submitting || answeredQuestions.has(questionIdx)) return;
     const question = station.questions?.[questionIdx];
     if (!question) return;
-    if (!unlockedQuestions.has(questionIdx) && requiresCode(question)) return;
+    if (!unlockedQuestions.has(questionIdx)) {
+      await showAlert("PYTANIE ZABLOKOWANE", "Musisz najpierw odblokować to pytanie za pomocą kodu od Strażnika.");
+      return;
+    }
 
     const isCorrect = optionIdx === question.correct;
     if (isCorrect) {
@@ -1060,9 +1065,10 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     nextAnswered.add(questionIdx);
     setAnsweredQuestions(nextAnswered);
     setSelectedOptions((prev) => ({ ...prev, [questionIdx]: optionIdx }));
-    setSavedMessage('ODPOWIEDŹ ZAPISANA');
-
-    handleQuestionAnswered({
+    
+    setIsSaving(true);
+    setSavedMessage('ZAPISYWANIE...');
+    await handleQuestionAnswered({
       stationId: station.id,
       questionIdx,
       selectedOption: optionIdx,
@@ -1070,6 +1076,8 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
       pointsEarned: isCorrect ? (question.points || 0) : 0,
       questionCount: station.questions?.length || 0
     });
+    setIsSaving(false);
+    setSavedMessage('ODPOWIEDŹ ZAPISANA');
   };
 
   return (
@@ -1161,12 +1169,15 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                             return (
                               <button
                                 key={optIdx}
-                                disabled={submitting || isAnswered}
+                                disabled={submitting || isAnswered || isSaving}
                                 onClick={() => handleOptionClick(idx, optIdx)}
                                 className={`${neoBtn} ${btnStyle} text-left p-4 md:p-5 font-[900] uppercase text-[clamp(0.875rem,4.5vw,1.125rem)] flex justify-between items-center gap-3`}
                               >
                                 <span className="min-w-0 break-words whitespace-normal">{opt}</span>
-                                <ChevronRight className="w-6 h-6 shrink-0 transition-transform" />
+                                {isSaving && isSelected ? 
+                                  <div className="w-6 h-6 shrink-0 border-2 border-current border-t-transparent rounded-full animate-spin"></div> :
+                                  <ChevronRight className="w-6 h-6 shrink-0 transition-transform" />
+                                }
                               </button>
                             );
                           })}
