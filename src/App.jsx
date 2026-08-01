@@ -76,6 +76,8 @@ export default function App() {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showRules, setShowRules] = useState(false);
+  const [stationsClickable, setStationsClickable] = useState(false);
+  const [isReżyserkaOpen, setIsReżyserkaOpen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('00:00');
 
   // --- LICZNIK CZASU ---
@@ -159,6 +161,11 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    // Synchronizuj stan przełącznika z konfiguracją z Firebase
+    setStationsClickable(!!appConfig?.stationsClickable);
+  }, [appConfig?.stationsClickable]);
 
   const fetchStations = useCallback(async () => {
     setStationsError(null);
@@ -403,6 +410,18 @@ export default function App() {
     setSubmitting(false);
   };
 
+  const handleUpdateConfig = async (field, value) => {
+    if (!user || user.uid !== OWNER_UID) return;
+    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
+    try {
+      await setDoc(configRef, { [field]: value }, { merge: true });
+      // Nie pokazujemy alertu, bo to teraz przełącznik UI
+    } catch (err) {
+      await showAlert("BŁĄD", "Błąd aktualizacji konfiguracji!");
+      console.error(err);
+    }
+  };
+
   const handleAdminLogin = async () => {
     if (!adminEmail || !adminPassword) {
       await showAlert("BRAK DANYCH", "Wpisz email i hasło!");
@@ -535,7 +554,7 @@ export default function App() {
   return (
     <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
-      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} />
+      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
       {/* NAGŁÓWEK */}
@@ -577,6 +596,33 @@ export default function App() {
         )}
       </main>
 
+      {/* Pływający przycisk REŻYSERKA dla admina */}
+      {user?.uid === OWNER_UID && (
+        <button
+          onClick={() => setIsReżyserkaOpen(!isReżyserkaOpen)}
+          className={`fixed bottom-24 right-6 z-[100] ${neoBtn} bg-[#DC2626] text-white p-4 flex items-center gap-2`}
+        >
+          <Activity className="w-6 h-6 animate-pulse" />
+          REŻYSERKA
+        </button>
+      )}
+
+      {/* Pływający przełącznik QR/KLIK dla admina */}
+      {user?.uid === OWNER_UID && (
+        <div
+          className={`fixed bottom-24 left-6 z-[100] ${neoBtn} bg-white text-black p-2 flex items-center gap-2 text-xs`}
+        >
+          <span className={`font-bold uppercase ${!stationsClickable ? 'text-black' : 'text-slate-400'}`}>QR</span>
+          <button
+            onClick={() => handleUpdateConfig('stationsClickable', !stationsClickable)}
+            className={`w-12 h-6 rounded-full p-0.5 transition-colors ${stationsClickable ? 'bg-green-500' : 'bg-slate-300'}`}
+          >
+            <span className={`block w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${stationsClickable ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+          <span className={`font-bold uppercase ${stationsClickable ? 'text-black' : 'text-slate-400'}`}>KLIK</span>
+        </div>
+      )}
+
       {/* MENU DOLNE */}
       {view !== 'admin' && (
         <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none flex justify-center pb-0 md:pb-8 md:px-4">
@@ -597,7 +643,7 @@ export default function App() {
 }
 
 // --- ADMIN VIEW ---
-function AdminView({ appConfig, user, stations, onLogout }) {
+function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [newTime, setNewTime] = useState('');
   const [copiedUrl, setCopiedUrl] = useState('');
@@ -607,16 +653,6 @@ function AdminView({ appConfig, user, stations, onLogout }) {
   useEffect(() => {
     setNewTime(appConfig?.endTime || '');
   }, [appConfig?.endTime]);
-
-  const handleUpdateConfig = async (field, value) => {
-    try {
-      await setDoc(configRef, { [field]: value }, { merge: true });
-      await showAlert("SUKCES", `Pole "${field}" zaktualizowane!`);
-    } catch (err) {
-      await showAlert("BŁĄD", "Błąd aktualizacji!");
-      console.error(err);
-    }
-  };
 
   const handleCopy = (url) => {
     navigator.clipboard.writeText(url);
