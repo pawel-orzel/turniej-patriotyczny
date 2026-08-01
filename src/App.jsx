@@ -600,6 +600,7 @@ export default function App() {
 function AdminView({ appConfig, user, stations, onLogout }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [newTime, setNewTime] = useState('');
+  const [stationsClickable, setStationsClickable] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState('');
 
   const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
@@ -607,6 +608,7 @@ function AdminView({ appConfig, user, stations, onLogout }) {
   useEffect(() => {
     setNewTime(appConfig?.endTime || '');
   }, [appConfig?.endTime]);
+  useEffect(() => { setStationsClickable(!!appConfig?.stationsClickable) }, [appConfig?.stationsClickable]);
 
   const handleUpdateConfig = async (field, value) => {
     try {
@@ -670,6 +672,22 @@ function AdminView({ appConfig, user, stations, onLogout }) {
         >
           ZAPISZ CZAS
         </button>
+      </div>
+
+      {/* ZARZĄDZANIE KLIKALNOŚCIĄ STACJI */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">ODBLOKUJ STACJE KLIKNIĘCIEM</h3>
+        <p className="font-mono text-xs text-slate-500 mb-6">Włącz, aby uczestnicy mogli wejść do stacji przez kliknięcie kafelka, bez skanowania kodu QR. Przydatne do testów lub w razie problemów z QR.</p>
+        <div className="flex items-center justify-center gap-4">
+          <span className={`font-mono font-bold uppercase ${!stationsClickable ? 'text-black' : 'text-slate-400'}`}>TYLKO QR</span>
+          <button
+            onClick={() => handleUpdateConfig('stationsClickable', !stationsClickable)}
+            className={`w-20 h-10 rounded-full p-1 transition-colors ${stationsClickable ? 'bg-green-500' : 'bg-slate-300'}`}
+          >
+            <span className={`block w-8 h-8 bg-white rounded-full shadow-md transform transition-transform ${stationsClickable ? 'translate-x-10' : 'translate-x-0'}`} />
+          </button>
+          <span className={`font-mono font-bold uppercase ${stationsClickable ? 'text-black' : 'text-slate-400'}`}>KLIKALNE</span>
+        </div>
       </div>
 
       {/* ZARZĄDZANIE FINAŁEM */}
@@ -777,7 +795,11 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
             <div 
               key={st.id} 
               onClick={() => {
-                if (!isDone) {
+                if (isDone) return;
+                if (appConfig?.stationsClickable) {
+                  setCurrentStationId(st.id);
+                  setView('quiz');
+                } else {
                   showAlert("ZESKANUJ KOD QR", "Aby odblokować to wyzwanie, udaj się na wybrane stanowisko i zeskanuj jego kod QR!");
                 }
               }}
