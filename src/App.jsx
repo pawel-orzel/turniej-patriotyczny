@@ -949,7 +949,18 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   const [selectedOptions, setSelectedOptions] = useState({});
   const [savedMessage, setSavedMessage] = useState('');
-  const [answeredCorrectly, setAnsweredCorrectly] = useState(() => new Set());
+  const [answeredCorrectly, setAnsweredCorrectly] = useState(() => {
+    const initialCorrect = new Set();
+    const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
+    answeredInStation.forEach(qIdx => {
+      const question = station.questions?.[qIdx];
+      const selected = userData.selectedOptions?.[station.id]?.[qIdx];
+      if (question && selected !== undefined && question.correct === selected) {
+        initialCorrect.add(qIdx);
+      }
+    });
+    return initialCorrect;
+  });
 
   const localScore = useMemo(() => {
     if (!station.questions || !answeredCorrectly.size) return 0;
@@ -1103,7 +1114,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                 </div>
               </button>
 
-              {(isActive || idx === 0) && (
+              {isActive && (
                 <div className="mt-6 space-y-4">
                   {!isUnlocked ? (
                     <>
