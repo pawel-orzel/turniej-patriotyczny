@@ -20,7 +20,7 @@ const CONFETTI_PIECES = Array.from({ length: 150 }).map((_, i) => {
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
 
-export default function FinalStage({ db, user, appId, stations, isAdmin, isOpen, setIsOpen }) {
+export default function FinalStage({ db, user, appId, stations, isAdmin, isOpen }) {
   const [liveStage, setLiveStage] = useState(null);
   const [selectionModal, setSelectionModal] = useState(null);
 

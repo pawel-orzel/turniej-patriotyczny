@@ -239,32 +239,42 @@ export default function App() {
       if (!response.ok) {
         throw new Error(`Błąd sieci: ${response.statusText}`);
       }
-      const rawData = await response.json(); // Pobierz surową odpowiedź
-      // Nowy skrypt zwraca dane wewnątrz obiektu `payload`
-      const data = rawData.payload || rawData; // Użyj `payload` jeśli istnieje, w przeciwnym razie użyj całego obiektu
-
-      // Nowa, uproszczona logika, która pasuje do Twojego skryptu
+      const rawData = await response.json();
+      const data = rawData.payload || rawData;
       const stationsFromSheet = data.stations || {};
 
       const processedStations = {};
-      Object.keys(stationsFromSheet).forEach(stationId => {
-        const station = stationsFromSheet[stationId]; // Pobierz stację
-        // Przetwarzanie pytań, aby upewnić się, że format jest poprawny
-        const questions = (station.questions || []).map(q => {
-          const rawCorrect = Number(q.correct);
-          // Twój skrypt już dostarcza poprawny indeks (0-based), więc nie ma potrzeby odejmowania 1.
-          const normalizedCorrect = Number.isFinite(rawCorrect) ? rawCorrect : 0;
-          return {
-            ...q,
-            options: q.options || [], // Upewnij się, że `options` to zawsze tablica
-            correct: normalizedCorrect
-          };
-        });
+      Object.keys(stationsFromSheet).forEach((stationId) => {
+        const station = stationsFromSheet[stationId] || {};
+        const questions = Array.isArray(station.questions)
+          ? station.questions.map((q) => {
+              const options = Array.isArray(q.options)
+                ? q.options.filter((opt) => opt !== '' && opt !== null && opt !== undefined).map(String)
+                : [q.option1, q.option2, q.option3, q.option4].filter((opt) => opt !== '' && opt !== null && opt !== undefined).map(String);
+
+              const rawCorrect = Number(q.correct);
+              const normalizedCorrect = Number.isFinite(rawCorrect) ? rawCorrect : 0;
+              const rawPoints = Number(q.points);
+              const normalizedPoints = Number.isFinite(rawPoints) ? rawPoints : 0;
+
+              return {
+                question: String(q.question || q.pytanie || '').trim(),
+                options,
+                correct: normalizedCorrect,
+                points: normalizedPoints,
+                code: String(q.code || q.kod || '').trim()
+              };
+            })
+          : [];
 
         processedStations[stationId] = {
-            ...station, // Skopiuj właściwości stacji
-            questions, // Dodaj przetworzone pytania
-            icon: iconMap[(station.iconName || '').toLowerCase()] || Info // Ustaw ikonę
+          id: station.id || stationId,
+          name: station.name || stationId,
+          category: station.category || '',
+          color: station.color || '#000000',
+          iconName: station.iconName || 'info',
+          questions,
+          icon: iconMap[(station.iconName || '').toLowerCase()] || Info
         };
       });
 
@@ -276,8 +286,8 @@ export default function App() {
         console.warn("Zapis cache zablokowany przez przeglądarkę.");
       }
     } catch (error) {
-        console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
-        setStationsError("Nie udało się załadować stacji. Sprawdź połączenie z internetem.");
+      console.error("Błąd podczas pobierania danych ze Skryptu Google:", error);
+      setStationsError("Nie udało się załadować stacji. Sprawdź połączenie z internetem.");
     }
   }, []);
 
@@ -470,7 +480,7 @@ export default function App() {
     </ErrorBoundary>
   );
 
-  const isPassportScreen = !user || view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm) || (user && !user.isAnonymous && !userData && !showAdminForm);
+  const isPassportScreen = !user || view === 'passport' || (user && !userData && view !== 'admin' && !showAdminForm) || (user && !user.isAnonymous && !userData && !showAdminForm && view !== 'admin');
   
   if (isPassportScreen) {
     return (
@@ -683,7 +693,7 @@ class ErrorBoundary extends React.Component {
 }
 
 // --- ADMIN VIEW ---
-function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) {
+function AdminView({ stations }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const clearDatabase = async () => {
@@ -701,9 +711,7 @@ function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) 
     setIsDeleting(false);
   };
 
-  const [newTime, setNewTime] = useState();
   const [copiedUrl, setCopiedUrl] = useState('');
-  const displayedNewTime = newTime !== undefined ? newTime : (appConfig?.endTime || '');
 
   const handleCopy = (url) => {
     navigator.clipboard.writeText(url);
