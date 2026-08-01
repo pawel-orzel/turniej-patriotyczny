@@ -37,7 +37,6 @@ import { AUTH_ROLES, canAccessAdminPanel, getAuthRole } from './authHelpers';
 
 const OWNER_UID = "fIGFNjIUm6Onldwe27qb7R9vvB63"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
 const firebaseConfig = {
@@ -372,39 +371,6 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
-  const syncAnswerToSheet = useCallback(async ({ stationId, questionIdx, selectedOption, isCorrect, pointsEarned, questionCount }) => {
-    if (!user) return;
-
-    try {
-      const payload = {
-        action: 'recordAnswer',
-        appId,
-        uid: user.uid,
-        nick: userData?.nick || nick || '',
-        stationId,
-        questionIdx,
-        selectedOption,
-        isCorrect,
-        pointsEarned,
-        questionCount,
-        timestamp: new Date().toISOString(),
-      };
-
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        console.warn('Nie udało się wysłać odpowiedzi do arkusza', response.status, text);
-      }
-    } catch (err) {
-      console.warn('Błąd synchronizacji odpowiedzi z arkuszem', err);
-    }
-  }, [appId, nick, user, userData?.nick]);
-
   const handleRegister = async () => {
     if (!nick.trim() || !user) return;
     setSubmitting(true);
@@ -454,14 +420,6 @@ export default function App() {
     setSubmitting(true);
     try {
       await updateDoc(userRef, updates);
-      await syncAnswerToSheet({
-        stationId,
-        questionIdx,
-        selectedOption,
-        isCorrect,
-        pointsEarned,
-        questionCount,
-      });
     } catch (err) {
       console.error('Błąd zapisu odpowiedzi:', err);
     }
