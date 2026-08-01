@@ -647,20 +647,6 @@ export default function App() {
 // --- ADMIN VIEW ---
 function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [newTime, setNewTime] = useState('');
-  const [copiedUrl, setCopiedUrl] = useState('');
-
-  const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
-
-  useEffect(() => {
-    setNewTime(appConfig?.endTime || '');
-  }, [appConfig?.endTime]);
-
-  const handleCopy = (url) => {
-    navigator.clipboard.writeText(url);
-    setCopiedUrl(url);
-    setTimeout(() => setCopiedUrl(''), 2000); // Reset po 2 sekundach
-  };
 
   const clearDatabase = async () => {
     if (!(await showConfirm("OSTRZEŻENIE", "CZY NA PEWNO CHCESZ USUNĄĆ WSZYSTKICH UCZESTNIKÓW I WYZEROWAĆ RANKING? TEJ OPERACJI NIE MOŻNA COFNĄĆ!"))) return;
@@ -675,6 +661,21 @@ function AdminView({ appConfig, user, stations, onLogout, handleUpdateConfig }) 
       await showAlert("SUKCES", "BAZA DANYCH ZOSTAŁA WYCZYSZCZONA! TURNIEJ ZRESETOWANY.");
     } catch (err) { console.error(err); await showAlert("BŁĄD", "WYSTĄPIŁ BŁĄD PODCZAS CZYSZCZENIA BAZY."); }
     setIsDeleting(false);
+  };
+
+  const [newTime, setNewTime] = useState('');
+  const [copiedUrl, setCopiedUrl] = useState('');
+
+  useEffect(() => {
+    if (appConfig?.endTime) {
+      setNewTime(appConfig.endTime);
+    }
+  }, [appConfig?.endTime]);
+
+  const handleCopy = (url) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(url);
+    setTimeout(() => setCopiedUrl(''), 2000);
   };
 
   return (
