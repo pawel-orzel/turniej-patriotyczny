@@ -60,8 +60,6 @@ const STATIONS_CACHE_KEY = 'stations_cache';
 const CACHE_EXPIRATION_MS = 2 * 60 * 1000; // 2 minuty
 
 export default function App() {
-  // Debug: log high-level render info
-  console.log('App render', { view, loading, user: !!user, userDataLoaded: !!userData, isReżyserkaOpen });
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [nick, setNick] = useState('');
@@ -80,6 +78,10 @@ export default function App() {
   const [stationsClickable, setStationsClickable] = useState(false);
   const [isReżyserkaOpen, setIsReżyserkaOpen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('00:00');
+
+  const isDevAdmin = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  // Debug: safe log after state initialization
+  console.log('App render', { view: undefined, loading: undefined, user: !!user, userDataLoaded: !!userData, isReżyserkaOpen, isDevAdmin });
 
   // --- LICZNIK CZASU ---
   useEffect(() => {
@@ -326,13 +328,13 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const sId = params.get('station');
     const adminParam = params.get('admin');
-    if (adminParam === 'true' && user?.uid === OWNER_UID) {
+    if (adminParam === 'true' && (user?.uid === OWNER_UID || isDevAdmin)) {
       setView('admin');
     } else if (stations[sId] && userData) {
       setCurrentStationId(sId);
       setView('quiz');
     }
-  }, [user, userData, stations]); // Reaguj gdy załaduje się user i jego dane
+  }, [user, userData, stations, isDevAdmin]); // Reaguj gdy załaduje się user i jego dane
 
   useEffect(() => {
     if (!user) return;
@@ -447,7 +449,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === OWNER_UID });
+      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === OWNER_UID, isDevAdmin });
       if (user?.uid === OWNER_UID) {
         // Prawdziwe wylogowanie tylko dla administratora
         setLoading(true);
@@ -575,7 +577,7 @@ export default function App() {
     <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
       {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
       {/* Ten komponent został przypadkowo usunięty w poprzedniej wersji, co powodowało błąd. */}
-      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
+      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={(user?.uid === OWNER_UID) || isDevAdmin} isOpen={isReżyserkaOpen} setIsOpen={setIsReżyserkaOpen} />
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
@@ -607,7 +609,7 @@ export default function App() {
       </header>
 
       <main className="max-w-4xl mx-auto p-6">
-        {view === 'admin' && user?.uid === OWNER_UID ? (
+        {view === 'admin' && (user?.uid === OWNER_UID || isDevAdmin) ? (
           <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} handleUpdateConfig={handleUpdateConfig} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
           <QuizView key={currentStationId} station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
@@ -619,7 +621,7 @@ export default function App() {
       </main>
 
       {/* Pływający przycisk REŻYSERKA dla admina */}
-      {user?.uid === OWNER_UID && (
+      {(user?.uid === OWNER_UID || isDevAdmin) && (
         <button
           onClick={() => {
             console.log('Toggling reżyserka. current:', isReżyserkaOpen);
@@ -633,7 +635,7 @@ export default function App() {
       )}
 
       {/* Pływający przełącznik QR/KLIK dla admina */}
-      {user?.uid === OWNER_UID && (
+      {(user?.uid === OWNER_UID || isDevAdmin) && (
         <div
           className={`fixed bottom-24 left-6 z-[100] ${neoBtn} bg-white text-black p-2 flex items-center gap-2 text-xs`}
         >
