@@ -20,9 +20,8 @@ const CONFETTI_PIECES = Array.from({ length: 150 }).map((_, i) => {
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
 
-export default function FinalStage({ db, user, appId, stations, isAdmin }) {
+export default function FinalStage({ db, user, appId, stations, isAdmin, isOpen, setIsOpen }) {
   const [liveStage, setLiveStage] = useState(null);
-  const [isOpen, setIsOpen] = useState(false);
   const [selectionModal, setSelectionModal] = useState(null);
 
   useEffect(() => {
@@ -63,29 +62,26 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
     return (
       <>
-        <button
-          id="rezyserka-btn"
-          onClick={() => setIsOpen(!isOpen)}
-          className={`fixed bottom-24 right-6 z-[100] ${neoBtn} bg-[#DC2626] text-white p-4 flex items-center gap-2`}
-        >
-          <Activity className="w-6 h-6 animate-pulse" />
-          REŻYSERKA
-        </button>
-
         {isOpen && (
           <>
             <div className="fixed inset-0 z-[90] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 pb-32">
             <div className="max-w-2xl mx-auto space-y-8 mt-12">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
                 <h1 className="text-4xl font-[900] uppercase text-[#DC2626]">REŻYSERKA</h1>
-                <div className="text-right">
-                  <div className={`px-4 py-2 border-2 border-black rounded-full font-bold uppercase text-xs mb-1 ${liveStage?.active ? 'bg-green-400 text-black shadow-neo-sm' : 'bg-slate-200 text-slate-500'}`}>
+                <div className="flex flex-col items-start md:items-end gap-3">
+                  <div className={`px-4 py-2 border-2 border-black rounded-full font-bold uppercase text-xs ${liveStage?.active ? 'bg-green-400 text-black shadow-neo-sm' : 'bg-slate-200 text-slate-500'}`}>
                     {liveStage?.active ? 'STATUS: BROADCASTING' : 'STATUS: OFFLINE'}
                   </div>
-                  <div className="font-mono text-[10px] text-slate-500 font-bold uppercase flex flex-col items-end">
+                  <div className="font-mono text-[10px] text-slate-500 font-bold uppercase flex flex-col items-start md:items-end gap-1">
                     <span>ETAP: {liveStage?.stageName || '---'}</span>
                     <span>GRACZY: {liveStage?.eligibleUids?.length || 0}</span>
                   </div>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className={`${neoBtn} bg-black text-white text-xs uppercase px-4 py-2`}
+                  >
+                    ZAMKNIJ
+                  </button>
                 </div>
               </div>
 
