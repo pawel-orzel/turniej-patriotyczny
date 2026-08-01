@@ -33,6 +33,7 @@ import {
 import FinalStage from './final';
 import { showAlert, showConfirm } from './modal';
 import RegRodo from './reg.RODO';
+import { AUTH_ROLES, getAuthRole } from './authHelpers';
 
 const OWNER_UID = "fIGFNjIUm6Onldwe27qb7R9vvB63"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 
@@ -82,16 +83,26 @@ export default function App() {
   const [elapsedTime, setElapsedTime] = useState('00:00');
 
   const isDevAdmin = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const currentRole = getAuthRole(user, OWNER_UID, isDevAdmin);
   // Debug: safe log after state initialization
   console.log('App render', { view: undefined, loading: undefined, user: !!user, userDataLoaded: !!userData, isReżyserkaOpen, isDevAdmin });
 
+  const getTimestampMs = useCallback((value) => {
+    if (!value) return null;
+    if (typeof value?.toDate === 'function') return value.toDate().getTime();
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? null : parsed;
+  }, []);
+
   // --- LICZNIK CZASU ---
   useEffect(() => {
-    if (!userData?.timestamp) {
+    const startValue = userData?.firstLoginAt || userData?.timestamp || user?.metadata?.creationTime;
+    const startTime = getTimestampMs(startValue);
+
+    if (!startTime) {
       setElapsedTime('00:00');
       return;
     }
-    const startTime = new Date(userData.timestamp).getTime();
 
     const updateTimer = () => {
       const now = Date.now();
@@ -99,13 +110,33 @@ export default function App() {
       const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
       const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
       const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-      setElapsedTime(h === '00' ? `${m}:${s}` : `${h}:${m}:${s}`);
+      setElapsedTime(`${h}:${m}:${s}`);
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [userData?.timestamp]);
+  }, [getTimestampMs, user, userData?.firstLoginAt, userData?.timestamp]);
+
+  const waitForAuthState = useCallback((predicate, timeoutMs = 4000) => new Promise((resolve) => {
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        unsubscribe();
+        resolve();
+      }
+    }, timeoutMs);
+
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      if (!settled && predicate(u)) {
+        settled = true;
+        clearTimeout(timeout);
+        unsubscribe();
+        resolve();
+      }
+    });
+  }), []);
 
   useEffect(() => {
     // Import czcionek
@@ -346,12 +377,16 @@ export default function App() {
         uid: user.uid,
         nick: nick.toUpperCase(),
       };
+      const firstLoginAt = user?.metadata?.creationTime
+        ? new Date(user.metadata.creationTime).toISOString()
+        : new Date().toISOString();
       // Pola startowe ustawiamy tylko, jeśli użytkownik ich jeszcze nie ma
       if (!userData) {
         payload.totalPoints = 0;
         payload.completedStations = [];
         payload.answeredQuestions = {};
-        payload.timestamp = new Date().toISOString();
+        payload.firstLoginAt = firstLoginAt;
+        payload.timestamp = firstLoginAt;
         payload.scoreUpdatedAt = serverTimestamp();
       }
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), payload, { merge: true });
@@ -409,17 +444,18 @@ export default function App() {
     setLoading(true);
     setAdminLoginError(null);
     try {
-      await setPersistence(auth, inMemoryPersistence); // Ustaw sesję admina jako tymczasową (wygasa po odświeżeniu)
+      if (auth.currentUser) {
+        await signOut(auth);
+        await waitForAuthState((u) => !u);
+      }
+      await setPersistence(auth, inMemoryPersistence);
       const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
 
       if (myUid === OWNER_UID) {
-        // Poprawny właściciel, przyznaj dostęp
         window.history.replaceState({}, '', '?admin=true');
         setAdminEmail('');
         setAdminPassword('');
-        // Te dwie linijki muszą być na końcu, aby zapewnić płynne przejście
-        // i uniknąć "białego ekranu" lub konieczności odświeżania.
         setView('admin');
         setShowAdminForm(false);
       } else {
@@ -427,6 +463,9 @@ export default function App() {
         console.log("=== TWOJE UID ADMINA (SKOPIUJ) ===");
         console.log(myUid);
         await signOut(auth);
+        await waitForAuthState((u) => !u);
+        await setPersistence(auth, browserLocalPersistence);
+        await signInAnonymously(auth);
       }
     } catch (error) {
       console.error("Błąd logowania admina:", error, { code: error.code });
@@ -439,34 +478,36 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === OWNER_UID, isDevAdmin });
-      if (user?.uid === OWNER_UID) {
-        // Prawdziwe wylogowanie tylko dla administratora
-        setLoading(true);
+      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === OWNER_UID, isDevAdmin, currentRole });
+      setLoading(true);
+      setShowAdminForm(false);
+      setAdminEmail('');
+      setAdminPassword('');
+      setAdminLoginError(null);
+      setAdminAuthLastResponse(null);
+      window.history.replaceState({}, '', window.location.pathname);
+
+      if (user?.uid === OWNER_UID || currentRole === AUTH_ROLES.admin) {
         await signOut(auth);
-        console.log('signOut successful');
-        setUserData(null);
-        setView('home');
-        setShowAdminForm(false);
-        setAdminEmail('');
-        setAdminPassword('');
-        window.history.replaceState({}, '', window.location.pathname);
-        await signInAnonymously(auth); // Utwórz nową sesję anonimową dla następnego gracza
-        await setPersistence(auth, browserLocalPersistence); // Przywróć trwałą sesję dla graczy
-      } else {
-        // Prawdziwe wylogowanie dla gracza, aby mógł zacząć od nowa
-        console.log('performing full logout for player');
-        setLoading(true);
-        await signOut(auth); // Wylogowuje anonimowego użytkownika
+        await waitForAuthState((u) => !u);
+        await setPersistence(auth, browserLocalPersistence);
+        await signInAnonymously(auth);
         setUserData(null);
         setNick('');
+        setCurrentStationId(null);
+        setView('home');
+      } else {
+        await signOut(auth);
+        await waitForAuthState((u) => !u);
+        await setPersistence(auth, browserLocalPersistence);
+        await signInAnonymously(auth);
+        setUserData(null);
+        setNick('');
+        setCurrentStationId(null);
         setView('passport');
-        setShowAdminForm(false);
-        window.history.replaceState({}, '', window.location.pathname); // Czyści URL
-        await signInAnonymously(auth); // Utwórz nową sesję anonimową dla następnego gracza
       }
-    } catch (err) { 
-      console.error("Błąd wylogowania: ", err); 
+    } catch (err) {
+      console.error("Błąd wylogowania: ", err);
     } finally {
       setLoading(false);
       console.log('handleLogout end - loading set false');
