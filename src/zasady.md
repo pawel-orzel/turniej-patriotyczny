@@ -1,14 +1,14 @@
-Turniej Patriotyczny "Biało-Czerwona 2.0" – Scenariusz Wieloetapowy
+Turniej "2.0" – Scenariusz Wieloetapowy
 
-Turniej został zaprojektowany tak, aby angażować uczestników od otwarcia pikniku (13:30) aż do oficjalnego rozstrzygnięcia (16:45).
+Turniej został zaprojektowany tak, aby angażować uczestników od jego otwarcia (13:30) aż do oficjalnego rozstrzygnięcia (16:45).
 
 🏆 Struktura Turnieju
 
 Etap 1: Eliminacje Mobilne (13:30 – 15:30)
 
-Miejsce: Cały teren pikniku (stoiska).
+Miejsce: Cały teren turnieju.
 
-Jak to działa: Na kluczowych stoiskach (np. "Kawa u Andrzeja", "Skauci Króla", "Strefa Gastronomiczna") rozmieszczone są tabliczki z kodami QR.
+Jak to działa: Na kluczowych stoiskach (np. "Kawa u Andrzeja", "Strefa Gier", "Strefa Gastronomiczna") rozmieszczone są tabliczki z kodami QR.
 
 Zadanie: Uczestnicy skanują kody i rozwiązują zadania bezpośrednio w aplikacji po podaniu tajnego kodu otrzymanego od instruktora stacji. Każde stoisko to inna kategoria pytań.
 
@@ -28,13 +28,13 @@ Cel: Wyłonienie "Wielkiej Piątki", która zmierzy się w finale.
 
 Etap 3: Wielki Finał (16:45 – 17:00)
 
-Miejsce: Scena główna (tuż przed zamknięciem pikniku).
+Miejsce: Scena główna (tuż przed zamknięciem turnieju).
 
 Jak to działa: 5 najlepszych graczy z półfinału staje na scenie.
 
 Zadanie: Finałowy "Live Quiz" w aplikacji z najbardziej podchwytliwymi pytaniami. Pozostali użytkownicy widzą pytania w telefonach jako "WIDZ", lecz nie mogą na nie odpowiadać.
 
-Cel: Wyłonienie Mistrza Patriotyzmu III Pikniku Skautowego.
+Cel: Wyłonienie Mistrza Turnieju.
 
 ### 🏆 Ranking i Zasady Punktacji
 
@@ -53,11 +53,11 @@ W przypadku, gdy dwóch lub więcej graczy ma taką samą liczbę punktów, o wy
 
 📍 Rozmieszczenie Kodów QR (Eliminacje)
 
-Przygotuj 3-4 punkty kontrolne, aby ludzie krążyli po pikniku:
+Przygotuj 3-4 punkty kontrolne, aby ludzie krążyli po terenie turnieju:
 
 Stoisko "Kawa u Andrzeja" – Pytania o kawę, misje i budowę kościoła św. Andrzeja.
 
-Obóz Skautów Króla – Pytania o techniki harcerskie, węzły i historię skautingu.
+Obóz Drużyny – Pytania o techniki przetrwania, węzły i orientację w terenie.
 
 Strefa Gastronomiczna – Pytania o polskie potrawy narodowe i tradycje kulinarne.
 
@@ -69,15 +69,15 @@ Pytania do Etapu 1 (Stoiska - łatwe/średnie):
 
 (Kawa): Z jakiego kraju pochodzi kawa rzemieślnicza sprzedawana u Andrzeja? (Ruanda)
 
-(Skauci): Co oznacza zawołanie Skautów Króla? (Gotów!)
+(Gry): Jakie jest hasło Drużyny Niebieskiej? (Zawsze!)
 
-(Historia): Kto jest patronem naszej parafii (tej na ul. św. Józefa)? (Św. Józef)
+(Lokalne): Kto jest patronem naszej parafii (tej na ul. św. Józefa)? (Św. Józef)
 
 Pytania do Etapu 2 (Półfinał - średnie/trudne):
 
 Pytanie: Ile lat temu uchwalono Konstytucję 3 Maja? (Oblicz: 2024 - 1791 = 233 lata)
 
-Pytanie: Jak nazywa się tradycyjny taniec, którym rozpoczęliśmy dzisiejszy piknik? (Polonez)
+Pytanie: Jak nazywa się tradycyjny taniec, którym rozpoczęliśmy dzisiejszy turniej? (Polonez)
 
 Pytanie: W którym roku powstała parafia św. Andrzeja w Toruniu? (2016 – info z plakatu)
 
@@ -99,9 +99,9 @@ Muzyka: Miej przygotowaną playlistę "energetyczną" na czas logowania uczestni
 
 📣 Komunikaty dla Konferansjera (Ciebie)
 
-13:30 (Otwarcie): "Uwaga! Rozpoczynamy Wielki Turniej 'Biało-Czerwona 2.0'! Szukajcie kodów QR na stoiskach. Macie czas do 15:30, żeby trafić na listę TOP 10!"
+13:30 (Otwarcie): "Uwaga! Rozpoczynamy Wielki Turniej 2.0! Szukajcie kodów QR na stoiskach. Macie czas do 15:30, żeby trafić na listę TOP 10!"
 
-14:30 (Przypomnienie): "Pamiętajcie, stoisko z kawą i skauci mają swoje kody! Punkty się sumują. Aktualnie prowadzi użytkownik 'SzybkiSkaut'!"
+14:30 (Przypomnienie): "Pamiętajcie, stoisko z kawą i strefa gier mają swoje kody! Punkty się sumują. Aktualnie prowadzi użytkownik 'SzybkiGracz'!"
 
 15:30 (Wezwanie): "Mamy wyniki! Zapraszam na scenę następujące osoby..." (odczytujesz listę).
 

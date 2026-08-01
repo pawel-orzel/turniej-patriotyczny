@@ -52,7 +52,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = 'weekend-patriotyczny-torun';
+const appId = 'turniej-2-0-torun';
 
 // --- STYL NEO-BRUTALISTYCZNY (CUSTOM CLASSES) ---
 const neoCard = "border-[3px] border-black shadow-neo rounded-[32px]";
@@ -475,8 +475,8 @@ export default function App() {
           <div className="bg-[#DC2626] border-4 border-black w-max mx-auto rounded-full p-4 mb-8 shadow-neo-sm">
             <img src="/favicon.png" alt="Logo aplikacji" className="w-14 h-14 object-contain" />
           </div>
-          <h1 className="text-4xl font-[900] mb-2 leading-none uppercase tracking-tighter">PASZPORT SKAUTA</h1>
-          <p className="font-mono text-[10px] tracking-widest text-slate-500 mb-10 uppercase">Biało-Czerwona 2.0</p>
+          <h1 className="text-4xl font-[900] mb-2 leading-none uppercase tracking-tighter">PASZPORT UCZESTNIKA</h1>
+          <p className="font-mono text-[10px] tracking-widest text-slate-500 mb-10 uppercase">Turniej 2.0</p>
           
           {showAdminForm ? (
             <>
@@ -741,7 +741,7 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
       <div className={`${neoCard} bg-[#DC2626] p-8 md:p-10 text-white relative overflow-hidden md:flex md:items-center md:justify-between`}>
         <div className="relative z-10 shrink-0">
           <div className={neoTag + " bg-red-800 border-red-400 text-white mb-4"}>MISJA DZISIAJ</div>
-          <h3 className="text-4xl md:text-5xl font-[900] leading-none uppercase mb-2 tracking-tighter">TURNIEJ SKAUTOWY</h3>
+          <h3 className="text-4xl md:text-5xl font-[900] leading-none uppercase mb-2 tracking-tighter">WIELKI TURNIEJ</h3>
           <p className="font-mono text-[11px] tracking-widest opacity-80 uppercase">Odpowiedz na jak największą liczbę pytań!</p>
         </div>
         <Flag className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 rotate-12 md:relative md:w-32 md:h-32 md:opacity-20 md:right-0 md:bottom-0 md:rotate-0" />
@@ -865,7 +865,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
         <CheckCircle className="text-green-600 w-12 h-12" />
       </div>
       <h3 className="text-3xl font-[900] uppercase mb-4">PIECZĘĆ ZDOBYTA</h3>
-      <p className="font-mono text-[12px] text-slate-500 uppercase">Szukaj kolejnych wyzwań na terenie pikniku.</p>
+      <p className="font-mono text-[12px] text-slate-500 uppercase">Szukaj kolejnych wyzwań na terenie turnieju.</p>
     </div>
   );
 

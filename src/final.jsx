@@ -446,7 +446,7 @@ function Confetti() {
             animationDelay: `${Math.random() * 5}s`,
             transform: `rotate(${Math.random() * 360}deg)`,
         };
-        const emojis = ['🎉', '🎊', '🏆', '🥇', '⭐', '🇵🇱'];
+        const emojis = ['🎉', '🎊', '🏆', '🥇', '⭐', ''];
         return <div key={i} className="confetti-piece" style={style}>{emojis[i % emojis.length]}</div>;
     });
 
