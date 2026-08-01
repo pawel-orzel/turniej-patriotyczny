@@ -92,25 +92,9 @@ export default function App() {
       return;
     }
     const startTime = new Date(userData.timestamp).getTime();
-    
-    // Sprawdzamy czy gracz ukończył wszystkie standardowe stacje (eliminacyjne)
-    let endTime = null;
-    if (stations && userData?.completedStations) {
-      const standardStationsCount = Object.values(stations).filter(
-        st => st?.id && st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał'
-      ).length;
-      
-      if (standardStationsCount > 0 && userData.completedStations.length >= standardStationsCount) {
-        if (userData.scoreUpdatedAt) {
-           endTime = typeof userData.scoreUpdatedAt.toMillis === 'function' 
-             ? userData.scoreUpdatedAt.toMillis() 
-             : new Date(userData.scoreUpdatedAt).getTime();
-        }
-      }
-    }
 
     const updateTimer = () => {
-      const now = endTime || Date.now();
+      const now = Date.now();
       const diff = Math.max(0, now - startTime);
       const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
       const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
@@ -118,11 +102,10 @@ export default function App() {
       setElapsedTime(h === '00' ? `${m}:${s}` : `${h}:${m}:${s}`);
     };
 
-    updateTimer(); // Wywołanie od razu, by uniknąć opóźnienia 1s
-    if (endTime) return; // Zatrzymujemy stoper, jeśli gracz skończył grę
+    updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [userData?.timestamp, userData?.scoreUpdatedAt, userData?.completedStations, stations]);
+  }, [userData?.timestamp]);
 
   useEffect(() => {
     // Import czcionek
@@ -468,6 +451,7 @@ export default function App() {
         setAdminEmail('');
         setAdminPassword('');
         window.history.replaceState({}, '', window.location.pathname);
+        await signInAnonymously(auth); // Utwórz nową sesję anonimową dla następnego gracza
         await setPersistence(auth, browserLocalPersistence); // Przywróć trwałą sesję dla graczy
       } else {
         // Prawdziwe wylogowanie dla gracza, aby mógł zacząć od nowa
@@ -479,6 +463,7 @@ export default function App() {
         setView('passport');
         setShowAdminForm(false);
         window.history.replaceState({}, '', window.location.pathname); // Czyści URL
+        await signInAnonymously(auth); // Utwórz nową sesję anonimową dla następnego gracza
       }
     } catch (err) { 
       console.error("Błąd wylogowania: ", err); 
