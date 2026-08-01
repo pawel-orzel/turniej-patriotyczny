@@ -946,7 +946,6 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const isDone = userData?.completedStations?.includes(station.id);
   const [isSaving, setIsSaving] = useState(false);
   const [questionCodes, setQuestionCodes] = useState({});
-  
   const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   
   const getQuestionCodeValue = useCallback((question) => {
@@ -954,14 +953,6 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     const code = question.code ?? question.kod;
     return (code !== undefined && code !== null && String(code).trim() !== '') ? String(code).trim() : undefined;
   }, []);
-
-  const [unlockedQuestions, setUnlockedQuestions] = useState(() => {
-    const answered = new Set(userData?.answeredQuestions?.[station.id] || []);
-    station.questions?.forEach((q, idx) => {
-      if (!getQuestionCodeValue(q)) answered.add(idx);
-    });
-    return answered;
-  });
 
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(() => station.questions?.findIndex((q, i) => !answeredQuestions.has(i)) ?? 0);
   const [selectedOptions, setSelectedOptions] = useState(() => 
@@ -1030,12 +1021,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
     const enteredCode = (questionCodes[idx] || '').toString().trim().toUpperCase();
 
-    if (enteredCode === expectedCode) {
-      setUnlockedQuestions((prev) => {
-        const next = new Set(prev);
-        next.add(idx);
-        return next;
-      });
+    if (enteredCode === expectedCode) { // On successful unlock
       setQuestionCodes((prev) => ({ ...prev, [idx]: '' }));
       setActiveQuestionIdx(idx);
     } else {
@@ -1046,11 +1032,6 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const handleOptionClick = async (questionIdx, optionIdx) => {
     if (isSaving || submitting || answeredQuestions.has(questionIdx)) return;
     const question = station.questions?.[questionIdx];
-    if (!question) return;
-    if (!unlockedQuestions.has(questionIdx)) {
-      await showAlert("PYTANIE ZABLOKOWANE", "Musisz najpierw odblokować to pytanie za pomocą kodu od Strażnika.");
-      return;
-    }
 
     const isCorrect = optionIdx === question.correct;
     if (isCorrect) {
@@ -1098,7 +1079,8 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
       <div className="space-y-6">
         {station.questions?.map((question, idx) => {
-          const isUnlocked = unlockedQuestions.has(idx) || answeredQuestions.has(idx) || !requiresCode(question);
+          const needsCode = requiresCode(question);
+          const isCodeEntered = (questionCodes[idx] || '').toString().trim().toUpperCase() === (getQuestionCodeValue(question) || '').toString().trim().toUpperCase();
           const isAnswered = answeredQuestions.has(idx);
           const selectedOption = selectedOptions[idx];
           const isActive = activeQuestionIdx === idx;
@@ -1118,14 +1100,14 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                     <h4 className="text-[clamp(1.125rem,6vw,1.25rem)] font-[900] uppercase leading-tight break-words whitespace-normal">{question.question}</h4>
                   </div>
                   <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full shrink-0 text-center max-w-[120px] md:max-w-none whitespace-normal ${isAnswered ? 'bg-green-100 text-green-700' : isUnlocked ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
-                    {isAnswered ? 'ODPOWIEDZIANE' : isUnlocked ? 'ODBLOKOWANE' : 'KOD PRZY ODPOWIEDZI'}
+                    {isAnswered ? 'ODPOWIEDZIANE' : needsCode ? 'WYMAGA KODU' : 'OTWARTE'}
                   </div>
                 </div>
               </button>
 
               {isActive && (
                 <div className="mt-6 space-y-4">
-                  {!isUnlocked ? (
+                  {needsCode && !isAnswered ? (
                     <>
                       <p className="font-mono text-[11px] text-slate-600 font-bold uppercase text-center leading-tight">Kod zyskasz poprzez wykonanie zadania zleconego przez Strażnika pytania – kod daje dostęp do odpowiedzi.</p>
                       <input
@@ -1148,7 +1130,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                       </button>
                     </>
                   ) : (
-                    <div className="space-y-4">
+                    !isAnswered && <div className="space-y-4">
                       {answerOptions.length ? (
                         <div className="grid grid-cols-1 gap-4">
                           {answerOptions.map((opt, optIdx) => {
@@ -1181,16 +1163,14 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                           })}
                         </div>
                       ) : null}
-                      {(isAnswered || selectedOption !== undefined) && (
-                        <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
-                          {savedMessage && isAnswered && (
-                            <div className="mb-2 font-bold uppercase text-[11px] tracking-widest">
-                              {isCorrect ? 'POPRAWNA ODPOWIEDŹ' : 'ZŁA ODPOWIEDŹ'}
-                            </div>
-                          )}
-                          {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
-                        </div>
-                      )}
+                    </div>
+                  )}
+                  {isAnswered && (
+                    <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                      <div className="mb-2 font-bold uppercase text-[11px] tracking-widest">
+                        {isCorrect ? 'POPRAWNA ODPOWIEDŹ' : 'ZŁA ODPOWIEDŹ'}
+                      </div>
+                      {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
                     </div>
                   )}
                 </div>
