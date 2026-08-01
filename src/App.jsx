@@ -455,6 +455,7 @@ export default function App() {
     setLoading(true);
     setAdminLoginError(null);
     try {
+      await setPersistence(auth, inMemoryPersistence); // Ustaw sesję admina jako tymczasową (wygasa po odświeżeniu)
       const result = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       const myUid = result.user.uid;
       
@@ -492,12 +493,7 @@ export default function App() {
         setAdminEmail('');
         setAdminPassword('');
         window.history.replaceState({}, '', window.location.pathname);
-        try {
-          await signInAnonymously(auth);
-          console.log('signed in anonymously after signOut', { anonUid: auth.currentUser?.uid });
-        } catch (anonErr) {
-          console.error('signInAnonymously failed after signOut:', anonErr);
-        }
+        await setPersistence(auth, browserLocalPersistence); // Przywróć trwałą sesję dla graczy
       } else {
         // Udawane wylogowanie dla gracza (wraca do ekranu Paszportu i czysci URL z ewentualnych stacji)
         console.log('performing fake logout for player');
