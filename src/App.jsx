@@ -26,7 +26,7 @@ import {
 } from 'firebase/auth';
 import { 
   User, Trophy, Coffee, Shield, Heart, Zap, Megaphone, Lock, Info,
-  CheckCircle, ChevronRight, 
+  CheckCircle, ChevronRight, Activity,
   Flag, MapPin, LogOut
 } from 'lucide-react';
 
