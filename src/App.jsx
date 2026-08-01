@@ -443,26 +443,38 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
+      console.log('handleLogout start', { uid: user?.uid, isOwner: user?.uid === OWNER_UID });
       if (user?.uid === OWNER_UID) {
         // Prawdziwe wylogowanie tylko dla administratora
         setLoading(true);
         await signOut(auth);
+        console.log('signOut successful');
         setUserData(null);
         setView('home');
         setShowAdminForm(false);
         setAdminEmail('');
         setAdminPassword('');
         window.history.replaceState({}, '', window.location.pathname);
-        await signInAnonymously(auth);
+        try {
+          await signInAnonymously(auth);
+          console.log('signed in anonymously after signOut', { anonUid: auth.currentUser?.uid });
+        } catch (anonErr) {
+          console.error('signInAnonymously failed after signOut:', anonErr);
+        }
       } else {
         // Udawane wylogowanie dla gracza (wraca do ekranu Paszportu i czysci URL z ewentualnych stacji)
+        console.log('performing fake logout for player');
+        setUserData(null);
+        setNick('');
         setView('passport');
         setShowAdminForm(false);
         window.history.replaceState({}, '', window.location.pathname);
       }
     } catch (err) { 
       console.error("Błąd wylogowania: ", err); 
+    } finally {
       setLoading(false);
+      console.log('handleLogout end - loading set false');
     }
   };
 
