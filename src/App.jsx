@@ -418,7 +418,8 @@ export default function App() {
     if (currentAnswered.includes(questionIdx)) return;
 
     const updates = {
-      [`answeredQuestions.${stationId}`]: arrayUnion(questionIdx)
+      [`answeredQuestions.${stationId}`]: arrayUnion(questionIdx),
+      [`selectedOptions.${stationId}.${questionIdx}`]: selectedOption
     };
     if (pointsEarned > 0) {
       updates.totalPoints = increment(pointsEarned);
@@ -947,7 +948,9 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
   const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
-  const [selectedOptions, setSelectedOptions] = useState({});
+  const [selectedOptions, setSelectedOptions] = useState(() => 
+    userData?.selectedOptions?.[station.id] || {}
+  );
   const [savedMessage, setSavedMessage] = useState('');
   const [answeredCorrectly, setAnsweredCorrectly] = useState(() => {
     const initialCorrect = new Set();
