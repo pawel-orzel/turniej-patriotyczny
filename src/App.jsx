@@ -161,23 +161,33 @@ export default function App() {
     document.head.appendChild(link);
 
     const initAuth = async () => {
-      // Czekaj, aż obiekt auth będzie w pełni gotowy
-      await auth.authStateReady();
-      const currentUser = auth.currentUser;
-
-      if (!currentUser) {
+      try {
+        // Try to set local persistence which is best for keeping users signed in.
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (err) {
+        // This can fail in some environments (e.g., private browsing in Edge/Firefox).
+        // Fallback to in-memory persistence.
+        console.warn('Błąd przy ustawianiu utrwalania sesji (local), przechodzę na tryb w pamięci (in-memory).', err);
         try {
-          await setPersistence(auth, browserLocalPersistence);
-          await signInAnonymously(auth);
-        } catch (err) {
-          console.error("Błąd logowania anonimowego:", err);
-          setLoading(false);
-          return;
+          await setPersistence(auth, inMemoryPersistence);
+        } catch (fallbackErr) {
+          console.error('Nie udało się ustawić żadnego trybu utrwalania sesji.', fallbackErr);
         }
       }
-      // Ustaw użytkownika i zakończ ładowanie dopiero po ustabilizowaniu stanu
-      setUser(auth.currentUser);
-      setLoading(false);
+
+      const customToken = typeof window !== 'undefined' ? window.__initial_auth_token : undefined;
+      // After attempting to set persistence, manage the sign-in state.
+      try {
+        if (customToken) {
+          await signInWithCustomToken(auth, customToken);
+        } else if (!auth.currentUser) { // Only sign in if persistence didn't restore a user.
+          await signInAnonymously(auth);
+        }
+      } catch (err) { console.error("Błąd logowania:", err); }
+      
+      if (!auth.currentUser) {
+        setLoading(false); // W razie kompletnej porażki zwolnij ekran ładowania
+      }
     };
     initAuth();
 
@@ -209,6 +219,11 @@ export default function App() {
     } catch (e) { console.warn('Could not override fetch for debugging', e); }
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => {
+      unsubscribe();
       try { if (window.__originalFetch__) window.fetch = window.__originalFetch__; } catch (restoreErr) { console.warn('restore original fetch failed', restoreErr); }
     };
   }, []);
@@ -251,11 +266,11 @@ export default function App() {
       const contentType = response.headers.get('content-type') || '';
 
       if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`Błąd odpowiedzi serwera: ${response.status} ${response.statusText}. Treść: ${errorBody.slice(0, 200)}`);
+        const body = await response.text();
+        throw new Error(`Błąd pobierania danych stacji: ${response.status} ${response.statusText}${body ? ` - ${body}` : ''}`);
       }
 
-      if (!contentType.includes('application/json')) {
+      if (contentType.includes('text/html')) {
         const body = await response.text();
         throw new Error(`Odpowiedź źródła danych ma nieprawidłowy format HTML: ${body}`);
       }
@@ -263,7 +278,7 @@ export default function App() {
       const rawData = await response.json();
       const data = rawData.payload || rawData;
       if (!data || typeof data !== 'object' || !data.stations || typeof data.stations !== 'object') {
-        throw new Error(`Źródło danych zwróciło niepoprawny format JSON. Otrzymano: ${JSON.stringify(data).slice(0, 200)}...`);
+        throw new Error('Źródło danych zwróciło niepoprawny format JSON.');
       }
 
       const stationsFromSheet = data.stations;
@@ -387,7 +402,7 @@ export default function App() {
         payload.timestamp = firstLoginAt;
         payload.scoreUpdatedAt = serverTimestamp();
       }
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), payload);
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), payload, { merge: true });
       setView('home');
     } catch (error) {
       console.error("Błąd podczas rejestracji:", error);
@@ -538,12 +553,6 @@ export default function App() {
     }
   };
 
-  const handleStationSelect = (stationId) => {
-    if (!stationId) return;
-    setCurrentStationId(stationId);
-    setView('quiz');
-  };
-
   if (loading) return (
     <ErrorBoundary>
       <div className="min-h-[100dvh] bg-[#F9FAFB] flex items-center justify-center"><div className="w-12 h-12 border-4 border-black border-t-[#DC2626] rounded-full animate-spin"></div></div>
@@ -677,7 +686,7 @@ export default function App() {
         ) : view === 'leaderboard' ? (
           <LeaderboardView appConfig={appConfig} />
         ) : (
-          <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} onStationSelect={handleStationSelect} setShowRules={setShowRules} />
+          <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} setView={setView} setCurrentStationId={setCurrentStationId} setShowRules={setShowRules} />
         )}
       </main>
 
@@ -844,7 +853,7 @@ function AdminView({ stations }) {
 }
 
 // --- HOME (BENTO BOX LAYOUT) ---
-function HomeView({ userData, appConfig, stations, stationsError, refetchStations, onStationSelect, setShowRules }) {
+function HomeView({ userData, appConfig, stations, stationsError, refetchStations, setView, setCurrentStationId, setShowRules }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* BANER GŁÓWNY */}
@@ -888,7 +897,8 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
               key={st.id} 
               onClick={() => {
                 if (isDone) return;
-                onStationSelect(st.id);
+                setCurrentStationId(st.id);
+                setView('quiz');
               }}
               className={`${neoCard} bg-white p-8 flex flex-col justify-between min-h-[220px] transition-all ${isDone ? 'opacity-50 grayscale' : 'cursor-pointer hover:translate-y-[-4px]'}`}
             >
@@ -933,15 +943,17 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 // --- QUIZ VIEW ---
 function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const questionRefs = useRef([]); // Ref do przewijania
-  const stationIdRef = useRef(station.id);
   const isDone = userData?.completedStations?.includes(station.id);
-  const [localScore, setLocalScore] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
   const [questionCodes, setQuestionCodes] = useState({});
+  const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set());
+  const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
   
-  useEffect(() => {
-    // Resetuj stan, gdy stacja się zmienia
-    setAnsweredQuestions(new Set(userData?.answeredQuestions?.[station.id] || []));
-  }, [station.id, userData?.answeredQuestions]);
+  const getQuestionCodeValue = useCallback((question) => {
+    if (!question) return undefined;
+    const code = question.code ?? question.kod;
+    return (code !== undefined && code !== null && String(code).trim() !== '') ? String(code).trim() : undefined;
+  }, []);
 
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(() => station.questions?.findIndex((q, i) => !answeredQuestions.has(i)) ?? 0);
   const [selectedOptions, setSelectedOptions] = useState(() => 
@@ -960,12 +972,6 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     });
     return initialCorrect;
   });
-
-  useEffect(() => {
-    const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
-    setAnsweredQuestions(new Set(answeredInStation));
-    setSelectedOptions(userData?.selectedOptions?.[station.id] || {});
-  }, [station.id, userData]);
 
   const localScore = useMemo(() => {
     if (!station.questions || !answeredCorrectly.size) return 0;
@@ -1003,10 +1009,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
   const maxPoints = station.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
 
-  const getQuestionCodeValue = (question) => {
-    if (!question) return undefined;
-    return question.code ?? question.Code ?? question.CODE ?? question.questionCode ?? question.QuestionCode;
-  };
+  const requiresCode = useCallback((question) => !!getQuestionCodeValue(question), [getQuestionCodeValue]);
 
   const handleUnlockQuestion = async (idx) => {
     const question = station.questions?.[idx];
@@ -1017,7 +1020,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
       return;
     }
 
-    const enteredCode = (questionCodes[idx] || '').toString().trim();
+    const enteredCode = (questionCodes[idx] || '').toString().trim().toUpperCase();
 
     if (enteredCode === expectedCode) {
       setUnlockedQuestions(prev => new Set(prev).add(idx));
@@ -1027,36 +1030,41 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
       await showAlert("ZŁY KOD", "Zapytaj Strażnika pytania o poprawny kod.");
     }
   };
-  const handleOptionClick = (questionIdx, optionIdx) => {
-    if (submitting || answeredQuestions.has(questionIdx)) return;
+  const handleOptionClick = async (questionIdx, optionIdx) => {
+    if (isSaving || submitting || answeredQuestions.has(questionIdx)) return;
     const question = station.questions?.[questionIdx];
     if (!question) return;
 
-    if (!unlockedQuestions.has(questionIdx) && requiresCode(question)) return;
+    const needsCode = requiresCode(question);
+    const isUnlocked = unlockedQuestions.has(questionIdx);
 
-    const isCorrect = optionIdx === question.correct;
-    if (isCorrect) {
-      setLocalScore((prev) => prev + (question.points || 0));
+    if (needsCode && !isUnlocked) {
+      await showAlert("PYTANIE ZABLOKOWANE", "Musisz najpierw odblokować to pytanie za pomocą poprawnego kodu.");
+      setActiveQuestionIdx(questionIdx); // Otwórz pytanie, żeby pokazać pole na kod
+      return;
     }
-
-    setAnsweredQuestions((prev) => {
-      const next = new Set(prev);
-      next.add(questionIdx);
-      return next;
-    });
+    
+    const isCorrect = optionIdx === question.correct;
+    
+    // Natychmiastowa aktualizacja stanu lokalnego, aby zablokować interfejs
+    setAnsweredQuestions(prev => new Set(prev).add(questionIdx));
     setSelectedOptions((prev) => ({ ...prev, [questionIdx]: optionIdx }));
-    handleQuestionAnswered({
+    if (isCorrect) {
+      setAnsweredCorrectly(prev => new Set(prev).add(questionIdx));
+    }
+    
+    setIsSaving(true);
+    setSavedMessage('ZAPISYWANIE...');
+    await handleQuestionAnswered({
       stationId: station.id,
       questionIdx,
       selectedOption: optionIdx,
+      isCorrect,
       pointsEarned: isCorrect ? (question.points || 0) : 0,
       questionCount: station.questions?.length || 0
     });
-  };
-
-  const requiresCode = (question) => {
-    const code = getQuestionCodeValue(question);
-    return code !== undefined && code !== null && String(code).trim() !== '';
+    setIsSaving(false);
+    setSavedMessage('ODPOWIEDŹ ZAPISANA');
   };
 
   return (
@@ -1077,7 +1085,7 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
       <div className="space-y-6">
         {station.questions?.map((question, idx) => {
-          const needsCode = requiresCode(question); // Używamy nowej funkcji
+          const needsCode = requiresCode(question);
           const isUnlocked = unlockedQuestions.has(idx);
           const isAnswered = answeredQuestions.has(idx);
           const selectedOption = selectedOptions[idx];
@@ -1097,15 +1105,15 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                     <div className="font-mono text-[10px] tracking-widest uppercase text-slate-400 mb-2">Pytanie {idx + 1}</div>
                     <h4 className="text-[clamp(1.125rem,6vw,1.25rem)] font-[900] uppercase leading-tight break-words whitespace-normal">{question.question}</h4>
                   </div>
-                  <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full shrink-0 text-center max-w-[120px] md:max-w-none whitespace-normal ${isAnswered ? 'bg-green-100 text-green-700' : isUnlocked ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
-                    {isAnswered ? 'ODPOWIEDZIANE' : isUnlocked ? 'ODBLOKOWANE' : 'KOD PRZY ODPOWIEDZI'}
+                  <div className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded-full shrink-0 text-center max-w-[120px] md:max-w-none whitespace-normal ${isAnswered ? 'bg-green-100 text-green-700' : (needsCode && !isUnlocked) ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
+                    {isAnswered ? 'ODPOWIEDZIANE' : needsCode ? 'WYMAGA KODU' : 'OTWARTE'}
                   </div>
                 </div>
               </button>
 
               {isActive && (
                 <div className="mt-6 space-y-4">
-                  {!isUnlocked ? (
+                  {needsCode && !isUnlocked && !isAnswered ? (
                     <>
                       <p className="font-mono text-[11px] text-slate-600 font-bold uppercase text-center leading-tight">Kod zyskasz poprzez wykonanie zadania zleconego przez Strażnika pytania – kod daje dostęp do odpowiedzi.</p>
                       <input
@@ -1135,20 +1143,27 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                             const isSelected = selectedOption === optIdx;
                             const isCorrectAnswer = optIdx === question.correct;
                             let btnStyle = 'bg-white text-black';
+
                             if (isAnswered) {
-                              if (optIdx === question.correct) btnStyle = 'bg-green-500 text-white border-green-700';
-                              else if (optIdx === selectedOption) btnStyle = 'bg-red-500 text-white border-red-700';
+                              if (isCorrectAnswer) {
+                                btnStyle = 'bg-green-600 text-white border-green-700';
+                              } else if (isSelected) {
+                                btnStyle = 'bg-red-600 text-white border-red-700';
+                              }
                             }
 
                             return (
                               <button
                                 key={optIdx}
-                                disabled={submitting || isAnswered}
+                                disabled={submitting || isAnswered || isSaving}
                                 onClick={() => handleOptionClick(idx, optIdx)}
                                 className={`${neoBtn} ${btnStyle} text-left p-4 md:p-5 font-[900] uppercase text-[clamp(0.875rem,4.5vw,1.125rem)] flex justify-between items-center gap-3`}
                               >
                                 <span className="min-w-0 break-words whitespace-normal">{opt}</span>
-                                <ChevronRight className="w-6 h-6 shrink-0 transition-transform" />
+                                {isSaving && isSelected ? 
+                                  <div className="w-6 h-6 shrink-0 border-2 border-current border-t-transparent rounded-full animate-spin"></div> :
+                                  <ChevronRight className="w-6 h-6 shrink-0 transition-transform" />
+                                }
                               </button>
                             );
                           })}
@@ -1158,6 +1173,9 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
                   )}
                   {isAnswered && (
                     <div className={`rounded-[16px] p-4 font-mono text-sm ${isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                      <div className="mb-2 font-bold uppercase text-[11px] tracking-widest">
+                        {isCorrect ? 'POPRAWNA ODPOWIEDŹ' : 'ZŁA ODPOWIEDŹ'}
+                      </div>
                       {isCorrect ? 'Poprawna odpowiedź! Punkty zostały zapisane.' : 'Błędna odpowiedź. Możesz przejść do następnego pytania.'}
                     </div>
                   )}
