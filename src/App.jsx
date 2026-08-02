@@ -36,7 +36,7 @@ import FinalStage from './final';
 import { showAlert, showConfirm } from './modal';
 import RegRodo from './reg.RODO';
 
-const OWNER_UID = "Do8KU9DccNWoAMDxhARxZj8zref1"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
+const OWNER_UID = "fIGFNjIUm6Onldwe27qb7R9vvB63"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
 
 // --- KONFIGURACJA FIREBASE ---
