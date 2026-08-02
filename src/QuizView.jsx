@@ -8,36 +8,41 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
   const isDone = userData?.completedStations?.includes(station.id);
   const [isSaving, setIsSaving] = useState(false);
   const [questionCodes, setQuestionCodes] = useState({});
-  const [unlockedQuestions, setUnlockedQuestions] = useState(() => new Set());
+  const [unlockedQuestions, setUnlockedQuestions] = useState(new Set());
   const [pendingSelection, setPendingSelection] = useState({});
-  const [answeredQuestions, setAnsweredQuestions] = useState(() => new Set(userData?.answeredQuestions?.[station.id] || []));
+  const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
+  const [selectedOptions, setSelectedOptions] = useState({});
+  const [answeredCorrectly, setAnsweredCorrectly] = useState(new Set());
+  const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
+  const [savedMessage, setSavedMessage] = useState('');
   
   const getQuestionCodeValue = useCallback((question) => {
     if (!question) return undefined;
     const code = question.code ?? question.kod;
     return (code !== undefined && code !== null && String(code).trim() !== '') ? String(code).trim() : undefined;
   }, []);
-
-  const [activeQuestionIdx, setActiveQuestionIdx] = useState(() => station.questions?.findIndex((q, i) => !answeredQuestions.has(i)) ?? 0);
-  const [selectedOptions, setSelectedOptions] = useState(() => 
-    userData?.selectedOptions?.[station.id] || {}
-  );
-  const [savedMessage, setSavedMessage] = useState('');
-  const [answeredCorrectly, setAnsweredCorrectly] = useState(() => {
-    const initialCorrect = new Set();
+  
+  useEffect(() => {
     const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
-    if (Array.isArray(answeredInStation)) {
-      answeredInStation.forEach(qIdx => {
-        const question = station.questions?.[qIdx];
-        const selected = userData.selectedOptions?.[station.id]?.[qIdx];
-        if (question && selected !== undefined && question.correct === selected) {
-          initialCorrect.add(qIdx);
-        }
-      });
-    }
-    return initialCorrect;
-  });
-
+    const newAnsweredQuestions = new Set(answeredInStation);
+    setAnsweredQuestions(newAnsweredQuestions);
+    
+    const newSelectedOptions = userData?.selectedOptions?.[station.id] || {};
+    setSelectedOptions(newSelectedOptions);
+    
+    const newAnsweredCorrectly = new Set();
+    newAnsweredQuestions.forEach(qIdx => {
+      const question = station.questions?.[qIdx];
+      const selected = newSelectedOptions[qIdx];
+      if (question && selected !== undefined && question.correct === selected) {
+        newAnsweredCorrectly.add(qIdx);
+      }
+    });
+    setAnsweredCorrectly(newAnsweredCorrectly);
+    
+    setActiveQuestionIdx(station.questions?.findIndex((q, i) => !newAnsweredQuestions.has(i)) ?? 0);
+  }, [userData, station.id, station.questions]);
+  
   const localScore = useMemo(() => {
     if (!station.questions || !answeredCorrectly.size) return 0;
     let score = 0;
@@ -121,12 +126,6 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
 
     const isCorrect = selectedOptionIdx === question.correct;
 
-    setAnsweredQuestions(prev => new Set(prev).add(questionIdx));
-    setSelectedOptions((prev) => ({ ...prev, [questionIdx]: selectedOptionIdx }));
-    if (isCorrect) {
-      setAnsweredCorrectly(prev => new Set(prev).add(questionIdx));
-    }
-
     setIsSaving(true);
     setSavedMessage('ZAPISYWANIE...');
 
@@ -140,12 +139,13 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
         questionCount: station.questions?.length || 0
       });
 
-      await showAlert('SUKCES!', 'Twoja odpowiedź została pomyślnie zapisana.');
+      // Aktualizuj stan dopiero po pomyślnym zapisie
       setAnsweredQuestions(prev => new Set(prev).add(questionIdx));
       setSelectedOptions((prev) => ({ ...prev, [questionIdx]: selectedOptionIdx }));
       if (isCorrect) {
         setAnsweredCorrectly(prev => new Set(prev).add(questionIdx));
       }
+      await showAlert('SUKCES!', 'Twoja odpowiedź została pomyślnie zapisana.');
       setSavedMessage('ODPOWIEDŹ ZAPISANA');
 
       const nextUnansweredQuestions = new Set(answeredQuestions);
@@ -160,6 +160,13 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
       console.error('Błąd zapisu odpowiedzi w quizie:', err);
       setSavedMessage('BŁĄD ZAPISU');
       const errorMessage = `Nie udało się zapisać odpowiedzi.\n\nPowód:\n${JSON.stringify({ code: err.code, message: err.message }, null, 2)}`;
+      
+      // Cofnij zmiany w UI w razie błędu
+      setAnsweredQuestions(prev => { const next = new Set(prev); next.delete(questionIdx); return next; });
+      setSelectedOptions(prev => { const next = { ...prev }; delete next[questionIdx]; return next; });
+      if (isCorrect) {
+        setAnsweredCorrectly(prev => { const next = new Set(prev); next.delete(questionIdx); return next; });
+      }
       await showAlert('BŁĄD ZAPISU', errorMessage);
     } finally {
       setIsSaving(false);
