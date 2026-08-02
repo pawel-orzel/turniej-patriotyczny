@@ -129,25 +129,40 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
 
     setIsSaving(true);
     setSavedMessage('ZAPISYWANIE...');
-    await handleQuestionAnswered({
-      stationId: station.id,
-      questionIdx,
-      selectedOption: selectedOptionIdx,
-      isCorrect,
-      pointsEarned: isCorrect ? (question.points || 0) : 0,
-      questionCount: station.questions?.length || 0
-    });
-    setIsSaving(false);
-    setSavedMessage('ODPOWIEDŹ ZAPISANA');
 
-    // Automatyczne przejście do następnego, nieodpowiedzianego pytania
-    const nextUnansweredQuestions = new Set(answeredQuestions);
-    nextUnansweredQuestions.add(questionIdx);
-    const nextIdx = station.questions?.findIndex((q, i) => !nextUnansweredQuestions.has(i));
-    if (nextIdx !== undefined && nextIdx !== -1) {
-      setTimeout(() => {
-        setActiveQuestionIdx(nextIdx);
-      }, 1200);
+    try {
+      await handleQuestionAnswered({
+        stationId: station.id,
+        questionIdx,
+        selectedOption: selectedOptionIdx,
+        isCorrect,
+        pointsEarned: isCorrect ? (question.points || 0) : 0,
+        questionCount: station.questions?.length || 0
+      });
+
+      await showAlert('SUKCES!', 'Twoja odpowiedź została pomyślnie zapisana.');
+      setAnsweredQuestions(prev => new Set(prev).add(questionIdx));
+      setSelectedOptions((prev) => ({ ...prev, [questionIdx]: selectedOptionIdx }));
+      if (isCorrect) {
+        setAnsweredCorrectly(prev => new Set(prev).add(questionIdx));
+      }
+      setSavedMessage('ODPOWIEDŹ ZAPISANA');
+
+      const nextUnansweredQuestions = new Set(answeredQuestions);
+      nextUnansweredQuestions.add(questionIdx);
+      const nextIdx = station.questions?.findIndex((q, i) => !nextUnansweredQuestions.has(i));
+      if (nextIdx !== undefined && nextIdx !== -1) {
+        setTimeout(() => {
+          setActiveQuestionIdx(nextIdx);
+        }, 1200);
+      }
+    } catch (err) {
+      console.error('Błąd zapisu odpowiedzi w quizie:', err);
+      setSavedMessage('BŁĄD ZAPISU');
+      const errorMessage = `Nie udało się zapisać odpowiedzi.\n\nPowód:\n${JSON.stringify({ code: err.code, message: err.message }, null, 2)}`;
+      await showAlert('BŁĄD ZAPISU', errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 

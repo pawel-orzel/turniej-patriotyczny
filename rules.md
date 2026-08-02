@@ -17,23 +17,14 @@ service cloud.firestore {
     }
 
     // --- GŁÓWNA STRUKTURA DANYCH APLIKACJI ---
-    // Dopasowanie do kolekcji 'artifacts'
-    match /artifacts/{appId}/public/data/{collection}/{docId} {
-
-      // Każdy zalogowany użytkownik może czytać dane publiczne (ranking, konfiguracja)
+    match /artifacts/{appId}/public/data/participants/{userId} {
       allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isOwner();
+    }
 
-      // Logika dla kolekcji uczestników (participants)
-      match /participants/{userId} {
-        // Zezwól użytkownikowi na tworzenie, odczyt i aktualizację WŁASNEGO dokumentu.
-        // To jest kluczowa reguła, która pozwoli nowym graczom na rejestrację.
-        allow create, read, update: if isSignedIn() && request.auth.uid == userId;
-
-        // Zezwól właścicielowi aplikacji na pełny dostęp (zapis, usuwanie).
-        allow write, delete: if isOwner();
-      }
-
-      // Zezwól właścicielowi na pełny dostęp do konfiguracji i innych kolekcji
+    match /artifacts/{appId}/public/data/{collection}/{docId} {
+      allow read: if isSignedIn();
       allow write: if isOwner();
     }
   }

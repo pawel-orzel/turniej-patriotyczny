@@ -282,10 +282,16 @@ export default function App() {
     const currentAnswered = userData.answeredQuestions?.[stationId] || [];
     if (currentAnswered.includes(questionIdx)) return;
 
-    // Używamy notacji z kropką, aby zaktualizować zagnieżdżone pola w dokumencie.
+    // POPRAWNA STRUKTURA: Zagnieżdżone obiekty zamiast notacji z kropką
     const payload = {
-      [`answeredQuestions.${stationId}`]: arrayUnion(questionIdx),
-      [`selectedOptions.${stationId}.${questionIdx}`]: selectedOption
+      answeredQuestions: {
+        [stationId]: arrayUnion(questionIdx)
+      },
+      selectedOptions: {
+        [stationId]: {
+          [questionIdx.toString()]: selectedOption
+        }
+      }
     };
 
     if (pointsEarned > 0) {
@@ -299,12 +305,13 @@ export default function App() {
 
     setSubmitting(true);
     try {
-      // Zmieniamy updateDoc na setDoc z merge: true
       await setDoc(userRef, payload, { merge: true });
     } catch (err) {
       console.error('Błąd zapisu odpowiedzi:', err);
+      throw err;
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const handleUpdateConfig = async (field, value) => {
