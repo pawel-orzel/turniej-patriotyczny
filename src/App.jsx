@@ -282,16 +282,10 @@ export default function App() {
     const currentAnswered = userData.answeredQuestions?.[stationId] || [];
     if (currentAnswered.includes(questionIdx)) return;
 
-    // NOWY SPOSÓB: Konstruujemy zagnieżdżony obiekt (omija błąd spacji i kropek w ID stacji)
+    // Używamy notacji z kropką, aby zaktualizować zagnieżdżone pola w dokumencie.
     const payload = {
-      answeredQuestions: {
-        [stationId]: arrayUnion(questionIdx)
-      },
-      selectedOptions: {
-        [stationId]: {
-          [questionIdx.toString()]: selectedOption
-        }
-      }
+      [`answeredQuestions.${stationId}`]: arrayUnion(questionIdx),
+      [`selectedOptions.${stationId}.${questionIdx}`]: selectedOption
     };
 
     if (pointsEarned > 0) {
