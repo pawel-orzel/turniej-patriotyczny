@@ -23,7 +23,13 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
-    match /artifacts/{appId}/public/data/{collection}/{docId} {
+    // --- DANE PUBLICZNE (np. konfiguracja, stacje) ---
+    // Zezwól na odczyt wszystkim zalogowanym
+    match /artifacts/{appId}/public/data/config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner();
+    }
+    match /artifacts/{appId}/public/data/stations/{docId} {
       allow read: if isSignedIn();
       allow write: if isOwner();
     }
