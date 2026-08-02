@@ -103,8 +103,16 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
 
   const handleOptionSelect = (questionIdx, optionIdx) => {
     if (isSaving || submitting || answeredQuestions.has(questionIdx)) return;
+
+    const question = station.questions?.[questionIdx];
+    if (!question) return;
+
+    const needsCode = requiresCode(question);
+    const isUnlocked = unlockedQuestions.has(questionIdx);
+
     // Jeśli pytanie nie jest aktywne, najpierw je aktywuj
-    if (activeQuestionIdx !== questionIdx) {
+    // Ale nie rób tego, jeśli jest zablokowane i próbujemy wybrać opcję (zamiast tego pokaż pole na kod)
+    if (activeQuestionIdx !== questionIdx && !(needsCode && !isUnlocked)) {
       setActiveQuestionIdx(questionIdx);
     }
 
