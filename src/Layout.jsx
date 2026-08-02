@@ -59,22 +59,6 @@ export function Layout({
         </button>
       )}
 
-      {/* Pływający przełącznik QR/KLIK dla admina */}
-      {canAccessAdmin && (
-        <div
-          className={`fixed bottom-24 left-6 z-[100] ${neoBtn} bg-white text-black p-2 flex items-center gap-2 text-xs`}
-        >
-          <span className={`font-bold uppercase ${!stationsClickable ? 'text-black' : 'text-slate-400'}`}>QR</span>
-          <button
-            onClick={() => handleUpdateConfig('stationsClickable', !stationsClickable)}
-            className={`w-12 h-6 rounded-full p-0.5 transition-colors ${stationsClickable ? 'bg-green-500' : 'bg-slate-300'}`}
-          >
-            <span className={`block w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${stationsClickable ? 'translate-x-6' : 'translate-x-0'}`} />
-          </button>
-          <span className={`font-bold uppercase ${stationsClickable ? 'text-black' : 'text-slate-400'}`}>KLIK</span>
-        </div>
-      )}
-
       {/* MENU DOLNE */}
       {view !== 'admin' && (
         <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none flex justify-center pb-0 md:pb-8 md:px-4">

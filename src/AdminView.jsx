@@ -4,7 +4,7 @@ import { showAlert, showConfirm } from './modal';
 import { neoCard, neoBtn } from './styles';
 import { db, appId } from './firebaseConfig';
 
-export function AdminView({ stations }) {
+export function AdminView({ stations, appConfig, handleUpdateConfig }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const clearDatabase = async () => {
@@ -36,6 +36,21 @@ export function AdminView({ stations }) {
         <div>
           <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
           <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
+        </div>
+      </div>
+
+      {/* PRZEŁĄCZNIK DOSTĘPU DO STACJI */}
+      <div className={`${neoCard} bg-white p-6 flex flex-col md:flex-row justify-between items-center gap-4`}>
+        <div className="text-center md:text-left">
+          <h3 className="text-xl font-[900] uppercase mb-1">DOSTĘP DO STACJI</h3>
+          <p className="font-mono text-xs text-slate-500">Zmień sposób, w jaki gracze otwierają stacje: przez skanowanie kodu QR lub bezpośrednie kliknięcie na mapie.</p>
+        </div>
+        <div className={`${neoBtn} bg-slate-100 p-2 flex items-center gap-2 text-sm shrink-0`}>
+          <span className={`font-bold uppercase ${!appConfig?.stationsClickable ? 'text-black' : 'text-slate-400'}`}>QR</span>
+          <button onClick={() => handleUpdateConfig('stationsClickable', !appConfig?.stationsClickable)} className={`w-12 h-6 rounded-full p-0.5 transition-colors ${appConfig?.stationsClickable ? 'bg-green-500' : 'bg-slate-300'}`}>
+            <span className={`block w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${appConfig?.stationsClickable ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+          <span className={`font-bold uppercase ${appConfig?.stationsClickable ? 'text-black' : 'text-slate-400'}`}>KLIK</span>
         </div>
       </div>
 
