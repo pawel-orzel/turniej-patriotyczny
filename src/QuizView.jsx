@@ -103,6 +103,11 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
 
   const handleOptionSelect = (questionIdx, optionIdx) => {
     if (isSaving || submitting || answeredQuestions.has(questionIdx)) return;
+    // Jeśli pytanie nie jest aktywne, najpierw je aktywuj
+    if (activeQuestionIdx !== questionIdx) {
+      setActiveQuestionIdx(questionIdx);
+    }
+
     setPendingSelection(prev => ({
       ...prev,
       [questionIdx]: prev[questionIdx] === optionIdx ? undefined : optionIdx
