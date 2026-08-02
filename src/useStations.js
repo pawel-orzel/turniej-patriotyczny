@@ -16,8 +16,6 @@ export function useStations() {
 
   const fetchStations = useCallback(async () => {
     setStationsError(null);
-    setStations(null);
-
     // 1. Sprawdź cache
     try {
       const cachedItem = localStorage.getItem(STATIONS_CACHE_KEY);
@@ -34,6 +32,9 @@ export function useStations() {
     } catch (cacheError) {
       console.warn('Nie udało się odczytać cache stacji.', cacheError);
     }
+
+    // Pokaż loader tylko jeśli nie ma nic w cache
+    setStations(null);
 
     if (!GOOGLE_SCRIPT_URL) {
       setStationsError('Brak adresu źródła danych stacji. Ustaw VITE_STATIONS_URL lub window.__stations_url.');
