@@ -121,10 +121,11 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
     const needsCode = requiresCode(question);
     const isUnlocked = unlockedQuestions.has(questionIdx);
 
-    // Jeśli pytanie nie jest aktywne, najpierw je aktywuj
-    // Ale nie rób tego, jeśli jest zablokowane i próbujemy wybrać opcję (zamiast tego pokaż pole na kod)
+    // Jeśli pytanie nie jest aktywne, najpierw je aktywuj i zakończ.
+    // Zaznaczenie opcji będzie możliwe przy następnym kliknięciu, gdy pytanie będzie już aktywne.
     if (activeQuestionIdx !== questionIdx) {
       setActiveQuestionIdx(questionIdx);
+      return;
     }
 
     // Zezwól na zaznaczenie tylko, jeśli pytanie nie wymaga kodu lub jest już odblokowane
