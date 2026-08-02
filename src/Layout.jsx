@@ -1,6 +1,6 @@
 import React from 'react';
 import { LogOut, MapPin, Trophy, Activity } from 'lucide-react';
-import { neoBtn } from '../styles';
+import { neoBtn } from './styles';
 
 export function Layout({
   children,

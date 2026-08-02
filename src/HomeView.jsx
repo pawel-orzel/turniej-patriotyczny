@@ -1,6 +1,6 @@
 import React from 'react';
 import { Flag, CheckCircle, ChevronRight, Info } from 'lucide-react';
-import { neoCard, neoBtn, neoTag } from '../styles';
+import { neoCard, neoBtn, neoTag } from './styles';
 
 export function HomeView({ userData, appConfig, stations, stationsError, refetchStations, setView, setCurrentStationId, setShowRules, stationsClickable }) {
   return (

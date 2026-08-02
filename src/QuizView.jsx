@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { CheckCircle, ChevronRight } from 'lucide-react';
-import { showAlert } from '../modal';
-import { neoCard, neoBtn } from '../styles';
+import { showAlert } from './modal';
+import { neoCard, neoBtn } from './styles';
 
 export function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
   const questionRefs = useRef([]); // Ref do przewijania

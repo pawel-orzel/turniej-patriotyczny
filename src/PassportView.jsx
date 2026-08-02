@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { neoCard, neoBtn } from '../styles';
+import { neoCard, neoBtn } from './styles';
 import { RulesModal } from './RulesModal';
 
 export function PassportView({

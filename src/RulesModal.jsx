@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import RegRodo from '../reg.RODO';
-import { neoBtn } from '../styles';
+import RegRodo from './reg.RODO';
+import { neoBtn } from './styles';
 
 export function RulesModal({ onClose }) {
   useEffect(() => {

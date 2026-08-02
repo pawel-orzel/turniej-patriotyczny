@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { showAlert, showConfirm } from '../modal';
-import { neoCard, neoBtn } from '../styles';
-import { db, appId } from '../firebaseConfig';
+import { showAlert, showConfirm } from './modal';
+import { neoCard, neoBtn } from './styles';
+import { db, appId } from './firebaseConfig';
 
 export function AdminView({ stations }) {
   const [isDeleting, setIsDeleting] = useState(false);

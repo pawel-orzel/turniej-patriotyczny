@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Trophy } from 'lucide-react';
-import { db, appId } from '../firebaseConfig';
-import { neoCard } from '../styles';
+import { db, appId } from './firebaseConfig';
+import { neoCard } from './styles';
 
 export function LeaderboardView({ appConfig }) {
   const [leaders, setLeaders] = useState([]);
