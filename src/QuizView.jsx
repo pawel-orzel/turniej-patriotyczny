@@ -22,6 +22,17 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
     return (code !== undefined && code !== null && String(code).trim() !== '') ? String(code).trim() : undefined;
   }, []);
   
+  // Inicjalizacja stanu odblokowanych pytań
+  useEffect(() => {
+    const initiallyUnlocked = new Set();
+    station.questions?.forEach((q, idx) => {
+      if (!getQuestionCodeValue(q)) { // Jeśli pytanie nie ma kodu, jest odblokowane
+        initiallyUnlocked.add(idx);
+      }
+    });
+    setUnlockedQuestions(initiallyUnlocked);
+  }, [station.questions, getQuestionCodeValue]);
+
   useEffect(() => {
     const answeredInStation = userData?.answeredQuestions?.[station.id] || [];
     const newAnsweredQuestions = new Set(answeredInStation);
