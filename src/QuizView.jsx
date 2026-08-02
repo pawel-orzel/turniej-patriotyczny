@@ -123,9 +123,12 @@ export function QuizView({ station, userData, handleQuestionAnswered, submitting
 
     // Jeśli pytanie nie jest aktywne, najpierw je aktywuj
     // Ale nie rób tego, jeśli jest zablokowane i próbujemy wybrać opcję (zamiast tego pokaż pole na kod)
-    if (activeQuestionIdx !== questionIdx && !(needsCode && !isUnlocked)) {
+    if (activeQuestionIdx !== questionIdx) {
       setActiveQuestionIdx(questionIdx);
     }
+
+    // Zezwól na zaznaczenie tylko, jeśli pytanie nie wymaga kodu lub jest już odblokowane
+    if (needsCode && !isUnlocked) return;
 
     setPendingSelection(prev => ({
       ...prev,
