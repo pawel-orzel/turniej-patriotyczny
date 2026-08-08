@@ -165,6 +165,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                         active: true, 
                         currentId: 'półfinał-wszystkie',
                         question: null,
+                        eligibleUids: liveStage?.eligibleUids || [],
                         allQuestions: semifinalQuestions,
                         showAnswer: false, 
                         startTime: serverTimestamp(), 
@@ -202,6 +203,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                             isLiveModeVisible: true, 
                             active: true, 
                             currentId: q.id, 
+                            eligibleUids: liveStage?.eligibleUids || [],
                             question: q, 
                             showAnswer: false, 
                             startTime: serverTimestamp(), 
@@ -231,6 +233,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                         active: true, 
                         currentId: 'finał-wszystkie',
                         question: null,
+                        eligibleUids: liveStage?.eligibleUids || [],
                         allQuestions: finalQuestions,
                         showAnswer: false, 
                         startTime: serverTimestamp(), 
@@ -268,6 +271,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                             isLiveModeVisible: true, 
                             active: true, 
                             currentId: q.id, 
+                            eligibleUids: liveStage?.eligibleUids || [],
                             question: q, 
                             showAnswer: false, 
                             startTime: serverTimestamp(), 
@@ -733,6 +737,11 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
   };
 
   const handleConfirm = async () => {
+    if (selectedUids.length !== limitCount) {
+      await showAlert("UWAGA", `Liczba zaznaczonych graczy (${selectedUids.length}) nie zgadza się z wymaganą liczbą dla tego etapu (${limitCount}).\n\nUpewnij się, że wybrałeś dokładnie ${limitCount} osób.`);
+      return;
+    }
+
     try {
       const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
       const payload = { eligibleUids: selectedUids, stageName };
