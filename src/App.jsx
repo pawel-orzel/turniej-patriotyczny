@@ -1081,7 +1081,7 @@ function RulesModal({ onClose }) {
 
   return (
     <div 
-      className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in"
+      className="fixed inset-0 z-[9998] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in"
       onClick={onClose}
     >
       <div 
