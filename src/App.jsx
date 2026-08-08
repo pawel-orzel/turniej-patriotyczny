@@ -34,6 +34,7 @@ import {
 
 import FinalStage from './final';
 import { showAlert, showConfirm } from './modal';
+import ParticipantBatchPanel from './ParticipantBatchPanel';
 import RegRodo from './reg.RODO';
 
 const OWNER_UID = "fIGFNjIUm6Onldwe27qb7R9vvB63"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication

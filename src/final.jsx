@@ -154,6 +154,31 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
               <div className={`${neoCard} p-6 bg-blue-50`}>
                 <h2 className="text-2xl font-[900] uppercase mb-6">1. PÓŁFINAŁ</h2>
+                <div className="mb-6">
+                  <button
+                    onClick={async () => {
+                      if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz wypuścić WSZYSTKIE ${semifinalQuestions.length} pytań półfinałowych naraz?`))) return;
+                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                      await setDoc(liveRef, { 
+                        isLiveModeVisible: true, 
+                        active: true, 
+                        mode: 'batch', // WŁĄCZENIE NOWEGO KOMPONENTU
+                        currentId: 'półfinał-wszystkie',
+                        question: null,
+                        eligibleUids: liveStage?.eligibleUids || [], // ZACHOWANIE UPRAWNIEŃ Z LISTY
+                        allQuestions: semifinalQuestions,
+                        showAnswer: false, 
+                        startTime: serverTimestamp(), 
+                        stageName: 'PÓŁFINAŁ',
+                        announcement: deleteField(),
+                        askedQuestions: semifinalQuestions.map(q => q.id)
+                      }, { merge: true });
+                    }}
+                    className={`${neoBtn} bg-[#1D4ED8] text-white px-6 py-4 w-full text-center`}
+                  >
+                    WYPUŚĆ WSZYSTKIE PYTANIA NARAZ
+                  </button>
+                </div>
                 <div className="space-y-4">
                   {semifinalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "półfinał" w arkuszu.</div>
@@ -183,6 +208,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                             startTime: serverTimestamp(), 
                             stageName: 'PÓŁFINAŁ',
                             announcement: deleteField(),
+                            mode: deleteField(),
                             askedQuestions: newAsked
                           }, { merge: true });
                         }}
@@ -197,6 +223,31 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
               <div className={`${neoCard} p-6 bg-yellow-50`}>
                 <h2 className="text-2xl font-[900] uppercase mb-6">2. FINAŁ</h2>
+                <div className="mb-6">
+                  <button
+                    onClick={async () => {
+                      if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz wypuścić WSZYSTKIE ${finalQuestions.length} pytań finałowych naraz?`))) return;
+                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                      await setDoc(liveRef, { 
+                        isLiveModeVisible: true, 
+                        active: true, 
+                        mode: 'batch',
+                        currentId: 'finał-wszystkie',
+                        question: null,
+                        eligibleUids: liveStage?.eligibleUids || [],
+                        allQuestions: finalQuestions,
+                        showAnswer: false, 
+                        startTime: serverTimestamp(), 
+                        stageName: 'FINAŁ',
+                        announcement: deleteField(),
+                        askedQuestions: finalQuestions.map(q => q.id)
+                      }, { merge: true });
+                    }}
+                    className={`${neoBtn} bg-[#A16207] text-white px-6 py-4 w-full text-center`}
+                  >
+                    WYPUŚĆ WSZYSTKIE PYTANIA NARAZ
+                  </button>
+                </div>
                 <div className="space-y-4">
                   {finalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "finał" w arkuszu.</div>
@@ -226,6 +277,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                             startTime: serverTimestamp(), 
                             stageName: 'FINAŁ',
                             announcement: deleteField(),
+                            mode: deleteField(),
                             askedQuestions: newAsked
                           }, { merge: true });
                         }}
@@ -259,7 +311,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
     );
   }
 
-  if (isParticipant && liveStage?.isLiveModeVisible) {
+  if (isParticipant && liveStage?.isLiveModeVisible) { // MODIFIED_BLOCK
     if (liveStage.announcement) {
       return <AnnouncementPanel
           title={liveStage.announcement.title}
@@ -272,7 +324,12 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
           liveStage={liveStage}
       />;
     }
-    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
+    
+    if (liveStage.mode === 'batch') {
+      return <ParticipantBatchPanel db={db} user={user} appId={appId} liveStage={liveStage} />;
+    }
+    
+    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} />;
   }
 
   return null;
@@ -551,11 +608,15 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   let displayedLeaders = leaders;
   if (filterEligible && liveStage?.eligibleUids && liveStage.eligibleUids.length > 0) {
     displayedLeaders = displayedLeaders.filter(l => liveStage.eligibleUids.includes(l.uid));
-    // Sortuj według kolejności w eligibleUids, aby zachować ręczny wybór
-    displayedLeaders.sort((a, b) => liveStage.eligibleUids.indexOf(a.uid) - liveStage.eligibleUids.indexOf(b.uid));
-  } else {
-    displayedLeaders = displayedLeaders.slice(0, limitCount);
+    // Sortuj według kolejności w eligibleUids, aby zachować ręczny wybór.
+    // Nie używamy slice, aby pokazać dokładnie tych, którzy są na liście uprawnionych.
+    displayedLeaders.sort((a, b) => {
+      const indexA = liveStage.eligibleUids.indexOf(a.uid);
+      const indexB = liveStage.eligibleUids.indexOf(b.uid);
+      return indexA - indexB;
+    });
   }
+  displayedLeaders = displayedLeaders.slice(0, limitCount);
 
   return (
     <div className={`${neoCard} p-6 bg-white text-black`}>
@@ -628,12 +689,14 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
         const top20 = all.slice(0, 20);
         setPlayers(top20);
 
-        // Sprawdź, czy istnieją już zapisani gracze dla tego etapu
-        const existingUids = liveStage?.stageName === stageName ? liveStage.eligibleUids : null;
+        // Sprawdź, czy istnieją już zapisani i zweryfikowani gracze dla tego etapu.
+        // Jeśli tak, załaduj ich jako domyślnie zaznaczonych.
+        const existingUids = (liveStage?.stageName === stageName && Array.isArray(liveStage.eligibleUids)) ? liveStage.eligibleUids : null;
         if (existingUids && existingUids.length > 0) {
           setSelectedUids(existingUids);
         } else {
-          setSelectedUids(top20.slice(0, limitCount).map(p => p.uid));
+          // Jeśli nie, zaznacz domyślnie najlepszych graczy zgodnie z limitem.
+          setSelectedUids(top20.slice(0, limitCount).map(p => p.uid)); // Fallback
         }
 
         setLoading(false);
