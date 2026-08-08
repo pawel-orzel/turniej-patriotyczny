@@ -339,9 +339,8 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
       const speedBonus = Math.max(0, 1000 - Math.floor(timeDiff / 15));
       const earned = isCorrect ? (1000 + speedBonus) : 0;
 
+      // 1. Zapisz wynik odpowiedzi w dedykowanej kolekcji (TEGO BRAKOWAŁO)
       const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${liveStage.currentId}_${user.uid}`);
-      const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
-
       await setDoc(resultRef, {
         questionId: liveStage.currentId,
         uid: user.uid,
@@ -351,11 +350,13 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
         timestamp: serverTimestamp()
       });
 
+      // 2. Zaktualizuj punkty gracza (to już było, ale poprawiłem na updateDoc)
+      const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
       if (earned > 0) {
-        await setDoc(participantRef, {
+        await updateDoc(participantRef, {
           totalPoints: increment(earned),
           scoreUpdatedAt: serverTimestamp()
-        }, { merge: true });
+        });
       }
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);

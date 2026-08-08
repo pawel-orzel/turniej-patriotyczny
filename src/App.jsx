@@ -61,6 +61,9 @@ const neoTag = "font-mono text-[10px] tracking-widest uppercase border-2 border-
 const STATIONS_CACHE_KEY = 'stations_cache';
 const CACHE_EXPIRATION_MS = 2 * 60 * 1000; // 2 minuty
 
+// Wyświetlanie wersji aplikacji w konsoli
+console.log(`%c  Turniej-App v${process.env.APP_VERSION} `, 'background: #DC2626; color: white; font-weight: bold; border-radius: 4px;');
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -646,7 +649,9 @@ function AdminView({ appConfig, user, stations, onLogout }) {
       <div className="flex justify-between items-start gap-4">
         <div>
           <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
-          <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">PANEL ZARZĄDZANIA TURNIEJEM</div>
+          <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">
+            PANEL ZARZĄDZANIA TURNIEJEM (v{process.env.APP_VERSION})
+          </div>
         </div>
         <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-4 flex items-center gap-2 shrink-0`}>
           <LogOut className="w-5 h-5" /> WYLOGUJ ZE SZTABU
