@@ -283,6 +283,11 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStartTime, setLocalStartTime] = useState(null);
 
+  // --- Zmiana dla trybu "wszystkie pytania" ---
+  const [answeredInBatch, setAnsweredInBatch] = useState(new Set());
+  const [selectedAnswers, setSelectedAnswers] = useState({});
+  const isBatchMode = liveStage?.allQuestions && liveStage.allQuestions.length > 0;
+
   const getStageColors = () => {
     switch (liveStage?.stageName) {
       case 'PÓŁFINAŁ':
@@ -313,7 +318,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   const isSpectator = !(liveStage?.eligibleUids || []).includes(user?.uid);
 
   useEffect(() => {
-    if (!liveStage?.currentId || !user?.uid || isSpectator) return;
+    if (!liveStage?.currentId || !user?.uid || isSpectator || isBatchMode) return;
     const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${liveStage.currentId}_${user.uid}`);
     const unsub = onSnapshot(resultRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -326,24 +331,24 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
       }
     });
     return () => unsub();
-  }, [liveStage?.currentId, user?.uid, db, appId, isSpectator]);
+  }, [liveStage?.currentId, user?.uid, db, appId, isSpectator, isBatchMode]);
 
-  const handleAnswer = async (selectedIdx) => {
-    if (answered || isSubmitting || isSpectator) return;
+  const handleAnswer = async (question, selectedIdx) => {
+    if ((!isBatchMode && answered) || isSubmitting || isSpectator || answeredInBatch.has(question.id)) return;
     setIsSubmitting(true);
 
     try {
-      const isCorrect = selectedIdx === liveStage.question.correct;
+      const isCorrect = selectedIdx === question.correct;
       const timeDiff = Math.max(0, Date.now() - (localStartTime || Date.now()));
       // Czas na odpowiedź: 15 sekund (15000 ms), za każde 15 ms ubywa 1 pkt z puli 1000 pkt bonusowych.
       const speedBonus = Math.max(0, 1000 - Math.floor(timeDiff / 15));
       const earned = isCorrect ? (1000 + speedBonus) : 0;
 
-      const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${liveStage.currentId}_${user.uid}`);
+      const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${question.id}_${user.uid}`);
       const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
 
       await setDoc(resultRef, {
-        questionId: liveStage.currentId,
+        questionId: question.id,
         uid: user.uid,
         correct: isCorrect,
         earned,
@@ -357,6 +362,12 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
           scoreUpdatedAt: serverTimestamp()
         }, { merge: true });
       }
+
+      if (isBatchMode) {
+        setAnsweredInBatch(prev => new Set(prev).add(question.id));
+        setSelectedAnswers(prev => ({...prev, [question.id]: selectedIdx}));
+      }
+
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
     } finally {
@@ -364,7 +375,12 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
     }
   };
 
-  if (!liveStage.active || (answered && !isSpectator)) {
+  const allAnsweredInBatch = isBatchMode && liveStage.allQuestions.every(q => answeredInBatch.has(q.id));
+
+  if (!liveStage.active || 
+      (answered && !isSpectator && !isBatchMode) ||
+      (allAnsweredInBatch && !isSpectator)
+     ) {
     return (
       <div className="fixed inset-0 z-[100] bg-[#DC2626] overflow-y-auto p-6 text-white animate-in fade-in zoom-in duration-300 flex flex-col">
         <div className="my-auto flex flex-col items-center justify-center py-8 shrink-0">
@@ -387,6 +403,50 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               </div>
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (isBatchMode) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
+        <div className="my-auto max-w-2xl mx-auto w-full space-y-6 py-8 shrink-0">
+          <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
+            <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
+            <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
+              {isSpectator ? `WIDZ - ${liveStage.stageName || 'LIVE'}` : `GRACZ - ${liveStage.stageName || 'LIVE'}`}
+            </div>
+            <h2 className="text-[clamp(1.5rem,6vw,1.875rem)] font-[900] uppercase leading-tight break-words whitespace-normal">
+              {liveStage.stageName} - ODPOWIEDZ NA PYTANIA
+            </h2>
+          </div>
+
+          {liveStage.allQuestions.map((q) => {
+            const isAnswered = answeredInBatch.has(q.id);
+            const selectedOpt = selectedAnswers[q.id];
+
+            return (
+              <div key={q.id} className={`${neoCard} bg-white p-6`}>
+                <h3 className="text-lg font-[900] uppercase leading-tight mb-4">{q.text}</h3>
+                <div className="grid grid-cols-1 gap-3">
+                  {q.options.map((opt, idx) => {
+                    let btnClass = 'bg-white text-black hover:bg-yellow-50';
+                    if (isAnswered) {
+                      if (idx === q.correct) btnClass = 'bg-green-500 text-white border-green-700';
+                      else if (idx === selectedOpt) btnClass = 'bg-red-500 text-white border-red-700';
+                      else btnClass = 'bg-slate-100 text-slate-500 opacity-60';
+                    }
+                    return (
+                      <button key={idx} disabled={isSubmitting || isSpectator || isAnswered} onClick={() => handleAnswer(q, idx)} className={`${neoBtn} p-4 font-[900] uppercase text-sm flex justify-between items-center text-left transition-all ${btnClass} gap-3`}>
+                        <span className="min-w-0 break-words whitespace-normal">{opt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -422,8 +482,8 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               return (
                 <button
                   key={idx}
-                  disabled={isSubmitting || isSpectator || liveStage.showAnswer}
-                  onClick={() => handleAnswer(idx)}
+                  disabled={isSubmitting || isSpectator || liveStage.showAnswer} // Zmiana tutaj
+                  onClick={() => handleAnswer(liveStage.question, idx)} // Zmiana tutaj
                 className={`${neoBtn} p-5 md:p-6 font-[900] uppercase text-[clamp(1rem,5vw,1.25rem)] flex justify-between items-center text-left transition-all ${btnClass} gap-3`}
                 >
               <span className="min-w-0 break-words whitespace-normal">{opt}</span>
