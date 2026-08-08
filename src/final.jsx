@@ -329,6 +329,24 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
       return <ParticipantBatchPanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
     }
     
+    // Dodany ekran oczekiwania, gdy panel jest widoczny, ale żadne pytanie nie jest aktywne
+    if (!liveStage.active) {
+      return (
+        <div className="fixed inset-0 z-[100] bg-[#DC2626] overflow-y-auto p-6 text-white animate-in fade-in zoom-in duration-300 flex flex-col">
+          <div className="my-auto flex flex-col items-center justify-center py-8 shrink-0">
+            <div className="bg-white border-[3px] border-black w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-8 shrink-0 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+              <Activity className="text-[#EAB308] w-16 h-16 animate-pulse" />
+            </div>
+            <h2 className="text-4xl font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words whitespace-normal">
+              SCENA GŁÓWNA
+            </h2>
+            <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words whitespace-normal">
+              Oczekuj na sygnał od prowadzącego!
+            </p>
+          </div>
+        </div>
+      );
+    }
     return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
   }
 
