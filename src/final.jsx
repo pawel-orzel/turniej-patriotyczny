@@ -154,6 +154,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
               <div className={`${neoCard} p-6 bg-blue-50`}>
                 <h2 className="text-2xl font-[900] uppercase mb-6">1. PÓŁFINAŁ</h2>
+
                 <div className="mb-6">
                   <button
                     onClick={async () => {
