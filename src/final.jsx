@@ -154,31 +154,6 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
               <div className={`${neoCard} p-6 bg-blue-50`}>
                 <h2 className="text-2xl font-[900] uppercase mb-6">1. PÓŁFINAŁ</h2>
-                <div className="mb-6">
-                  <button
-                    onClick={async () => {
-                      if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz wypuścić WSZYSTKIE ${semifinalQuestions.length} pytań półfinałowych naraz?`))) return;
-                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                      await setDoc(liveRef, { 
-                        isLiveModeVisible: true, 
-                        active: true, 
-                        mode: 'batch', // WŁĄCZENIE NOWEGO KOMPONENTU
-                        currentId: 'półfinał-wszystkie',
-                        question: null,
-                        eligibleUids: liveStage?.eligibleUids || [], // ZACHOWANIE UPRAWNIEŃ Z LISTY
-                        allQuestions: semifinalQuestions,
-                        showAnswer: false, 
-                        startTime: serverTimestamp(), 
-                        stageName: 'PÓŁFINAŁ',
-                        announcement: deleteField(),
-                        askedQuestions: semifinalQuestions.map(q => q.id)
-                      }, { merge: true });
-                    }}
-                    className={`${neoBtn} bg-[#1D4ED8] text-white px-6 py-4 w-full text-center`}
-                  >
-                    WYPUŚĆ WSZYSTKIE PYTANIA NARAZ
-                  </button>
-                </div>
                 <div className="space-y-4">
                   {semifinalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "półfinał" w arkuszu.</div>
@@ -208,7 +183,6 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                             startTime: serverTimestamp(), 
                             stageName: 'PÓŁFINAŁ',
                             announcement: deleteField(),
-                            mode: deleteField(),
                             askedQuestions: newAsked
                           }, { merge: true });
                         }}
@@ -223,31 +197,6 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
               <div className={`${neoCard} p-6 bg-yellow-50`}>
                 <h2 className="text-2xl font-[900] uppercase mb-6">2. FINAŁ</h2>
-                <div className="mb-6">
-                  <button
-                    onClick={async () => {
-                      if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz wypuścić WSZYSTKIE ${finalQuestions.length} pytań finałowych naraz?`))) return;
-                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                      await setDoc(liveRef, { 
-                        isLiveModeVisible: true, 
-                        active: true, 
-                        mode: 'batch',
-                        currentId: 'finał-wszystkie',
-                        question: null,
-                        eligibleUids: liveStage?.eligibleUids || [],
-                        allQuestions: finalQuestions,
-                        showAnswer: false, 
-                        startTime: serverTimestamp(), 
-                        stageName: 'FINAŁ',
-                        announcement: deleteField(),
-                        askedQuestions: finalQuestions.map(q => q.id)
-                      }, { merge: true });
-                    }}
-                    className={`${neoBtn} bg-[#A16207] text-white px-6 py-4 w-full text-center`}
-                  >
-                    WYPUŚĆ WSZYSTKIE PYTANIA NARAZ
-                  </button>
-                </div>
                 <div className="space-y-4">
                   {finalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "finał" w arkuszu.</div>
@@ -277,7 +226,6 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                             startTime: serverTimestamp(), 
                             stageName: 'FINAŁ',
                             announcement: deleteField(),
-                            mode: deleteField(),
                             askedQuestions: newAsked
                           }, { merge: true });
                         }}
@@ -302,7 +250,6 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 limitCount={selectionModal.count}
                 announcement={selectionModal.announcement}
                 onClose={() => setSelectionModal(null)}
-                liveStage={liveStage}
               />
             )}
           </>
@@ -311,7 +258,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
     );
   }
 
-  if (isParticipant && liveStage?.isLiveModeVisible) { // MODIFIED_BLOCK
+  if (isParticipant && liveStage?.isLiveModeVisible) {
     if (liveStage.announcement) {
       return <AnnouncementPanel
           title={liveStage.announcement.title}
@@ -324,41 +271,17 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
           liveStage={liveStage}
       />;
     }
-    
-    if (liveStage.mode === 'batch') {
-      return <ParticipantBatchPanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
-    }
-    
-    // Dodany ekran oczekiwania, gdy panel jest widoczny, ale żadne pytanie nie jest aktywne
-    if (!liveStage.active) {
-      return (
-        <div className="fixed inset-0 z-[100] bg-[#DC2626] overflow-y-auto p-6 text-white animate-in fade-in zoom-in duration-300 flex flex-col">
-          <div className="my-auto flex flex-col items-center justify-center py-8 shrink-0">
-            <div className="bg-white border-[3px] border-black w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-8 shrink-0 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-              <Activity className="text-[#EAB308] w-16 h-16 animate-pulse" />
-            </div>
-            <h2 className="text-4xl font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words whitespace-normal">
-              SCENA GŁÓWNA
-            </h2>
-            <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words whitespace-normal">
-              Oczekuj na sygnał od prowadzącego!
-            </p>
-          </div>
-        </div>
-      );
-    }
-    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
+    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} />;
   }
 
   return null;
 }
 
-function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
+function ParticipantLivePanel({ db, user, appId, liveStage }) {
   const [answered, setAnswered] = useState(false);
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStartTime, setLocalStartTime] = useState(null);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const getStageColors = () => {
     switch (liveStage?.stageName) {
@@ -399,7 +322,10 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
       } else {
         setAnswered(false);
         setResult(null);
-        setLocalStartTime(Date.now());
+        // Używamy czasu z serwera, aby zapewnić sprawiedliwość.
+        // Date.now() jest fallbackiem, gdyby startTime nie było jeszcze dostępne.
+        const serverStartTime = liveStage?.startTime?.toDate ? liveStage.startTime.toDate().getTime() : Date.now();
+        setLocalStartTime(serverStartTime);
       }
     });
     return () => unsub();
@@ -429,10 +355,10 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
       });
 
       if (earned > 0) {
-        await setDoc(participantRef, {
+        await updateDoc(participantRef, {
           totalPoints: increment(earned),
           scoreUpdatedAt: serverTimestamp()
-        }, { merge: true });
+        });
       }
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
@@ -464,38 +390,21 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
               </div>
             </div>
           )}
-
-          <div className="flex items-center justify-center gap-4 mt-8">
-            <button
-              onClick={() => setShowLeaderboard(true)}
-              className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 flex items-center gap-2`}
-            >
-              <Trophy className="w-5 h-5" />
-              RANKING
-            </button>
-            <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
-              <LogOut className="w-5 h-5" />
-              WYLOGUJ
-            </button>
-          </div>
         </div>
-        {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
       </div>
     );
   }
 
-
-
   return (
     <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
-      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0 relative">
+      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0">
         <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
           <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
           <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
             {isSpectator ? `WIDZ - ${liveStage.stageName || 'LIVE'}` : `GRACZ - ${liveStage.stageName || 'LIVE'}`}
           </div>
           <h2 className="text-[clamp(1.5rem,6vw,1.875rem)] font-[900] uppercase leading-tight break-words whitespace-normal">
-            {liveStage?.question?.text || "Wczytywanie pytania..."}
+            {liveStage.question.text}
           </h2>
         </div>
 
@@ -506,9 +415,9 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
               <div className="font-mono text-xs uppercase font-bold text-slate-500">Warianty odpowiedzi są ukryte dla widzów, aby uniknąć podpowiadania.</div>
             </div>
           ) : (
-            (liveStage?.question?.options || []).map((opt, idx) => {
+            liveStage.question.options.map((opt, idx) => {
               let btnClass = isSubmitting || isSpectator ? 'bg-white text-black opacity-50' : 'bg-white text-black hover:bg-yellow-50';
-              if (liveStage.showAnswer && idx === liveStage?.question?.correct) {
+              if (liveStage.showAnswer && idx === liveStage.question.correct) {
                 btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; // Podświetlenie poprawnej odpowiedzi
               } else if (liveStage.showAnswer) {
                 btnClass = 'bg-white text-black opacity-30 grayscale';
@@ -527,21 +436,6 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
             })
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-export function LeaderboardModal({ db, appId, liveStage, onClose }) {
-  return (
-    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
-      <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-6 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
-        <div className="overflow-y-auto flex-1 mb-4">
-          <Leaderboard db={db} appId={appId} liveStage={liveStage} limitCount={20} />
-        </div>
-        <button onClick={onClose} className={`${neoBtn} w-full py-4 bg-black text-white flex justify-center items-center text-sm`}>
-          ZAMKNIJ RANKING
-        </button>
       </div>
     </div>
   );
@@ -603,15 +497,15 @@ function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isA
                 <Trophy className="text-yellow-400 w-24 h-24 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.4)] shrink-0" />
                 <h1 className="text-[clamp(1.75rem,8vw,3rem)] font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words">{title}</h1>
                 <p className="font-mono text-[clamp(0.7rem,3vw,0.875rem)] tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words">{subtitle}</p>
-                <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black text-left overflow-hidden">
-                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={true} isAnnouncement={true} />
+                <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black">
+                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={true} />
                 </div>
             </div>
         </div>
     );
 }
 
-function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEligible = false, isAnnouncement = false }) {
+function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEligible = false }) {
   const [leaders, setLeaders] = useState([]);
 
   useEffect(() => {
@@ -628,7 +522,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
             return isNaN(ms) ? 0 : ms;
           } catch (e) { return 0; }
         };
-        const aTime = getTime(a?.scoreUpdatedAt);
+        const aTime = getTime(a.scoreUpdatedAt);
         const bTime = getTime(b.scoreUpdatedAt);
         if (aTime !== bTime) return aTime - bTime;
         const aCreated = getTime(a.timestamp);
@@ -641,15 +535,8 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   }, [db, appId]);
 
   let displayedLeaders = leaders;
-  if (filterEligible && liveStage?.eligibleUids && liveStage.eligibleUids.length > 0) {
+  if (filterEligible && liveStage?.eligibleUids) {
     displayedLeaders = displayedLeaders.filter(l => liveStage.eligibleUids.includes(l.uid));
-    // Sortuj według kolejności w eligibleUids, aby zachować ręczny wybór.
-    // Nie używamy slice, aby pokazać dokładnie tych, którzy są na liście uprawnionych.
-    displayedLeaders.sort((a, b) => {
-      const indexA = liveStage.eligibleUids.indexOf(a.uid);
-      const indexB = liveStage.eligibleUids.indexOf(b.uid);
-      return indexA - indexB;
-    });
   }
   displayedLeaders = displayedLeaders.slice(0, limitCount);
 
@@ -690,7 +577,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   );
 }
 
-function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, onClose, liveStage }) {
+function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, onClose }) {
   const [players, setPlayers] = useState([]);
   const [selectedUids, setSelectedUids] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -720,20 +607,10 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
           return aCreated - bCreated;
         });
 
-        // Bierzemy TOP 40 jako pulę do wyboru
-        const top40 = all.slice(0, 40);
-        setPlayers(top40);
-
-        // Sprawdź, czy istnieją już zapisani i zweryfikowani gracze dla tego etapu.
-        // Jeśli tak, załaduj ich jako domyślnie zaznaczonych.
-        const existingUids = (liveStage?.stageName === stageName && Array.isArray(liveStage.eligibleUids)) ? liveStage.eligibleUids : null;
-        if (existingUids && existingUids.length > 0) {
-          setSelectedUids(existingUids);
-        } else {
-          // Jeśli nie, zaznacz domyślnie najlepszych graczy zgodnie z limitem.
-          setSelectedUids(top40.slice(0, limitCount).map(p => p.uid)); // Fallback
-        }
-
+        // Bierzemy TOP 20 jako pulę do wyboru
+        const top20 = all.slice(0, 20);
+        setPlayers(top20);
+        setSelectedUids(top20.slice(0, limitCount).map(p => p.uid));
         setLoading(false);
       } catch (e) {
         console.error(e);
@@ -741,7 +618,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       }
     };
     fetchPlayers();
-  }, [db, appId, limitCount, stageName, liveStage]);
+  }, [db, appId, limitCount]);
 
   const toggle = (uid) => {
     if (selectedUids.includes(uid)) {
@@ -752,11 +629,6 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
   };
 
   const handleConfirm = async () => {
-    if (selectedUids.length !== limitCount) {
-      await showAlert("UWAGA", `Liczba zaznaczonych graczy (${selectedUids.length}) nie zgadza się z wymaganą liczbą dla tego etapu (${limitCount}).\n\nUpewnij się, że wybrałeś dokładnie ${limitCount} osób.`);
-      return;
-    }
-
     try {
       const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
       const payload = { eligibleUids: selectedUids, stageName };
