@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField } from 'firebase/firestore';
-import { Trophy, Radio, Activity, ChevronRight, Megaphone } from 'lucide-react';
+import { Trophy, Radio, Activity, ChevronRight, Megaphone, LogOut } from 'lucide-react';
 import { showAlert, showConfirm } from './modal';
 
 // Custom Classes Neo-Brutalism
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
 
-export default function FinalStage({ db, user, appId, stations, isAdmin }) {
+export default function FinalStage({ db, user, appId, stations, isAdmin, onLogout }) {
   const [liveStage, setLiveStage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [selectionModal, setSelectionModal] = useState(null);
@@ -322,13 +322,13 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
           liveStage={liveStage}
       />;
     }
-    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} />;
+    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
   }
 
   return null;
 }
 
-function ParticipantLivePanel({ db, user, appId, liveStage }) {
+function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
   const [answered, setAnswered] = useState(false);
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -456,13 +456,20 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
             </div>
           )}
 
-          <button
-            onClick={() => setShowLeaderboard(true)}
-            className={`${neoBtn} bg-yellow-400 text-black px-8 py-4 mt-8 flex items-center gap-2`}
-          >
-            <Trophy className="w-6 h-6" />
-            RANKING
-          </button>
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 flex items-center gap-2`}
+            >
+              <Trophy className="w-5 h-5" />
+              RANKING
+            </button>
+            <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
+              <LogOut className="w-5 h-5" />
+              WYLOGUJ
+            </button>
+          </div>
+
         </div>
         {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
       </div>
@@ -508,13 +515,17 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               </div>
             );
           })}
-          <div className="text-center mt-6">
+          <div className="flex items-center justify-center gap-4 mt-6">
             <button
               onClick={() => setShowLeaderboard(true)}
               className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 inline-flex items-center gap-2`}
             >
               <Trophy className="w-5 h-5" />
               RANKING
+            </button>
+            <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
+              <LogOut className="w-5 h-5" />
+              WYLOGUJ
             </button>
           </div>
         </div>
@@ -564,13 +575,17 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
             })
           )}
         </div>
-        <div className="text-center mt-6">
+        <div className="flex items-center justify-center gap-4 mt-6">
           <button
             onClick={() => setShowLeaderboard(true)}
             className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 inline-flex items-center gap-2`}
           >
             <Trophy className="w-5 h-5" />
             RANKING
+          </button>
+          <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
+            <LogOut className="w-5 h-5" />
+            WYLOGUJ
           </button>
         </div>
       </div>
