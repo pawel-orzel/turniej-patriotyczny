@@ -350,7 +350,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
         timestamp: serverTimestamp()
       });
 
-      // 2. Zaktualizuj punkty gracza (to już było, ale poprawiłem na updateDoc)
+      // 2. Zaktualizuj punkty gracza za pomocą bezpiecznego setDoc
       const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
       const updates = {
         [`selectedOptions.${liveStage.stageName}.${liveStage.currentId}`]: selectedIdx
@@ -359,7 +359,8 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
         updates.totalPoints = increment(earned);
         updates.scoreUpdatedAt = serverTimestamp();
       }
-      await updateDoc(participantRef, updates);
+      // Zmiana z updateDoc na setDoc z merge: true
+      await setDoc(participantRef, updates, { merge: true });
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
     } finally {
