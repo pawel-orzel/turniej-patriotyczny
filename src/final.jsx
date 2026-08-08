@@ -628,7 +628,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
             return isNaN(ms) ? 0 : ms;
           } catch (e) { return 0; }
         };
-        const aTime = getTime(a.scoreUpdatedAt);
+        const aTime = getTime(a?.scoreUpdatedAt);
         const bTime = getTime(b.scoreUpdatedAt);
         if (aTime !== bTime) return aTime - bTime;
         const aCreated = getTime(a.timestamp);

@@ -77,7 +77,7 @@ export default function ParticipantBatchPanel({ db, user, appId, liveStage, onLo
   };
 
   const stageColors = getStageColors();
-  const allAnswered = liveStage?.allQuestions?.every(q => answeredInBatch.has(q.id));
+  const allAnswered = Array.isArray(liveStage?.allQuestions) && liveStage.allQuestions.every(q => answeredInBatch.has(q.id));
 
   // Ekran oczekiwania (gdy odpowiedziano na wszystkie pytania lub tryb nieaktywny)
   if (!liveStage.active || (allAnswered && !isSpectator)) {
@@ -127,7 +127,7 @@ export default function ParticipantBatchPanel({ db, user, appId, liveStage, onLo
           </h2>
         </div>
 
-        {liveStage.allQuestions.map((q) => {
+        {Array.isArray(liveStage.allQuestions) && liveStage.allQuestions.map((q) => {
           const isAnswered = answeredInBatch.has(q.id);
           const selectedOpt = selectedAnswers[q.id];
 
