@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { Trophy, Radio, Activity, LogOut } from 'lucide-react';
+import { LeaderboardModal } from './final'; // Import modalu
 
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
 
-export default function ParticipantBatchPanel({ db, user, appId, liveStage }) {
+export default function ParticipantBatchPanel({ db, user, appId, liveStage, onLogout }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStartTime, setLocalStartTime] = useState(null);
   const [answeredInBatch, setAnsweredInBatch] = useState(new Set());

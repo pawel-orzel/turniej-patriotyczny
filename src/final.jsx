@@ -326,10 +326,10 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
     }
     
     if (liveStage.mode === 'batch') {
-      return <ParticipantBatchPanel db={db} user={user} appId={appId} liveStage={liveStage} />;
+      return <ParticipantBatchPanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
     }
     
-    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} />;
+    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
   }
 
   return null;
@@ -466,6 +466,8 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
     );
   }
 
+
+
   return (
     <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
       <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0 relative">
@@ -507,6 +509,21 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
             })
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function LeaderboardModal({ db, appId, liveStage, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
+      <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-6 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
+        <div className="overflow-y-auto flex-1 mb-4">
+          <Leaderboard db={db} appId={appId} liveStage={liveStage} limitCount={20} />
+        </div>
+        <button onClick={onClose} className={`${neoBtn} w-full py-4 bg-black text-white flex justify-center items-center text-sm`}>
+          ZAMKNIJ RANKING
+        </button>
       </div>
     </div>
   );
