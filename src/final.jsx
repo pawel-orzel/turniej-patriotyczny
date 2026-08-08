@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField } from 'firebase/firestore';
-import { Trophy, Radio, Activity, ChevronRight, Megaphone } from 'lucide-react';
+import { Trophy, Radio, Activity, ChevronRight, Megaphone, LogOut } from 'lucide-react';
 import { showAlert, showConfirm } from './modal';
 
 // Custom Classes Neo-Brutalism
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
 
-export default function FinalStage({ db, user, appId, stations, isAdmin }) {
+export default function FinalStage({ db, user, appId, stations, isAdmin, onLogout }) {
   const [liveStage, setLiveStage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [selectionModal, setSelectionModal] = useState(null);
@@ -299,6 +299,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 limitCount={selectionModal.count}
                 announcement={selectionModal.announcement}
                 onClose={() => setSelectionModal(null)}
+                liveStage={liveStage}
               />
             )}
           </>
@@ -320,17 +321,18 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
           liveStage={liveStage}
       />;
     }
-    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} />;
+    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
   }
 
   return null;
 }
 
-function ParticipantLivePanel({ db, user, appId, liveStage }) {
+function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
   const [answered, setAnswered] = useState(false);
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStartTime, setLocalStartTime] = useState(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   // --- Zmiana dla trybu "wszystkie pytania" ---
   const [answeredInBatch, setAnsweredInBatch] = useState(new Set());
@@ -452,7 +454,22 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               </div>
             </div>
           )}
+
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 flex items-center gap-2`}
+            >
+              <Trophy className="w-5 h-5" />
+              RANKING
+            </button>
+            <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
+              <LogOut className="w-5 h-5" />
+              WYLOGUJ
+            </button>
+          </div>
         </div>
+        {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
       </div>
     );
   }
@@ -460,7 +477,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   if (isBatchMode) {
     return (
       <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
-        <div className="my-auto max-w-2xl mx-auto w-full space-y-6 py-8 shrink-0">
+        <div className="my-auto max-w-2xl mx-auto w-full space-y-6 py-8 shrink-0 relative">
           <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
             <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
             <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
@@ -496,14 +513,28 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               </div>
             );
           })}
+          <div className="flex items-center justify-center gap-4 mt-6">
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 inline-flex items-center gap-2`}
+            >
+              <Trophy className="w-5 h-5" />
+              RANKING
+            </button>
+            <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
+              <LogOut className="w-5 h-5" />
+              WYLOGUJ
+            </button>
+          </div>
         </div>
+        {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
-      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0">
+      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0 relative">
         <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
           <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
           <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
@@ -541,6 +572,42 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               );
             })
           )}
+        </div>
+        <div className="flex items-center justify-center gap-4 mt-6">
+          <button
+            onClick={() => setShowLeaderboard(true)}
+            className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 inline-flex items-center gap-2`}
+          >
+            <Trophy className="w-5 h-5" />
+            RANKING
+          </button>
+          <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
+            <LogOut className="w-5 h-5" />
+            WYLOGUJ
+          </button>
+        </div>
+      </div>
+      {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
+    </div>
+  );
+}
+
+function LeaderboardModal({ db, appId, liveStage, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
+      <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-1 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
+        <div className="overflow-y-auto flex-1">
+          <Leaderboard 
+            db={db} 
+            appId={appId} 
+            isAdmin={false} 
+            liveStage={liveStage} 
+            limitCount={10} 
+            filterEligible={true}
+          />
+        </div>
+        <div className="p-4 bg-white rounded-b-[29px]">
+          <button onClick={onClose} className={`${neoBtn} w-full py-4 bg-black text-white`}>ZAMKNIJ</button>
         </div>
       </div>
     </div>
@@ -603,8 +670,8 @@ function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isA
                 <Trophy className="text-yellow-400 w-24 h-24 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.4)] shrink-0" />
                 <h1 className="text-[clamp(1.75rem,8vw,3rem)] font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words">{title}</h1>
                 <p className="font-mono text-[clamp(0.7rem,3vw,0.875rem)] tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words">{subtitle}</p>
-                <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black">
-                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={true} />
+                <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black text-left">
+                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={false} />
                 </div>
             </div>
         </div>
@@ -641,10 +708,12 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   }, [db, appId]);
 
   let displayedLeaders = leaders;
-  if (filterEligible && liveStage?.eligibleUids) {
+  if (filterEligible && liveStage?.eligibleUids && liveStage.eligibleUids.length > 0) {
     displayedLeaders = displayedLeaders.filter(l => liveStage.eligibleUids.includes(l.uid));
+    displayedLeaders.sort((a, b) => liveStage.eligibleUids.indexOf(a.uid) - liveStage.eligibleUids.indexOf(b.uid));
+  } else {
+    displayedLeaders = displayedLeaders.slice(0, limitCount);
   }
-  displayedLeaders = displayedLeaders.slice(0, limitCount);
 
   return (
     <div className={`${neoCard} p-6 bg-white text-black`}>
@@ -683,7 +752,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   );
 }
 
-function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, onClose }) {
+function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, onClose, liveStage }) {
   const [players, setPlayers] = useState([]);
   const [selectedUids, setSelectedUids] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -716,7 +785,15 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
         // Bierzemy TOP 20 jako pulę do wyboru
         const top20 = all.slice(0, 20);
         setPlayers(top20);
-        setSelectedUids(top20.slice(0, limitCount).map(p => p.uid));
+
+        // Sprawdź, czy istnieją już zapisani gracze dla tego etapu
+        const existingUids = liveStage?.stageName === stageName ? liveStage.eligibleUids : null;
+        if (existingUids && existingUids.length > 0) {
+          setSelectedUids(existingUids);
+        } else {
+          setSelectedUids(top20.slice(0, limitCount).map(p => p.uid));
+        }
+
         setLoading(false);
       } catch (e) {
         console.error(e);
@@ -724,7 +801,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       }
     };
     fetchPlayers();
-  }, [db, appId, limitCount]);
+  }, [db, appId, limitCount, stageName, liveStage]);
 
   const toggle = (uid) => {
     if (selectedUids.includes(uid)) {
