@@ -352,12 +352,14 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
 
       // 2. Zaktualizuj punkty gracza (to już było, ale poprawiłem na updateDoc)
       const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
+      const updates = {
+        [`selectedOptions.${liveStage.stageName}.${liveStage.currentId}`]: selectedIdx
+      };
       if (earned > 0) {
-        await updateDoc(participantRef, {
-          totalPoints: increment(earned),
-          scoreUpdatedAt: serverTimestamp()
-        });
+        updates.totalPoints = increment(earned);
+        updates.scoreUpdatedAt = serverTimestamp();
       }
+      await updateDoc(participantRef, updates);
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
     } finally {
