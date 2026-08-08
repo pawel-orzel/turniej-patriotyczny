@@ -606,6 +606,7 @@ function LeaderboardModal({ db, appId, liveStage, onClose }) {
             isAdmin={false} 
             liveStage={liveStage} 
             limitCount={10} 
+            filterEligible={true}
           />
         </div>
         <div className="p-4 bg-white rounded-b-[29px]">
@@ -672,8 +673,8 @@ function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isA
                 <Trophy className="text-yellow-400 w-24 h-24 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.4)] shrink-0" />
                 <h1 className="text-[clamp(1.75rem,8vw,3rem)] font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words">{title}</h1>
                 <p className="font-mono text-[clamp(0.7rem,3vw,0.875rem)] tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words">{subtitle}</p>
-                <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black">
-                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={true} />
+                <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black text-left">
+                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={false} />
                 </div>
             </div>
         </div>
@@ -710,10 +711,12 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   }, [db, appId]);
 
   let displayedLeaders = leaders;
-  if (filterEligible && liveStage?.eligibleUids) {
+  if (filterEligible && liveStage?.eligibleUids && liveStage.eligibleUids.length > 0) {
     displayedLeaders = displayedLeaders.filter(l => liveStage.eligibleUids.includes(l.uid));
+    displayedLeaders.sort((a, b) => liveStage.eligibleUids.indexOf(a.uid) - liveStage.eligibleUids.indexOf(b.uid));
+  } else {
+    displayedLeaders = displayedLeaders.slice(0, limitCount);
   }
-  displayedLeaders = displayedLeaders.slice(0, limitCount);
 
   return (
     <div className={`${neoCard} p-6 bg-white text-black`}>
