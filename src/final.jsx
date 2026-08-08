@@ -1,13 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField } from 'firebase/firestore';
-import { Trophy, Radio, Activity, ChevronRight, Megaphone } from 'lucide-react';
+import { Trophy, Radio, Activity, ChevronRight, Megaphone, LogOut } from 'lucide-react';
 import { showAlert, showConfirm } from './modal';
 
 // Custom Classes Neo-Brutalism
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
 
-export default function FinalStage({ db, user, appId, stations, isAdmin }) {
+// Zoptymalizowane konfetti
+const CONFETTI_PIECES = Array.from({ length: 150 }).map((_, i) => ({
+  key: i,
+  style: {
+    left: `${Math.random() * 100}vw`,
+    animationDuration: `${Math.random() * 3 + 2}s`,
+    animationDelay: `${Math.random() * 5}s`,
+    transform: `rotate(${Math.random() * 360}deg)`,
+  },
+  emojiIndex: i % 6,
+}));
+
+export default function FinalStage({ db, user, appId, stations, isAdmin, onLogout }) {
   const [liveStage, setLiveStage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [selectionModal, setSelectionModal] = useState(null);
@@ -152,6 +164,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 )}
               </div>
 
+              {/* SEKACJA PÓŁFINAŁU */}
               <div className={`${neoCard} p-6 bg-blue-50`}>
                 <h2 className="text-2xl font-[900] uppercase mb-6">1. PÓŁFINAŁ</h2>
                 <div className="space-y-4">
@@ -195,6 +208,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 </div>
               </div>
 
+              {/* SEKCJA FINAŁU */}
               <div className={`${neoCard} p-6 bg-yellow-50`}>
                 <h2 className="text-2xl font-[900] uppercase mb-6">2. FINAŁ</h2>
                 <div className="space-y-4">
@@ -250,6 +264,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
                 limitCount={selectionModal.count}
                 announcement={selectionModal.announcement}
                 onClose={() => setSelectionModal(null)}
+                liveStage={liveStage}
               />
             )}
           </>
@@ -271,41 +286,27 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
           liveStage={liveStage}
       />;
     }
-    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} />;
+    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
   }
 
   return null;
 }
 
-function ParticipantLivePanel({ db, user, appId, liveStage }) {
+function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
   const [answered, setAnswered] = useState(false);
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStartTime, setLocalStartTime] = useState(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const getStageColors = () => {
     switch (liveStage?.stageName) {
       case 'PÓŁFINAŁ':
-        return {
-          bg: 'bg-[#3B82F6]',
-          text: 'text-white',
-          accent: 'text-white',
-          tagBg: 'bg-black/20',
-        };
+        return { bg: 'bg-[#3B82F6]', text: 'text-white', accent: 'text-white', tagBg: 'bg-black/20' };
       case 'FINAŁ':
-        return {
-          bg: 'bg-[#EAB308]',
-          text: 'text-black',
-          accent: 'text-black',
-          tagBg: 'bg-black/20',
-        };
+        return { bg: 'bg-[#EAB308]', text: 'text-black', accent: 'text-black', tagBg: 'bg-black/20' };
       default:
-        return {
-          bg: 'bg-[#DC2626]',
-          text: 'text-white',
-          accent: 'text-[#EAB308]',
-          tagBg: 'bg-black/20',
-        };
+        return { bg: 'bg-[#DC2626]', text: 'text-white', accent: 'text-[#EAB308]', tagBg: 'bg-black/20' };
     }
   };
 
@@ -333,13 +334,11 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
     setIsSubmitting(true);
 
     try {
-      const isCorrect = selectedIdx === liveStage.question.correct;
+      const isCorrect = selectedIdx === liveStage?.question?.correct;
       const timeDiff = Math.max(0, Date.now() - (localStartTime || Date.now()));
-      // Czas na odpowiedź: 15 sekund (15000 ms), za każde 15 ms ubywa 1 pkt z puli 1000 pkt bonusowych.
       const speedBonus = Math.max(0, 1000 - Math.floor(timeDiff / 15));
       const earned = isCorrect ? (1000 + speedBonus) : 0;
 
-      // 1. Zapisz wynik odpowiedzi w dedykowanej kolekcji (TEGO BRAKOWAŁO)
       const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${liveStage.currentId}_${user.uid}`);
       await setDoc(resultRef, {
         questionId: liveStage.currentId,
@@ -350,7 +349,6 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
         timestamp: serverTimestamp()
       });
 
-      // 2. Zaktualizuj punkty gracza za pomocą bezpiecznego setDoc
       const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
       const updates = {
         [`selectedOptions.${liveStage.stageName}.${liveStage.currentId}`]: selectedIdx
@@ -359,8 +357,10 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
         updates.totalPoints = increment(earned);
         updates.scoreUpdatedAt = serverTimestamp();
       }
-      // Zmiana z updateDoc na setDoc z merge: true
+      
+      // Naprawiony zapis! Używamy setDoc z merge zamiast niezaimportowanego updateDoc
       await setDoc(participantRef, updates, { merge: true });
+
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
     } finally {
@@ -391,21 +391,36 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               </div>
             </div>
           )}
+
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 flex items-center gap-2`}
+            >
+              <Trophy className="w-5 h-5" />
+              RANKING
+            </button>
+            <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
+              <LogOut className="w-5 h-5" />
+              WYLOGUJ
+            </button>
+          </div>
         </div>
+        {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
-      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0">
+      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0 relative">
         <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
           <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
           <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
             {isSpectator ? `WIDZ - ${liveStage.stageName || 'LIVE'}` : `GRACZ - ${liveStage.stageName || 'LIVE'}`}
           </div>
           <h2 className="text-[clamp(1.5rem,6vw,1.875rem)] font-[900] uppercase leading-tight break-words whitespace-normal">
-            {liveStage.question.text}
+            {liveStage?.question?.text || "Wczytywanie pytania..."}
           </h2>
         </div>
 
@@ -416,10 +431,10 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               <div className="font-mono text-xs uppercase font-bold text-slate-500">Warianty odpowiedzi są ukryte dla widzów, aby uniknąć podpowiadania.</div>
             </div>
           ) : (
-            liveStage.question.options.map((opt, idx) => {
+            (liveStage?.question?.options || []).map((opt, idx) => {
               let btnClass = isSubmitting || isSpectator ? 'bg-white text-black opacity-50' : 'bg-white text-black hover:bg-yellow-50';
-              if (liveStage.showAnswer && idx === liveStage.question.correct) {
-                btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; // Podświetlenie poprawnej odpowiedzi
+              if (liveStage.showAnswer && idx === liveStage?.question?.correct) {
+                btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105';
               } else if (liveStage.showAnswer) {
                 btnClass = 'bg-white text-black opacity-30 grayscale';
               }
@@ -442,18 +457,23 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   );
 }
 
-function Confetti() {
-    const confetti = Array.from({ length: 150 }).map((_, i) => {
-        const style = {
-            left: `${Math.random() * 100}vw`,
-            animationDuration: `${Math.random() * 3 + 2}s`,
-            animationDelay: `${Math.random() * 5}s`,
-            transform: `rotate(${Math.random() * 360}deg)`,
-        };
-        const emojis = ['🎉', '🎊', '🏆', '🥇', '⭐', ''];
-        return <div key={i} className="confetti-piece" style={style}>{emojis[i % emojis.length]}</div>;
-    });
+export function LeaderboardModal({ db, appId, liveStage, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
+      <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-6 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
+        <div className="overflow-y-auto flex-1 mb-4">
+          <Leaderboard db={db} appId={appId} liveStage={liveStage} limitCount={20} />
+        </div>
+        <button onClick={onClose} className={`${neoBtn} w-full py-4 bg-black text-white flex justify-center items-center text-sm`}>
+          ZAMKNIJ RANKING
+        </button>
+      </div>
+    </div>
+  );
+}
 
+function Confetti() {
+    const emojis = ['🎉', '🎊', '🏆', '🥇', '⭐', '🎈'];
     return (
         <>
             <style>{`
@@ -483,7 +503,11 @@ function Confetti() {
                 }
             `}</style>
             <div className="confetti-container">
-                {confetti}
+                {CONFETTI_PIECES.map((piece) => (
+                    <div key={piece.key} className="confetti-piece" style={piece.style}>
+                        {emojis[piece.emojiIndex]}
+                    </div>
+                ))}
             </div>
         </>
     );
@@ -498,15 +522,15 @@ function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isA
                 <Trophy className="text-yellow-400 w-24 h-24 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.4)] shrink-0" />
                 <h1 className="text-[clamp(1.75rem,8vw,3rem)] font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words">{title}</h1>
                 <p className="font-mono text-[clamp(0.7rem,3vw,0.875rem)] tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words">{subtitle}</p>
-                <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black">
-                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={true} />
+                <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black text-left overflow-hidden">
+                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={true} isAnnouncement={true} />
                 </div>
             </div>
         </div>
     );
 }
 
-function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEligible = false }) {
+function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEligible = false, isAnnouncement = false }) {
   const [leaders, setLeaders] = useState([]);
 
   useEffect(() => {
@@ -523,7 +547,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
             return isNaN(ms) ? 0 : ms;
           } catch (e) { return 0; }
         };
-        const aTime = getTime(a.scoreUpdatedAt);
+        const aTime = getTime(a?.scoreUpdatedAt);
         const bTime = getTime(b.scoreUpdatedAt);
         if (aTime !== bTime) return aTime - bTime;
         const aCreated = getTime(a.timestamp);
@@ -536,8 +560,14 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   }, [db, appId]);
 
   let displayedLeaders = leaders;
-  if (filterEligible && liveStage?.eligibleUids) {
+  if (filterEligible && liveStage?.eligibleUids && liveStage.eligibleUids.length > 0) {
     displayedLeaders = displayedLeaders.filter(l => liveStage.eligibleUids.includes(l.uid));
+    // Sortuj według kolejności w eligibleUids, aby zachować ręczny wybór
+    displayedLeaders.sort((a, b) => {
+      const indexA = liveStage.eligibleUids.indexOf(a.uid);
+      const indexB = liveStage.eligibleUids.indexOf(b.uid);
+      return indexA - indexB;
+    });
   }
   displayedLeaders = displayedLeaders.slice(0, limitCount);
 
@@ -578,7 +608,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   );
 }
 
-function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, onClose }) {
+function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, onClose, liveStage }) {
   const [players, setPlayers] = useState([]);
   const [selectedUids, setSelectedUids] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -608,10 +638,17 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
           return aCreated - bCreated;
         });
 
-        // Bierzemy TOP 20 jako pulę do wyboru
-        const top20 = all.slice(0, 20);
-        setPlayers(top20);
-        setSelectedUids(top20.slice(0, limitCount).map(p => p.uid));
+        // Bierzemy TOP 40 jako rozszerzoną pulę do wyboru!
+        const top40 = all.slice(0, 40);
+        setPlayers(top40);
+
+        const existingUids = (liveStage?.stageName === stageName && Array.isArray(liveStage.eligibleUids)) ? liveStage.eligibleUids : null;
+        if (existingUids && existingUids.length > 0) {
+          setSelectedUids(existingUids);
+        } else {
+          setSelectedUids(top40.slice(0, limitCount).map(p => p.uid));
+        }
+
         setLoading(false);
       } catch (e) {
         console.error(e);
@@ -619,7 +656,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       }
     };
     fetchPlayers();
-  }, [db, appId, limitCount]);
+  }, [db, appId, limitCount, stageName, liveStage]);
 
   const toggle = (uid) => {
     if (selectedUids.includes(uid)) {
@@ -630,6 +667,11 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
   };
 
   const handleConfirm = async () => {
+    if (selectedUids.length !== limitCount) {
+      await showAlert("UWAGA", `Liczba zaznaczonych graczy (${selectedUids.length}) nie zgadza się z wymaganą liczbą dla tego etapu (${limitCount}).\n\nUpewnij się, że wybrałeś dokładnie ${limitCount} osób.`);
+      return;
+    }
+
     try {
       const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
       const payload = { eligibleUids: selectedUids, stageName };
@@ -684,7 +726,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-6 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
         <h2 className="text-3xl font-[900] uppercase mb-2">WERYFIKACJA: {stageName}</h2>
         <p className="font-mono text-[11px] text-slate-600 mb-4 leading-tight uppercase font-bold">
-          Zaznacz graczy, którzy są obecni na scenie. System domyślnie zaznaczył TOP {limitCount}, ale w razie nieobecności kogoś z czołówki, możesz dobrać osoby z rezerwy (miejsca {limitCount + 1}-20).
+          Zaznacz graczy, którzy są obecni na scenie. System domyślnie zaznaczył TOP {limitCount}, ale w razie nieobecności kogoś z czołówki, możesz dobrać osoby z rezerwy (miejsca {limitCount + 1}-40).
         </p>
         <div className="overflow-y-auto flex-1 border-2 border-black rounded-xl p-2 space-y-2 mb-4 bg-slate-50">
           {loading ? (
