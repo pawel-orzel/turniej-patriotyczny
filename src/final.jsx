@@ -154,6 +154,29 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
               <div className={`${neoCard} p-6 bg-blue-50`}>
                 <h2 className="text-2xl font-[900] uppercase mb-6">1. PÓŁFINAŁ</h2>
+                <div className="mb-6">
+                  <button
+                    onClick={async () => {
+                      if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz wypuścić WSZYSTKIE ${semifinalQuestions.length} pytań półfinałowych naraz? Uczestnicy będą mogli odpowiadać na nie w dowolnej kolejności.`))) return;
+                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                      await setDoc(liveRef, { 
+                        isLiveModeVisible: true, 
+                        active: true, 
+                        currentId: 'półfinał-wszystkie',
+                        question: null,
+                        allQuestions: semifinalQuestions,
+                        showAnswer: false, 
+                        startTime: serverTimestamp(), 
+                        stageName: 'PÓŁFINAŁ',
+                        announcement: deleteField(),
+                        askedQuestions: semifinalQuestions.map(q => q.id)
+                      }, { merge: true });
+                    }}
+                    className={`${neoBtn} bg-[#1D4ED8] text-white px-6 py-4 w-full text-center`}
+                  >
+                    WYPUŚĆ WSZYSTKIE PYTANIA NARAZ
+                  </button>
+                </div>
                 <div className="space-y-4">
                   {semifinalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "półfinał" w arkuszu.</div>
@@ -197,6 +220,29 @@ export default function FinalStage({ db, user, appId, stations, isAdmin }) {
 
               <div className={`${neoCard} p-6 bg-yellow-50`}>
                 <h2 className="text-2xl font-[900] uppercase mb-6">2. FINAŁ</h2>
+                <div className="mb-6">
+                  <button
+                    onClick={async () => {
+                      if (!(await showConfirm("POTWIERDŹ", `Czy na pewno chcesz wypuścić WSZYSTKIE ${finalQuestions.length} pytań finałowych naraz? Uczestnicy będą mogli odpowiadać na nie w dowolnej kolejności.`))) return;
+                      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+                      await setDoc(liveRef, { 
+                        isLiveModeVisible: true, 
+                        active: true, 
+                        currentId: 'finał-wszystkie',
+                        question: null,
+                        allQuestions: finalQuestions,
+                        showAnswer: false, 
+                        startTime: serverTimestamp(), 
+                        stageName: 'FINAŁ',
+                        announcement: deleteField(),
+                        askedQuestions: finalQuestions.map(q => q.id)
+                      }, { merge: true });
+                    }}
+                    className={`${neoBtn} bg-[#EAB308] text-black px-6 py-4 w-full text-center`}
+                  >
+                    WYPUŚĆ WSZYSTKIE PYTANIA NARAZ
+                  </button>
+                </div>
                 <div className="space-y-4">
                   {finalQuestions.length === 0 && (
                     <div className="font-mono text-xs text-slate-500 uppercase">Brak pytań. Dodaj stację "finał" w arkuszu.</div>
