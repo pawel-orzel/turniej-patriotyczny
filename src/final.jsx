@@ -333,6 +333,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStartTime, setLocalStartTime] = useState(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   // --- Zmiana dla trybu "wszystkie pytania" ---
   const [answeredInBatch, setAnsweredInBatch] = useState(new Set());
@@ -454,7 +455,16 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               </div>
             </div>
           )}
+
+          <button
+            onClick={() => setShowLeaderboard(true)}
+            className={`${neoBtn} bg-yellow-400 text-black px-8 py-4 mt-8 flex items-center gap-2`}
+          >
+            <Trophy className="w-6 h-6" />
+            RANKING
+          </button>
         </div>
+        {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
       </div>
     );
   }
@@ -462,7 +472,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   if (isBatchMode) {
     return (
       <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
-        <div className="my-auto max-w-2xl mx-auto w-full space-y-6 py-8 shrink-0">
+        <div className="my-auto max-w-2xl mx-auto w-full space-y-6 py-8 shrink-0 relative">
           <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
             <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
             <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
@@ -498,14 +508,24 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               </div>
             );
           })}
+          <div className="text-center mt-6">
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 inline-flex items-center gap-2`}
+            >
+              <Trophy className="w-5 h-5" />
+              RANKING
+            </button>
+          </div>
         </div>
+        {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
-      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0">
+      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0 relative">
         <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
           <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
           <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
@@ -543,6 +563,37 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
               );
             })
           )}
+        </div>
+        <div className="text-center mt-6">
+          <button
+            onClick={() => setShowLeaderboard(true)}
+            className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 inline-flex items-center gap-2`}
+          >
+            <Trophy className="w-5 h-5" />
+            RANKING
+          </button>
+        </div>
+      </div>
+      {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
+    </div>
+  );
+}
+
+function LeaderboardModal({ db, appId, liveStage, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
+      <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-1 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
+        <div className="overflow-y-auto flex-1">
+          <Leaderboard 
+            db={db} 
+            appId={appId} 
+            isAdmin={false} 
+            liveStage={liveStage} 
+            limitCount={10} 
+          />
+        </div>
+        <div className="p-4 bg-white rounded-b-[29px]">
+          <button onClick={onClose} className={`${neoBtn} w-full py-4 bg-black text-white`}>ZAMKNIJ</button>
         </div>
       </div>
     </div>
