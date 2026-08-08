@@ -140,7 +140,7 @@ export default function ParticipantBatchPanel({ db, user, appId, liveStage, onLo
                     Warianty ukryte dla widzów.
                   </div>
                 ) : (
-                  q.options.map((opt, idx) => {
+                  (q.options || []).map((opt, idx) => {
                     let btnClass = 'bg-white text-black hover:bg-yellow-50';
                     if (isAnswered) {
                       if (idx === q.correct) btnClass = 'bg-green-500 text-white border-green-700';

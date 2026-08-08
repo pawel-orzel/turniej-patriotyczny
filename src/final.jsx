@@ -495,7 +495,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
             {isSpectator ? `WIDZ - ${liveStage.stageName || 'LIVE'}` : `GRACZ - ${liveStage.stageName || 'LIVE'}`}
           </div>
           <h2 className="text-[clamp(1.5rem,6vw,1.875rem)] font-[900] uppercase leading-tight break-words whitespace-normal">
-            {liveStage.question.text}
+            {liveStage?.question?.text || "Wczytywanie pytania..."}
           </h2>
         </div>
 
@@ -506,9 +506,9 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
               <div className="font-mono text-xs uppercase font-bold text-slate-500">Warianty odpowiedzi są ukryte dla widzów, aby uniknąć podpowiadania.</div>
             </div>
           ) : (
-            liveStage.question.options.map((opt, idx) => {
+            (liveStage?.question?.options || []).map((opt, idx) => {
               let btnClass = isSubmitting || isSpectator ? 'bg-white text-black opacity-50' : 'bg-white text-black hover:bg-yellow-50';
-              if (liveStage.showAnswer && idx === liveStage.question.correct) {
+              if (liveStage.showAnswer && idx === liveStage?.question?.correct) {
                 btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; // Podświetlenie poprawnej odpowiedzi
               } else if (liveStage.showAnswer) {
                 btnClass = 'bg-white text-black opacity-30 grayscale';
