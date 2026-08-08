@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp, increment } from 'firebase/firestore';
-import { Trophy, Radio, Activity } from 'lucide-react';
+import { Trophy, Radio, Activity, LogOut } from 'lucide-react';
 
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all rounded-[16px] font-[900] uppercase";
@@ -10,6 +10,7 @@ export default function ParticipantBatchPanel({ db, user, appId, liveStage }) {
   const [localStartTime, setLocalStartTime] = useState(null);
   const [answeredInBatch, setAnsweredInBatch] = useState(new Set());
   const [selectedAnswers, setSelectedAnswers] = useState({});
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const isSpectator = !(liveStage?.eligibleUids || []).includes(user?.uid);
 
@@ -91,7 +92,22 @@ export default function ParticipantBatchPanel({ db, user, appId, liveStage }) {
           <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words whitespace-normal">
             {liveStage.active ? "Oczekuj na wyniki rundy!" : "Oczekuj na sygnał od prowadzącego!"}
           </p>
+
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 flex items-center gap-2`}
+            >
+              <Trophy className="w-5 h-5" />
+              RANKING
+            </button>
+            <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
+              <LogOut className="w-5 h-5" />
+              WYLOGUJ
+            </button>
+          </div>
         </div>
+        {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
       </div>
     );
   }

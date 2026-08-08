@@ -685,9 +685,9 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
           return aCreated - bCreated;
         });
 
-        // Bierzemy TOP 20 jako pulę do wyboru
-        const top20 = all.slice(0, 20);
-        setPlayers(top20);
+        // Bierzemy TOP 40 jako pulę do wyboru
+        const top40 = all.slice(0, 40);
+        setPlayers(top40);
 
         // Sprawdź, czy istnieją już zapisani i zweryfikowani gracze dla tego etapu.
         // Jeśli tak, załaduj ich jako domyślnie zaznaczonych.
@@ -696,7 +696,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
           setSelectedUids(existingUids);
         } else {
           // Jeśli nie, zaznacz domyślnie najlepszych graczy zgodnie z limitem.
-          setSelectedUids(top20.slice(0, limitCount).map(p => p.uid)); // Fallback
+          setSelectedUids(top40.slice(0, limitCount).map(p => p.uid)); // Fallback
         }
 
         setLoading(false);
