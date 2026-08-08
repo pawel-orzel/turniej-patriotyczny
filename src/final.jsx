@@ -301,6 +301,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin, onLogou
                 limitCount={selectionModal.count}
                 announcement={selectionModal.announcement}
                 onClose={() => setSelectionModal(null)}
+                liveStage={liveStage}
               />
             )}
           </>
@@ -751,7 +752,7 @@ function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEli
   );
 }
 
-function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, onClose }) {
+function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, onClose, liveStage }) {
   const [players, setPlayers] = useState([]);
   const [selectedUids, setSelectedUids] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -784,7 +785,15 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
         // Bierzemy TOP 20 jako pulę do wyboru
         const top20 = all.slice(0, 20);
         setPlayers(top20);
-        setSelectedUids(top20.slice(0, limitCount).map(p => p.uid));
+
+        // Sprawdź, czy istnieją już zapisani gracze dla tego etapu
+        const existingUids = liveStage?.stageName === stageName ? liveStage.eligibleUids : null;
+        if (existingUids && existingUids.length > 0) {
+          setSelectedUids(existingUids);
+        } else {
+          setSelectedUids(top20.slice(0, limitCount).map(p => p.uid));
+        }
+
         setLoading(false);
       } catch (e) {
         console.error(e);
@@ -792,7 +801,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       }
     };
     fetchPlayers();
-  }, [db, appId, limitCount]);
+  }, [db, appId, limitCount, stageName, liveStage]);
 
   const toggle = (uid) => {
     if (selectedUids.includes(uid)) {
