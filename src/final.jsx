@@ -405,7 +405,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
       const resultMessage = isCorrect
         ? `Zdobywasz ${earned} pkt! (${timeDiff}ms)`
         : 'Niestety, to błędna odpowiedź.';
-      await showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage, (closeFn) => { closeModalRef.current = closeFn;});
+      showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage, (closeFn) => { closeModalRef.current = closeFn; });
 
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
