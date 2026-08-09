@@ -292,12 +292,11 @@ export default function FinalStage({ db, user, appId, stations, isAdmin, onLogou
   return null;
 }
 
-function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
+function ParticipantLivePanel({ db, user, appId, liveStage }) {
   const [answered, setAnswered] = useState(false);
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStartTime, setLocalStartTime] = useState(null);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const getStageColors = () => {
     switch (liveStage?.stageName) {
@@ -316,19 +315,20 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
   useEffect(() => {
     if (!liveStage?.currentId || !user?.uid || isSpectator) return;
     
-    // Bezpieczne generowanie ścieżki
-    const safeCurrentId = String(liveStage.currentId).replace(/\//g, '-');
-    const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${safeCurrentId}_${user.uid}`);
-    
-    const unsub = onSnapshot(resultRef, (docSnap) => {
+    // ZMIANA: Nasłuchujemy bezpośrednio profilu gracza, a nie zablokowanej kolekcji stageResults!
+    const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
+    const unsub = onSnapshot(participantRef, (docSnap) => {
       if (docSnap.exists()) {
-        setAnswered(true);
-        setResult(docSnap.data());
-      } else {
-        setAnswered(false);
-        setResult(null);
-        // Ustawiamy czas startu tylko jeśli pytanie jest aktywne
-        if (liveStage.active) {
+        const data = docSnap.data();
+        const finalAnswers = data.finalAnswers || {};
+        
+        // Sprawdzamy czy w profilu gracza jest już odpowiedź na to konkretne pytanie
+        if (finalAnswers[liveStage.currentId]) {
+          setAnswered(true);
+          setResult(finalAnswers[liveStage.currentId]);
+        } else {
+          setAnswered(false);
+          setResult(null);
           setLocalStartTime(Date.now());
         }
       }
@@ -346,36 +346,27 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
       const speedBonus = Math.max(0, 1000 - Math.floor(timeDiff / 15));
       const earned = isCorrect ? (1000 + speedBonus) : 0;
 
-      // ZABEZPIECZENIE: Czyszczenie identyfikatorów z kropek i ukośników
-      const safeCurrentId = String(liveStage?.currentId || 'brak-id').replace(/\//g, '-');
-      const safeStageName = String(liveStage?.stageName || 'brak-etapu').replace(/\./g, '-');
-
-      const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${safeCurrentId}_${user.uid}`);
-      await setDoc(resultRef, {
-        questionId: safeCurrentId,
-        uid: user.uid,
-        correct: isCorrect,
-        earned: earned,
-        timeDiff: timeDiff,
-        timestamp: serverTimestamp()
-      });
-
+      // ZMIANA: Zapisujemy wszystko do działającej kolekcji participants, którą Firebase na pewno przepuści
       const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
-      const updates = {
-        [`selectedOptions.${safeStageName}.${safeCurrentId}`]: selectedIdx
-      };
       
+      const updates = {
+        [`finalAnswers.${liveStage.currentId}`]: {
+          correct: isCorrect,
+          earned: earned,
+          timeDiff: timeDiff
+        }
+      };
+
       if (earned > 0) {
         updates.totalPoints = increment(earned);
         updates.scoreUpdatedAt = serverTimestamp();
       }
-      
+
       await setDoc(participantRef, updates, { merge: true });
 
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
-      // GŁOŚNY ALARM: Powiadomi Cię o dokładnej przyczynie błędu
-      await showAlert("KRYTYCZNY BŁĄD ZAPISU", `Odpowiedź nie mogła zostać zapisana w Firebase.\n\nPowód błędu: ${err.message}`);
+      alert("Wystąpił problem: " + err.message); // Zabezpieczenie informacyjne
     } finally {
       setIsSubmitting(false);
     }
@@ -404,22 +395,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
               </div>
             </div>
           )}
-
-          <div className="flex items-center justify-center gap-4 mt-8">
-            <button
-              onClick={() => setShowLeaderboard(true)}
-              className={`${neoBtn} bg-yellow-400 text-black px-6 py-3 flex items-center gap-2`}
-            >
-              <Trophy className="w-5 h-5" />
-              RANKING
-            </button>
-            <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-3 flex items-center gap-2`}>
-              <LogOut className="w-5 h-5" />
-              WYLOGUJ
-            </button>
-          </div>
         </div>
-        {showLeaderboard && <LeaderboardModal db={db} appId={appId} liveStage={liveStage} onClose={() => setShowLeaderboard(false)} />}
       </div>
     );
   }
@@ -447,7 +423,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
             (liveStage?.question?.options || []).map((opt, idx) => {
               let btnClass = isSubmitting || isSpectator ? 'bg-white text-black opacity-50' : 'bg-white text-black hover:bg-yellow-50';
               if (liveStage.showAnswer && idx === liveStage?.question?.correct) {
-                btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105';
+                btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; 
               } else if (liveStage.showAnswer) {
                 btnClass = 'bg-white text-black opacity-30 grayscale';
               }
@@ -469,6 +445,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
     </div>
   );
 }
+
 
 export function LeaderboardModal({ db, appId, liveStage, onClose }) {
   return (
