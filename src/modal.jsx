@@ -2,11 +2,14 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AlertTriangle, CheckCircle, Info, Hourglass } from 'lucide-react';
 
-const showCustomModal = (title, message, type = 'alert', options = {}) => {
+const showCustomModal = (title, message, type = 'alert', options = {}, onClose) => {
   return new Promise((resolve) => {
     const modalContainer = document.createElement('div');
     document.body.appendChild(modalContainer);
     const root = createRoot(modalContainer);
+
+    // Przekazujemy funkcję zamykania na zewnątrz, jeśli została dostarczona
+    if (onClose) onClose(() => handleClose(true));
 
     const handleClose = (result) => {
       root.unmount();
@@ -58,11 +61,11 @@ export const showAlert = (title, message) => {
   const isSuccess = title.toLowerCase().includes('sukces') || title.toLowerCase().includes('zalogowano');
   const icon = isError ? 'error' : isSuccess ? 'success' : 'info';
   return showCustomModal(title, message, 'alert', { icon });
+  return showCustomModal(title, message, 'confirm');
 };
 
-export const showConfirm = (title, message) => showCustomModal(title, message, 'confirm');
-
-export const showWaitingModal = (title, message) => {
+export const showWaitingModal = (title, message, onClose) => {
   const isCorrect = !title.toLowerCase().includes('błąd');
-  return showCustomModal(title, message, 'alert', { noButton: true, waitMessage: 'CZEKAJ NA RUCH PROWADZĄCEGO', icon: isCorrect ? 'success' : 'error' });
+  return showCustomModal(title, message, 'alert', { noButton: true, waitMessage: 'CZEKAJ NA RUCH PROWADZĄCEGO', icon: isCorrect ? 'success' : 'error' }, onClose);
 };
+

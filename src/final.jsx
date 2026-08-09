@@ -302,6 +302,9 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   // TWARDA BLOKADA PRZECIW SPAMOWANIU (useRef działa synchronicznie)
   const clickLockRef = React.useRef(false);
 
+  // Referencja do funkcji zamykającej modal
+  const closeModalRef = React.useRef(null);
+
   const getStageColors = () => {
     switch (liveStage?.stageName) {
       case 'PÓŁFINAŁ':
@@ -317,6 +320,11 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   const isSpectator = !(liveStage?.eligibleUids || []).includes(user?.uid);
 
   useEffect(() => {
+    // Zamykamy modal, jeśli jest otwarty, gdy pojawia się nowe pytanie
+    if (closeModalRef.current) {
+      closeModalRef.current();
+      closeModalRef.current = null;
+    }
     // Zdejmujemy kłódkę zawsze, gdy wjeżdża nowe pytanie
     clickLockRef.current = false;
 
@@ -397,7 +405,9 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
       const resultMessage = isCorrect
         ? `Zdobywasz ${earned} pkt! (${timeDiff}ms)`
         : 'Niestety, to błędna odpowiedź.';
-      await showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage);
+      
+      // Zapisujemy funkcję zamykania i czekamy na jej wykonanie
+      await new Promise(resolve => { showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage, resolve); });
 
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
