@@ -19,7 +19,7 @@ const CONFETTI_PIECES = Array.from({ length: 150 }).map((_, i) => ({
   emojiIndex: i % 6,
 }));
 
-export default function FinalStage({ db, user, appId, stations, isAdmin, onLogout }) {
+export default function FinalStage({ db, user, userData, appId, stations, isAdmin, onLogout }) {
   const [liveStage, setLiveStage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [selectionModal, setSelectionModal] = useState(null);
@@ -286,7 +286,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin, onLogou
           liveStage={liveStage}
       />;
     }
-    return <ParticipantLivePanel db={db} user={user} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
+    return <ParticipantLivePanel db={db} user={user} userData={userData} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
   }
 
   return null;
@@ -351,7 +351,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   }, [liveStage?.currentId, user?.uid, db, appId, isSpectator, userData]);
 
   const handleAnswer = async (selectedIdx) => {
-    if (answered || isSubmitting || isSpectator) return;
+    if (answered || hasAttempted || isSubmitting || isSpectator) return;
     setIsSubmitting(true);
     setSelectedAnswer(selectedIdx);
     setHasAttempted(true);
