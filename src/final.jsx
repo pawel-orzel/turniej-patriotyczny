@@ -394,11 +394,6 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
 
       await setDoc(participantRef, updates, { merge: true });
 
-      const resultMessage = isCorrect
-        ? `Zdobywasz ${earned} pkt! (${timeDiff}ms)`
-        : 'Niestety, to błędna odpowiedź.';
-      await showAlert(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage);
-
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
       clickLockRef.current = false; // Awaryjne otwarcie kłódki, jeśli zapis do bazy faktycznie by padł
