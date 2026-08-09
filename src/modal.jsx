@@ -29,16 +29,16 @@ export const showCustomModal = (title, message, type = 'alert') => {
           </div>
           <h3 className="text-3xl font-[900] uppercase tracking-tighter text-black mb-4 leading-tight">{title}</h3>
           <p className="font-mono text-sm font-bold text-slate-600 uppercase mb-8 whitespace-pre-wrap">{message}</p>
-          <div className="flex flex-col gap-3 justify-center">
-            {type === 'confirm' && (
+          {type === 'confirm' && (
+            <div className="flex flex-col gap-3 justify-center">
               <button onClick={() => handleClose(false)} className={`${neoBtn} w-full py-4 px-6 bg-slate-100 text-black`}>
                 ANULUJ
               </button>
-            )}
-            <button onClick={() => handleClose(true)} className={`${neoBtn} w-full py-4 px-6 ${type === 'confirm' ? 'bg-[#DC2626] text-white' : 'bg-black text-white'}`}>
-              {type === 'confirm' ? 'TAK, POTWIERDŹ' : 'OK, ZROZUMIANO'}
-            </button>
-          </div>
+              <button onClick={() => handleClose(true)} className={`${neoBtn} w-full py-4 px-6 bg-[#DC2626] text-white`}>
+                TAK, POTWIERDŹ
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
