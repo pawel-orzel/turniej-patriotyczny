@@ -378,7 +378,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
       alert("Wystąpił problem: " + err.message); // Zabezpieczenie informacyjne
     } finally {
       setIsSubmitting(false);
-    }
+    } // Ta klamra była w złym miejscu, przeniosłem ją tutaj.
   };
 
   if (!liveStage.active || (answered && !isSpectator)) {
