@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField, updateDoc } from 'firebase/firestore';
 import { Trophy, Radio, Activity, ChevronRight, Megaphone, LogOut } from 'lucide-react';
 import { showAlert, showConfirm } from './modal';
 
@@ -315,7 +315,11 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
 
   useEffect(() => {
     if (!liveStage?.currentId || !user?.uid || isSpectator) return;
-    const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${liveStage.currentId}_${user.uid}`);
+    
+    // Bezpieczne generowanie ścieżki
+    const safeCurrentId = String(liveStage.currentId).replace(/\//g, '-');
+    const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${safeCurrentId}_${user.uid}`);
+    
     const unsub = onSnapshot(resultRef, (docSnap) => {
       if (docSnap.exists()) {
         setAnswered(true);
@@ -323,7 +327,10 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
       } else {
         setAnswered(false);
         setResult(null);
-        setLocalStartTime(Date.now());
+        // Ustawiamy czas startu tylko jeśli pytanie jest aktywne
+        if (liveStage.active) {
+          setLocalStartTime(Date.now());
+        }
       }
     });
     return () => unsub();
@@ -339,30 +346,36 @@ function ParticipantLivePanel({ db, user, appId, liveStage, onLogout }) {
       const speedBonus = Math.max(0, 1000 - Math.floor(timeDiff / 15));
       const earned = isCorrect ? (1000 + speedBonus) : 0;
 
-      const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${liveStage.currentId}_${user.uid}`);
+      // ZABEZPIECZENIE: Czyszczenie identyfikatorów z kropek i ukośników
+      const safeCurrentId = String(liveStage?.currentId || 'brak-id').replace(/\//g, '-');
+      const safeStageName = String(liveStage?.stageName || 'brak-etapu').replace(/\./g, '-');
+
+      const resultRef = doc(db, 'artifacts', appId, 'public', 'data', 'stageResults', `${safeCurrentId}_${user.uid}`);
       await setDoc(resultRef, {
-        questionId: liveStage.currentId,
+        questionId: safeCurrentId,
         uid: user.uid,
         correct: isCorrect,
-        earned,
-        timeDiff,
+        earned: earned,
+        timeDiff: timeDiff,
         timestamp: serverTimestamp()
       });
 
       const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
       const updates = {
-        [`selectedOptions.${liveStage.stageName}.${liveStage.currentId}`]: selectedIdx
+        [`selectedOptions.${safeStageName}.${safeCurrentId}`]: selectedIdx
       };
+      
       if (earned > 0) {
         updates.totalPoints = increment(earned);
         updates.scoreUpdatedAt = serverTimestamp();
       }
       
-      // Naprawiony zapis! Używamy setDoc z merge zamiast niezaimportowanego updateDoc
       await setDoc(participantRef, updates, { merge: true });
 
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
+      // GŁOŚNY ALARM: Powiadomi Cię o dokładnej przyczynie błędu
+      await showAlert("KRYTYCZNY BŁĄD ZAPISU", `Odpowiedź nie mogła zostać zapisana w Firebase.\n\nPowód błędu: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
