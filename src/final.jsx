@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField, updateDoc } from 'firebase/firestore';
 import { Trophy, Radio, Activity, ChevronRight, Megaphone, LogOut } from 'lucide-react';
-import { showAlert, showConfirm } from './modal';
+import { showAlert, showConfirm, showWaitingModal } from './modal';
 
 // Custom Classes Neo-Brutalism
 const neoCard = "border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]";
@@ -397,7 +397,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
       const resultMessage = isCorrect
         ? `Zdobywasz ${earned} pkt! (${timeDiff}ms)`
         : 'Niestety, to błędna odpowiedź.';
-      await showAlert(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage);
+      await showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage);
 
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
