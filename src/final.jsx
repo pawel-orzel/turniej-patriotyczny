@@ -297,6 +297,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStartTime, setLocalStartTime] = useState(null);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
 
   const getStageColors = () => {
     switch (liveStage?.stageName) {
@@ -332,6 +333,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
           } else {
             setAnswered(false);
             setResult(null);
+            setSelectedAnswer(null);
           }
         } else {
           setAnswered(false);
@@ -345,6 +347,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   const handleAnswer = async (selectedIdx) => {
     if (answered || isSubmitting || isSpectator) return;
     setIsSubmitting(true);
+    setSelectedAnswer(selectedIdx);
 
     try {
       const isCorrect = selectedIdx === liveStage?.question?.correct;
@@ -386,10 +389,10 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
             {liveStage.active ? <Trophy className="text-[#EAB308] w-16 h-16" /> : <Activity className="text-[#EAB308] w-16 h-16 animate-pulse" />}
           </div>
           <h2 className="text-4xl font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words whitespace-normal">
-            {liveStage.active ? "OCZEKIWANIE NA WIDZÓW" : "SCENA GŁÓWNA"}
+            {liveStage.active ? "ODPOWIEDŹ ZAPISANA" : "SCENA GŁÓWNA"}
           </h2>
           <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words whitespace-normal">
-            {liveStage.active ? "Gotuj się na następne wyzwanie!" : "Oczekuj na sygnał od prowadzącego!"}
+            {liveStage.active ? "Czekaj na dalsze kroki!" : "Oczekuj na sygnał od prowadzącego!"}
           </p>
 
           {result && !isSpectator && (
@@ -427,7 +430,10 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
             </div>
           ) : (
             (liveStage?.question?.options || []).map((opt, idx) => {
-              let btnClass = isSubmitting || isSpectator ? 'bg-white text-black opacity-50' : 'bg-white text-black hover:bg-yellow-50';
+              let btnClass = 'bg-white text-black hover:bg-yellow-50';
+              if (isSubmitting || isSpectator) {
+                btnClass = selectedAnswer === idx ? 'bg-yellow-400 text-black' : 'bg-white text-black opacity-30 grayscale';
+              }
               if (liveStage.showAnswer && idx === liveStage?.question?.correct) {
                 btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; 
               } else if (liveStage.showAnswer) {
