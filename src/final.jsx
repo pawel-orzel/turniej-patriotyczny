@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField, updateDoc } from 'firebase/firestore';
-import { Trophy, Radio, Activity, ChevronRight, Megaphone, LogOut } from 'lucide-react';
+import { doc, onSnapshot, setDoc, serverTimestamp, collection, increment, getDocs, deleteField } from 'firebase/firestore';
+import { Trophy, Radio, Activity, ChevronRight, Megaphone } from 'lucide-react';
 import { showAlert, showConfirm, showWaitingModal } from './modal';
 
 // Custom Classes Neo-Brutalism
@@ -286,13 +286,13 @@ export default function FinalStage({ db, user, userData, appId, stations, isAdmi
           liveStage={liveStage}
       />;
     }
-    return <ParticipantLivePanel db={db} user={user} userData={userData} appId={appId} liveStage={liveStage} onLogout={onLogout} />;
+    return <ParticipantLivePanel db={db} user={user} userData={userData} appId={appId} liveStage={liveStage} />;
   }
 
   return null;
 }
 
-function ParticipantLivePanel({ db, user, userData, appId, liveStage, onLogout }) {
+function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   const [answered, setAnswered] = useState(false);
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -324,7 +324,6 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage, onLogout }
 
   const getStageColors = () => {
     switch (liveStage?.stageName) {
-
       case 'PÓŁFINAŁ':
         return { bg: 'bg-[#3B82F6]', text: 'text-white', accent: 'text-white', tagBg: 'bg-black/20' };
       case 'FINAŁ':
@@ -418,6 +417,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage, onLogout }
       const resultMessage = isCorrect
         ? `Zdobywasz ${earned} pkt! (${timeDiff}ms)`
         : 'Niestety, to błędna odpowiedź.';
+        
       // Wyświetlamy modal i wyciągamy z niego prawdziwą funkcję zamykającą
       showWaitingModal(
         isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', 
@@ -516,103 +516,6 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage, onLogout }
             )}
           </div>
         </div>
-    </div>
-  );
-}
-
-      const resultMessage = isCorrect
-        ? `Zdobywasz ${earned} pkt! (${timeDiff}ms)`
-        : 'Niestety, to błędna odpowiedź.';
-      
-      // Zapisujemy funkcję zamykania i wyświetlamy Twój modal
-      await new Promise(resolve => {
-        closeModalRef.current = resolve;
-        showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage, resolve);
-      });
-
-    } catch (err) {
-      console.error('Błąd zapisywania odpowiedzi:', err);
-      clickLockRef.current = false; // Awaryjne otwarcie kłódki, jeśli zapis do bazy faktycznie by padł
-      await showAlert("Wystąpił problem", err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (!liveStage.active || (answered && !isSpectator)) {
-    return (
-      <div className="fixed inset-0 z-[100] bg-[#DC2626] overflow-y-auto p-6 text-white animate-in fade-in zoom-in duration-300 flex flex-col">
-        <div className="my-auto flex flex-col items-center justify-center py-8 shrink-0">
-          <div className="bg-white border-[3px] border-black w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-8 shrink-0 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            {liveStage.active ? <Trophy className="text-[#EAB308] w-16 h-16" /> : <Activity className="text-[#EAB308] w-16 h-16 animate-pulse" />}
-          </div>
-          <h2 className="text-4xl font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words whitespace-normal">
-            {liveStage.active ? "ODPOWIEDŹ ZAPISANA" : "SCENA GŁÓWNA"}
-          </h2>
-          <p className="font-mono text-sm tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words whitespace-normal">
-            {liveStage.active ? "Czekaj na dalsze kroki!" : "Oczekuj na sygnał od prowadzącego!"}
-          </p>
-
-          {result && !isSpectator && (
-            <div className="bg-black/20 p-6 rounded-[24px] border-[3px] border-black text-center w-full max-w-sm shrink-0">
-              <div className="font-mono text-[10px] tracking-widest uppercase mb-1">TWÓJ WYNIK ZA PYTANIE</div>
-              <div className="text-4xl font-[900] text-[#EAB308]">{result.earned} PKT</div>
-              <div className="font-mono text-xs uppercase mt-2 opacity-70">
-                {result.correct ? 'Poprawna odpowiedź!' : 'Niestety, błąd.'}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 z-[100] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 flex flex-col">
-      <div className="my-auto max-w-md mx-auto w-full space-y-6 py-8 shrink-0 relative">
-        <div className={`${neoCard} ${stageColors.bg} p-8 ${stageColors.text} text-center`}>
-          <Radio className={`w-12 h-12 mx-auto mb-4 animate-pulse ${stageColors.accent}`} />
-          <div className={`font-mono text-[10px] tracking-widest uppercase font-bold ${stageColors.tagBg} px-3 py-1 rounded-full inline-block mb-4`}>
-            {isSpectator ? `WIDZ - ${liveStage.stageName || 'LIVE'}` : `GRACZ - ${liveStage.stageName || 'LIVE'}`}
-          </div>
-          <h2 className="text-[clamp(1.5rem,6vw,1.875rem)] font-[900] uppercase leading-tight break-words whitespace-normal">
-            {liveStage?.question?.text || "Wczytywanie pytania..."}
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4">
-          {isSpectator && !liveStage.showAnswer ? (
-            <div className="text-center p-8 bg-white border-[3px] border-black rounded-[24px] shadow-neo-sm opacity-80 mt-4">
-              <div className="font-[900] uppercase text-xl mb-2">Trwa głosowanie...</div>
-              <div className="font-mono text-xs uppercase font-bold text-slate-500">Warianty odpowiedzi są ukryte dla widzów, aby uniknąć podpowiadania.</div>
-            </div>
-          ) : (
-            (liveStage?.question?.options || []).map((opt, idx) => {
-              let btnClass = 'bg-white text-black hover:bg-yellow-50';
-              if (isSubmitting && !isSpectator) {
-                btnClass = selectedAnswer === idx ? 'bg-yellow-400 text-black' : 'bg-white text-black opacity-30 grayscale';
-              } else if (isSpectator && !liveStage.showAnswer) {
-                btnClass = 'bg-white text-black opacity-50';
-              } else if (liveStage.showAnswer && idx === liveStage?.question?.correct) {
-                btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; 
-              } else if (liveStage.showAnswer) {
-                btnClass = 'bg-white text-black opacity-30 grayscale';
-              }
-              return (
-                <button
-                  key={idx}
-                  disabled={hasAttempted || isSubmitting || isSpectator || liveStage.showAnswer || answered}
-                  onClick={() => handleAnswer(idx)}
-                className={`${neoBtn} p-5 md:p-6 font-[900] uppercase text-[clamp(1rem,5vw,1.25rem)] flex justify-between items-center text-left transition-all ${btnClass} gap-3`}
-                >
-              <span className="min-w-0 break-words whitespace-normal">{opt}</span>
-                <ChevronRight className="w-8 h-8 opacity-30 shrink-0" />
-                </button>
-              );
-            })
-          )}
-        </div>
-      </div>
     </div>
   );
 }
