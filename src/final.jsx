@@ -315,23 +315,29 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   useEffect(() => {
     if (!liveStage?.currentId || !user?.uid || isSpectator) return;
     
+    // KLUCZOWA POPRAWKA: Resetujemy czas startu lokalnego dla NOWEGO pytania
+    setLocalStartTime(Date.now());
+
     // ZMIANA: Nasłuchujemy bezpośrednio profilu gracza, a nie zablokowanej kolekcji stageResults!
     const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
     const unsub = onSnapshot(participantRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const finalAnswers = data.finalAnswers || {};
-        
-        // Sprawdzamy czy w profilu gracza jest już odpowiedź na to konkretne pytanie
-        if (finalAnswers[liveStage.currentId]) {
-          setAnswered(true);
-          setResult(finalAnswers[liveStage.currentId]);
+      try {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const finalAnswers = data.finalAnswers || {};
+          
+          if (finalAnswers[liveStage.currentId]) {
+            setAnswered(true);
+            setResult(finalAnswers[liveStage.currentId]);
+          } else {
+            setAnswered(false);
+            setResult(null);
+          }
         } else {
           setAnswered(false);
           setResult(null);
-          setLocalStartTime(Date.now());
         }
-      }
+      } catch (err) { console.error('Błąd w trakcie nasłuchiwania na odpowiedzi finałowe:', err); }
     });
     return () => unsub();
   }, [liveStage?.currentId, user?.uid, db, appId, isSpectator]);
