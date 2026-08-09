@@ -407,10 +407,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
         : 'Niestety, to błędna odpowiedź.';
       
       // Zapisujemy funkcję zamykania i czekamy na jej wykonanie
-      await new Promise(resolve => {
-        closeModalRef.current = resolve;
-        showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage, resolve);
-      });
+      await showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage, (closeFn) => { closeModalRef.current = closeFn; });
 
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
