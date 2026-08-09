@@ -299,6 +299,9 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [hasAttempted, setHasAttempted] = useState(false);
 
+  // TWARDA BLOKADA PRZECIW SPAMOWANIU (useRef działa synchronicznie)
+  const clickLockRef = React.useRef(false);
+
   const getStageColors = () => {
     switch (liveStage?.stageName) {
       case 'PÓŁFINAŁ':
@@ -314,16 +317,19 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   const isSpectator = !(liveStage?.eligibleUids || []).includes(user?.uid);
 
   useEffect(() => {
+    // Zdejmujemy kłódkę zawsze, gdy wjeżdża nowe pytanie
+    clickLockRef.current = false;
+
     // BŁYSKAWICZNE SPRAWDZENIE - zapobiega mignięciu ekranu pytania
     if (userData?.finalAnswers?.[liveStage.currentId]) {
       setAnswered(true);
       setResult(userData.finalAnswers[liveStage.currentId]);
       setHasAttempted(true);
+      clickLockRef.current = true; // Zamykamy zamek, bo gracz już grał!
     }
 
     if (!liveStage?.currentId || !user?.uid || isSpectator) return;
     
-    // ZMIANA: Nasłuchujemy bezpośrednio profilu gracza, a nie zablokowanej kolekcji stageResults!
     const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
     const unsub = onSnapshot(participantRef, (docSnap) => {
       try {
@@ -334,6 +340,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
           if (finalAnswers[liveStage.currentId]) {
             setAnswered(true);
             setResult(finalAnswers[liveStage.currentId]);
+            clickLockRef.current = true; // Zamykamy zamek w nasłuchiwaczu
           } else {
             setAnswered(false);
             setResult(null);
@@ -351,20 +358,23 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   }, [liveStage?.currentId, user?.uid, db, appId, isSpectator, userData]);
 
   const handleAnswer = async (selectedIdx) => {
-    if (answered || hasAttempted || isSubmitting || isSpectator) return;
+    // KLUCZOWY MOMENT: Synchroniczny strażnik sprawdza kłódkę w 0.001 sekundy
+    if (clickLockRef.current || answered || isSubmitting || isSpectator) return;
+    
+    // ZATRZAŚNIĘCIE KŁÓDKI (każde kolejne kliknięcie w tym ułamku sekundy zostanie zignorowane)
+    clickLockRef.current = true; 
+    
     setIsSubmitting(true);
     setSelectedAnswer(selectedIdx);
     setHasAttempted(true);
 
     try {
       const isCorrect = selectedIdx === liveStage?.question?.correct;
-      // Używamy czasu serwerowego, aby uniknąć problemów z zegarem klienta
       const serverStartTime = liveStage.startTime?.toMillis() || Date.now();
       const timeDiff = Math.max(0, Date.now() - serverStartTime);
       const speedBonus = Math.max(0, 1000 - Math.floor(timeDiff / 15));
       const earned = isCorrect ? (1000 + speedBonus) : 0;
 
-      // ZMIANA: Zapisujemy wszystko do działającej kolekcji participants, którą Firebase na pewno przepuści
       const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
       
       const answerTime = serverTimestamp();
@@ -384,7 +394,6 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
 
       await setDoc(participantRef, updates, { merge: true });
 
-      // ZMIANA: Wyświetlamy modal z wynikiem po poprawnej odpowiedzi
       const resultMessage = isCorrect
         ? `Zdobywasz ${earned} pkt! (${timeDiff}ms)`
         : 'Niestety, to błędna odpowiedź.';
@@ -392,10 +401,11 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
 
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
+      clickLockRef.current = false; // Awaryjne otwarcie kłódki, jeśli zapis do bazy faktycznie by padł
       await showAlert("Wystąpił problem", err.message);
     } finally {
       setIsSubmitting(false);
-    } // Ta klamra była w złym miejscu, przeniosłem ją tutaj.
+    }
   };
 
   if (!liveStage.active || (answered && !isSpectator)) {
