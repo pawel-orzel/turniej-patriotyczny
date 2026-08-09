@@ -292,7 +292,7 @@ export default function FinalStage({ db, user, appId, stations, isAdmin, onLogou
   return null;
 }
 
-function ParticipantLivePanel({ db, user, appId, liveStage }) {
+function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   const [answered, setAnswered] = useState(false);
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -314,6 +314,12 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
   const isSpectator = !(liveStage?.eligibleUids || []).includes(user?.uid);
 
   useEffect(() => {
+    // BŁYSKAWICZNE SPRAWDZENIE - zapobiega mignięciu ekranu pytania
+    if (userData?.finalAnswers?.[liveStage.currentId]) {
+      setAnswered(true);
+      setResult(userData.finalAnswers[liveStage.currentId]);
+    }
+
     if (!liveStage?.currentId || !user?.uid || isSpectator) return;
     
     // KLUCZOWA POPRAWKA: Resetujemy czas startu lokalnego dla NOWEGO pytania
@@ -342,7 +348,7 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
       } catch (err) { console.error('Błąd w trakcie nasłuchiwania na odpowiedzi finałowe:', err); }
     });
     return () => unsub();
-  }, [liveStage?.currentId, user?.uid, db, appId, isSpectator]);
+  }, [liveStage?.currentId, user?.uid, db, appId, isSpectator, userData]);
 
   const handleAnswer = async (selectedIdx) => {
     if (answered || isSubmitting || isSpectator) return;
