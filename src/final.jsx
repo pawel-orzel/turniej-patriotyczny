@@ -455,7 +455,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
               return (
                 <button
                   key={idx}
-                  disabled={isSubmitting || isSpectator || liveStage.showAnswer}
+                  disabled={isSubmitting || isSpectator || liveStage.showAnswer || answered}
                   onClick={() => handleAnswer(idx)}
                 className={`${neoBtn} p-5 md:p-6 font-[900] uppercase text-[clamp(1rem,5vw,1.25rem)] flex justify-between items-center text-left transition-all ${btnClass} gap-3`}
                 >
