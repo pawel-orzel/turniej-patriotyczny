@@ -431,10 +431,11 @@ function ParticipantLivePanel({ db, user, appId, liveStage }) {
           ) : (
             (liveStage?.question?.options || []).map((opt, idx) => {
               let btnClass = 'bg-white text-black hover:bg-yellow-50';
-              if (isSubmitting || isSpectator) {
+              if (isSubmitting && !isSpectator) {
                 btnClass = selectedAnswer === idx ? 'bg-yellow-400 text-black' : 'bg-white text-black opacity-30 grayscale';
-              }
-              if (liveStage.showAnswer && idx === liveStage?.question?.correct) {
+              } else if (isSpectator && !liveStage.showAnswer) {
+                btnClass = 'bg-white text-black opacity-50';
+              } else if (liveStage.showAnswer && idx === liveStage?.question?.correct) {
                 btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; 
               } else if (liveStage.showAnswer) {
                 btnClass = 'bg-white text-black opacity-30 grayscale';
