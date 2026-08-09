@@ -305,6 +305,15 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   // Referencja do funkcji zamykającej modal
   const closeModalRef = React.useRef(null);
 
+  // --- KLUCZOWA POPRAWKA: AUTOMATYCZNE ZAMYKANIE MODALU ---
+  // Ten useEffect reaguje na KAŻDĄ akcję admina (nowe pytanie LUB ukrycie obecnego)
+  useEffect(() => {
+    if (closeModalRef.current) {
+      closeModalRef.current(); // Wymusza natychmiastowe zamknięcie modalu
+      closeModalRef.current = null;
+    }
+  }, [liveStage?.currentId, liveStage?.active]);
+
   const getStageColors = () => {
     switch (liveStage?.stageName) {
       case 'PÓŁFINAŁ':
@@ -320,11 +329,6 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   const isSpectator = !(liveStage?.eligibleUids || []).includes(user?.uid);
 
   useEffect(() => {
-    // Zamykamy modal, jeśli jest otwarty, gdy pojawia się nowe pytanie
-    if (closeModalRef.current) {
-      closeModalRef.current();
-      closeModalRef.current = null;
-    }
     // Zdejmujemy kłódkę zawsze, gdy wjeżdża nowe pytanie
     clickLockRef.current = false;
 
@@ -348,7 +352,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
           if (finalAnswers[liveStage.currentId]) {
             setAnswered(true);
             setResult(finalAnswers[liveStage.currentId]);
-            clickLockRef.current = true; // Zamykamy zamek w nasłuchiwaczu
+            clickLockRef.current = true; 
           } else {
             setAnswered(false);
             setResult(null);
@@ -367,7 +371,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
 
   const handleAnswer = async (selectedIdx) => {
     // KLUCZOWY MOMENT: Synchroniczny strażnik sprawdza kłódkę w 0.001 sekundy
-    if (clickLockRef.current || answered || isSubmitting || isSpectator) return;
+    if (clickLockRef.current || answered || hasAttempted || isSubmitting || isSpectator) return;
     
     // ZATRZAŚNIĘCIE KŁÓDKI (każde kolejne kliknięcie w tym ułamku sekundy zostanie zignorowane)
     clickLockRef.current = true; 
@@ -405,7 +409,12 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
       const resultMessage = isCorrect
         ? `Zdobywasz ${earned} pkt! (${timeDiff}ms)`
         : 'Niestety, to błędna odpowiedź.';
-      showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage, (closeFn) => { closeModalRef.current = closeFn; });
+      
+      // Zapisujemy funkcję zamykania i wyświetlamy Twój modal
+      await new Promise(resolve => {
+        closeModalRef.current = resolve;
+        showWaitingModal(isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', resultMessage, resolve);
+      });
 
     } catch (err) {
       console.error('Błąd zapisywania odpowiedzi:', err);
@@ -478,7 +487,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
               return (
                 <button
                   key={idx}
-                  disabled={hasAttempted || isSubmitting || isSpectator || liveStage.showAnswer}
+                  disabled={hasAttempted || isSubmitting || isSpectator || liveStage.showAnswer || answered}
                   onClick={() => handleAnswer(idx)}
                 className={`${neoBtn} p-5 md:p-6 font-[900] uppercase text-[clamp(1rem,5vw,1.25rem)] flex justify-between items-center text-left transition-all ${btnClass} gap-3`}
                 >
