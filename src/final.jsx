@@ -296,7 +296,6 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   const [answered, setAnswered] = useState(false);
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [localStartTime, setLocalStartTime] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
 
   const getStageColors = () => {
@@ -322,9 +321,6 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
 
     if (!liveStage?.currentId || !user?.uid || isSpectator) return;
     
-    // KLUCZOWA POPRAWKA: Resetujemy czas startu lokalnego dla NOWEGO pytania
-    setLocalStartTime(Date.now());
-
     // ZMIANA: Nasłuchujemy bezpośrednio profilu gracza, a nie zablokowanej kolekcji stageResults!
     const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
     const unsub = onSnapshot(participantRef, (docSnap) => {
@@ -357,16 +353,20 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
 
     try {
       const isCorrect = selectedIdx === liveStage?.question?.correct;
-      const timeDiff = Math.max(0, Date.now() - (localStartTime || Date.now()));
+      // Używamy czasu serwerowego, aby uniknąć problemów z zegarem klienta
+      const serverStartTime = liveStage.startTime?.toMillis() || Date.now();
+      const timeDiff = Math.max(0, Date.now() - serverStartTime);
       const speedBonus = Math.max(0, 1000 - Math.floor(timeDiff / 15));
       const earned = isCorrect ? (1000 + speedBonus) : 0;
 
       // ZMIANA: Zapisujemy wszystko do działającej kolekcji participants, którą Firebase na pewno przepuści
       const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
       
+      const answerTime = serverTimestamp();
       const updates = {
         [`finalAnswers.${liveStage.currentId}`]: {
           correct: isCorrect,
+          answerTime: answerTime,
           earned: earned,
           timeDiff: timeDiff
         }
