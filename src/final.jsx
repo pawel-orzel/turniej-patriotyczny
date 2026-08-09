@@ -297,6 +297,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [hasAttempted, setHasAttempted] = useState(false);
 
   const getStageColors = () => {
     switch (liveStage?.stageName) {
@@ -317,6 +318,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
     if (userData?.finalAnswers?.[liveStage.currentId]) {
       setAnswered(true);
       setResult(userData.finalAnswers[liveStage.currentId]);
+      setHasAttempted(true);
     }
 
     if (!liveStage?.currentId || !user?.uid || isSpectator) return;
@@ -335,10 +337,12 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
           } else {
             setAnswered(false);
             setResult(null);
+            setHasAttempted(false);
             setSelectedAnswer(null);
           }
         } else {
           setAnswered(false);
+          setHasAttempted(false);
           setResult(null);
         }
       } catch (err) { console.error('Błąd w trakcie nasłuchiwania na odpowiedzi finałowe:', err); }
@@ -350,6 +354,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
     if (answered || isSubmitting || isSpectator) return;
     setIsSubmitting(true);
     setSelectedAnswer(selectedIdx);
+    setHasAttempted(true);
 
     try {
       const isCorrect = selectedIdx === liveStage?.question?.correct;
@@ -455,7 +460,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
               return (
                 <button
                   key={idx}
-                  disabled={isSubmitting || isSpectator || liveStage.showAnswer || answered}
+                  disabled={hasAttempted || isSubmitting || isSpectator || liveStage.showAnswer}
                   onClick={() => handleAnswer(idx)}
                 className={`${neoBtn} p-5 md:p-6 font-[900] uppercase text-[clamp(1rem,5vw,1.25rem)] flex justify-between items-center text-left transition-all ${btnClass} gap-3`}
                 >
