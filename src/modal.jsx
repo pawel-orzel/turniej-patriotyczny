@@ -61,11 +61,11 @@ export const showAlert = (title, message) => {
   const isSuccess = title.toLowerCase().includes('sukces') || title.toLowerCase().includes('zalogowano');
   const icon = isError ? 'error' : isSuccess ? 'success' : 'info';
   return showCustomModal(title, message, 'alert', { icon });
-  return showCustomModal(title, message, 'confirm');
 };
 
-export const showWaitingModal = (title, message, onClose) => {
+export const showConfirm = (title, message) => showCustomModal(title, message, 'confirm', { icon: 'error' });
+
+export const showWaitingModal = (title, message, setCloseFn) => {
   const isCorrect = !title.toLowerCase().includes('błąd');
-  return showCustomModal(title, message, 'alert', { noButton: true, waitMessage: 'CZEKAJ NA RUCH PROWADZĄCEGO', icon: isCorrect ? 'success' : 'error' }, onClose);
+  return showCustomModal(title, message, 'alert', { noButton: true, waitMessage: 'CZEKAJ NA RUCH PROWADZĄCEGO', icon: isCorrect ? 'success' : 'error' }, setCloseFn);
 };
-
