@@ -537,8 +537,8 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-[#F9FAFB] font-['Plus_Jakarta_Sans'] pb-28 md:pb-32 overflow-x-hidden">
-      {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */}
-      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} onLogout={handleLogout} />
+      {/* MODUŁ FINAŁOWY - ODPALA SIĘ JAKO OVERLAY */} 
+      <FinalStage db={db} user={user} userData={userData} appId={appId} stations={stations} isAdmin={user?.uid === OWNER_UID} />
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
       {/* NAGŁÓWEK */}

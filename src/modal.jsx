@@ -56,16 +56,16 @@ const showCustomModal = (title, message, type = 'alert', options = {}, onClose) 
   });
 };
 
-export const showAlert = (title, message) => {
+export const showAlert = (title, message, setCloseFn) => {
   const isError = title.toLowerCase().includes('błąd') || title.toLowerCase().includes('zły');
   const isSuccess = title.toLowerCase().includes('sukces') || title.toLowerCase().includes('zalogowano');
   const icon = isError ? 'error' : isSuccess ? 'success' : 'info';
-  return showCustomModal(title, message, 'alert', { icon });
+  return showCustomModal(title, message, 'alert', { icon }, setCloseFn);
 };
 
 export const showConfirm = (title, message) => showCustomModal(title, message, 'confirm', { icon: 'error' });
 
 export const showWaitingModal = (title, message, setCloseFn) => {
-  const isCorrect = !title.toLowerCase().includes('błąd');
+  const isCorrect = !(title.toLowerCase().includes('błąd') || title.toLowerCase().includes('zły'));
   return showCustomModal(title, message, 'alert', { noButton: true, waitMessage: 'CZEKAJ NA RUCH PROWADZĄCEGO', icon: isCorrect ? 'success' : 'error' }, setCloseFn);
 };
