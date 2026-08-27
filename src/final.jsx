@@ -197,17 +197,6 @@ export default function FinalStage({ db, user, userData, appId, stations, isAdmi
           REŻYSERKA
         </button>
 
-        {/* Przycisk powrotu do Reżyserki na pełnoekranowym podglądzie */}
-        {!isOpen && liveStage?.isLiveModeVisible && (
-          <button
-            onClick={() => setIsOpen(true)}
-            className="fixed top-4 right-4 z-[99999] bg-[#DC2626] text-white px-4 py-2 rounded-full border-2 border-black shadow-neo-sm text-xs font-bold flex items-center gap-2 uppercase tracking-wide cursor-pointer active:scale-95"
-          >
-            <Activity className="w-4 h-4 animate-pulse" />
-            REŻYSERKA
-          </button>
-        )}
-
         {isOpen && (
           <>
             <div className="fixed inset-0 z-[90] bg-[#F9FAFB] overflow-y-auto overflow-x-hidden p-6 pb-32">
