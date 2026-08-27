@@ -19,7 +19,7 @@ const CONFETTI_PIECES = Array.from({ length: 150 }).map((_, i) => ({
   emojiIndex: i % 6,
 }));
 
-export default function FinalStage({ db, user, userData, appId, stations, isAdmin, onLogout }) {
+export default function FinalStage({ db, user, userData, appId, stations, isAdmin }) {
   const [liveStage, setLiveStage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [selectionModal, setSelectionModal] = useState(null);
@@ -130,8 +130,13 @@ export default function FinalStage({ db, user, userData, appId, stations, isAdmi
                   <button
                     onClick={async () => {
                       try {
+                        const allQuestions = [...semifinalQuestions, ...finalQuestions];
+                        const activeQ = allQuestions.find(item => item.id === liveStage?.currentId);
                         const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
-                        await setDoc(liveRef, { showAnswer: true }, { merge: true });
+                        await setDoc(liveRef, { 
+                          showAnswer: true, 
+                          correctAnswer: (activeQ && activeQ.correct !== undefined) ? activeQ.correct : 0 
+                        }, { merge: true });
                       } catch(e) { await showAlert("BŁĄD", e.message); }
                     }}
                     className={`${neoBtn} w-full py-4 bg-green-400 text-black`}
@@ -186,13 +191,15 @@ export default function FinalStage({ db, user, userData, appId, stations, isAdmi
                           if (!(await showConfirm("POTWIERDŹ", isAsked ? "To pytanie było już zadane. Czy na pewno chcesz je powtórzyć?" : "Czy na pewno chcesz wypuścić to pytanie?"))) return;
                           const asked = liveStage?.askedQuestions || [];
                           const newAsked = asked.includes(q.id) ? asked : [...asked, q.id];
+                          const publicQuestion = { id: q.id, text: q.text, options: q.options };
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                           await setDoc(liveRef, { 
                             isLiveModeVisible: true, 
                             active: true, 
                             currentId: q.id, 
-                            question: q, 
+                            question: publicQuestion, 
                             showAnswer: false, 
+                            correctAnswer: deleteField(),
                             startTime: serverTimestamp(), 
                             stageName: 'PÓŁFINAŁ',
                             announcement: deleteField(),
@@ -230,13 +237,15 @@ export default function FinalStage({ db, user, userData, appId, stations, isAdmi
                           if (!(await showConfirm("POTWIERDŹ", isAsked ? "To pytanie było już zadane. Czy na pewno chcesz je powtórzyć?" : "Czy na pewno chcesz wypuścić to pytanie?"))) return;
                           const asked = liveStage?.askedQuestions || [];
                           const newAsked = asked.includes(q.id) ? asked : [...asked, q.id];
+                          const publicQuestion = { id: q.id, text: q.text, options: q.options };
                           const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
                           await setDoc(liveRef, { 
                             isLiveModeVisible: true, 
                             active: true, 
                             currentId: q.id, 
-                            question: q, 
+                            question: publicQuestion, 
                             showAnswer: false, 
+                            correctAnswer: deleteField(),
                             startTime: serverTimestamp(), 
                             stageName: 'FINAŁ',
                             announcement: deleteField(),
@@ -304,6 +313,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
 
   // Referencja do funkcji zamykającej modal
   const closeModalRef = React.useRef(null);
+  const questionRenderedAtRef = React.useRef(Date.now());
 
   // --- KLUCZOWA POPRAWKA: AUTOMATYCZNE ZAMYKANIE MODALU ---
   useEffect(() => {
@@ -337,8 +347,9 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
   const isSpectator = !(liveStage?.eligibleUids || []).includes(user?.uid);
 
   useEffect(() => {
-    // Zdejmujemy kłódkę zawsze, gdy wjeżdża nowe pytanie
+    // Zdejmujemy kłódkę i zapisujemy czas pojawienia się pytania
     clickLockRef.current = false;
+    questionRenderedAtRef.current = Date.now();
 
     // BŁYSKAWICZNE SPRAWDZENIE - zapobiega mignięciu ekranu pytania
     if (userData?.finalAnswers?.[liveStage.currentId]) {
@@ -377,6 +388,30 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
     return () => unsub();
   }, [liveStage?.currentId, user?.uid, db, appId, isSpectator, userData]);
 
+  // Automatyczne naliczanie punktów, gdy prowadzący odsłoni poprawną odpowiedź (showAnswer)
+  useEffect(() => {
+    if (!liveStage?.showAnswer || liveStage.correctAnswer === undefined || !liveStage?.currentId) return;
+    if (isSpectator || !user?.uid) return;
+
+    const myAnswer = userData?.finalAnswers?.[liveStage.currentId];
+    if (!myAnswer || myAnswer.status === 'scored' || myAnswer.earned !== undefined) return;
+
+    const isCorrect = myAnswer.selectedAnswer === liveStage.correctAnswer;
+    const earned = isCorrect ? (1000 + (myAnswer.speedBonus ?? 0)) : 0;
+
+    const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
+    const updates = {
+      [`finalAnswers.${liveStage.currentId}.correct`]: isCorrect,
+      [`finalAnswers.${liveStage.currentId}.earned`]: earned,
+      [`finalAnswers.${liveStage.currentId}.status`]: 'scored'
+    };
+    if (earned > 0) {
+      updates.totalPoints = increment(earned);
+      updates.scoreUpdatedAt = serverTimestamp();
+    }
+    setDoc(participantRef, updates, { merge: true }).catch((err) => console.error("Błąd zapisu punktacji finałowej:", err));
+  }, [liveStage?.showAnswer, liveStage?.correctAnswer, liveStage?.currentId, isSpectator, user?.uid, userData?.finalAnswers, db, appId]);
+
   const handleAnswer = async (selectedIdx) => {
     // KLUCZOWY MOMENT: Synchroniczny strażnik sprawdza kłódkę w 0.001 sekundy
     if (clickLockRef.current || answered || hasAttempted || isSubmitting || isSpectator) return;
@@ -389,39 +424,28 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
     setHasAttempted(true);
 
     try {
-      const isCorrect = selectedIdx === liveStage?.question?.correct;
-      const serverStartTime = liveStage.startTime?.toMillis() || Date.now();
-      const timeDiff = Math.max(0, Date.now() - serverStartTime);
-      const speedBonus = Math.max(0, 1000 - Math.floor(timeDiff / 15));
-      const earned = isCorrect ? (1000 + speedBonus) : 0;
+      const elapsedOnDevice = Math.max(0, Date.now() - questionRenderedAtRef.current);
+      const speedBonus = Math.max(0, 1000 - Math.floor(elapsedOnDevice / 15));
 
       const participantRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
       
       const answerTime = serverTimestamp();
       const updates = {
         [`finalAnswers.${liveStage.currentId}`]: {
-          correct: isCorrect,
+          selectedAnswer: selectedIdx,
           answerTime: answerTime,
-          earned: earned,
-          timeDiff: timeDiff
+          timeDiff: elapsedOnDevice,
+          speedBonus: speedBonus,
+          status: 'pending'
         }
       };
 
-      if (earned > 0) {
-        updates.totalPoints = increment(earned);
-        updates.scoreUpdatedAt = serverTimestamp();
-      }
-
       await setDoc(participantRef, updates, { merge: true });
 
-      const resultMessage = isCorrect
-        ? `Zdobywasz ${earned} pkt! (${timeDiff}ms)`
-        : 'Niestety, to błędna odpowiedź.';
-        
       // Wyświetlamy modal i wyciągamy z niego prawdziwą funkcję zamykającą
       showWaitingModal(
-        isCorrect ? 'DOBRA ODPOWIEDŹ!' : 'NIESTETY, BŁĄD', 
-        resultMessage, 
+        'ODPOWIEDŹ ZAPISANA!', 
+        `Twój czas: ${elapsedOnDevice}ms. Czekaj na sygnał od prowadzącego!`, 
         (closeFunction) => {
           closeModalRef.current = closeFunction; 
         }
@@ -459,9 +483,13 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
             {result && !isSpectator && (
               <div className="bg-black/20 p-6 rounded-[24px] border-[3px] border-black text-center w-full max-w-sm shrink-0">
                 <div className="font-mono text-[10px] tracking-widest uppercase mb-1">TWÓJ WYNIK ZA PYTANIE</div>
-                <div className="text-4xl font-[900] text-[#EAB308]">{result.earned} PKT</div>
+                <div className="text-4xl font-[900] text-[#EAB308]">
+                  {result.earned !== undefined ? `${result.earned} PKT` : "OCZEKIWANIE..."}
+                </div>
                 <div className="font-mono text-xs uppercase mt-2 opacity-70">
-                  {result.correct ? 'Poprawna odpowiedź!' : 'Niestety, błąd.'}
+                  {result.earned !== undefined
+                    ? (result.correct ? 'Poprawna odpowiedź!' : 'Niestety, błąd.')
+                    : 'Prowadzący zaraz odsłoni poprawną odpowiedź!'}
                 </div>
               </div>
             )}
@@ -496,7 +524,7 @@ function ParticipantLivePanel({ db, user, userData, appId, liveStage }) {
                   btnClass = selectedAnswer === idx ? 'bg-yellow-400 text-black' : 'bg-white text-black opacity-30 grayscale';
                 } else if (isSpectator && !liveStage.showAnswer) {
                   btnClass = 'bg-white text-black opacity-50';
-                } else if (liveStage.showAnswer && idx === liveStage?.question?.correct) {
+                } else if (liveStage.showAnswer && idx === liveStage?.correctAnswer) {
                   btnClass = 'bg-green-500 text-white border-green-700 opacity-100 scale-105'; 
                 } else if (liveStage.showAnswer) {
                   btnClass = 'bg-white text-black opacity-30 grayscale';
@@ -577,7 +605,33 @@ function Confetti() {
     );
 }
 
-function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isAdmin, liveStage }) {
+function sortParticipants(a, b) {
+  const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
+  if (scoreDiff !== 0) return scoreDiff;
+
+  const getTime = (ts) => {
+    if (!ts) return Number.MAX_SAFE_INTEGER;
+    try {
+      if (typeof ts.toMillis === 'function') return ts.toMillis();
+      if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+      if (ts.seconds !== undefined) return ts.seconds * 1000;
+      const ms = new Date(ts).getTime();
+      return isNaN(ms) ? Number.MAX_SAFE_INTEGER : ms;
+    } catch {
+      return Number.MAX_SAFE_INTEGER;
+    }
+  };
+
+  const aTime = getTime(a?.scoreUpdatedAt);
+  const bTime = getTime(b?.scoreUpdatedAt);
+  if (aTime !== bTime) return aTime - bTime;
+
+  const aCreated = getTime(a?.timestamp);
+  const bCreated = getTime(b?.timestamp);
+  return aCreated - bCreated;
+}
+
+function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, liveStage }) {
     const limit = type === 'semifinalists' ? 10 : (type === 'finalists' ? 5 : 3);
     return (
         <div className="fixed inset-0 z-[100] bg-black text-white animate-in fade-in zoom-in duration-500 overflow-y-auto flex flex-col">
@@ -587,37 +641,21 @@ function AnnouncementPanel({ title, subtitle, showConfetti, type, db, appId, isA
                 <h1 className="text-[clamp(1.75rem,8vw,3rem)] font-[900] uppercase text-center mb-2 tracking-tighter shrink-0 break-words">{title}</h1>
                 <p className="font-mono text-[clamp(0.7rem,3vw,0.875rem)] tracking-widest opacity-80 uppercase text-center mb-8 shrink-0 break-words">{subtitle}</p>
                 <div className="w-full max-w-2xl bg-white/10 p-2 md:p-4 rounded-[32px] shrink-0 text-black text-left overflow-hidden">
-                    <Leaderboard db={db} appId={appId} isAdmin={false} liveStage={liveStage} limitCount={limit} filterEligible={true} isAnnouncement={true} />
+                    <Leaderboard db={db} appId={appId} liveStage={liveStage} limitCount={limit} filterEligible={true} />
                 </div>
             </div>
         </div>
     );
 }
 
-function Leaderboard({ db, appId, isAdmin, liveStage, limitCount = 20, filterEligible = false, isAnnouncement = false }) {
+function Leaderboard({ db, appId, isAdmin = false, liveStage, limitCount = 20, filterEligible = false }) {
   const [leaders, setLeaders] = useState([]);
 
   useEffect(() => {
     const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
     const unsub = onSnapshot(q, (snapshot) => {
       const all = snapshot.docs.map(d => d.data());
-      all.sort((a, b) => {
-        const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
-        if (scoreDiff !== 0) return scoreDiff;
-        const getTime = (ts) => {
-          if (!ts) return 0;
-          try {
-            const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
-            return isNaN(ms) ? 0 : ms;
-          } catch (e) { return 0; }
-        };
-        const aTime = getTime(a?.scoreUpdatedAt);
-        const bTime = getTime(b.scoreUpdatedAt);
-        if (aTime !== bTime) return aTime - bTime;
-        const aCreated = getTime(a.timestamp);
-        const bCreated = getTime(b.timestamp);
-        return aCreated - bCreated;
-      });
+      all.sort(sortParticipants);
       setLeaders(all);
     }, (err) => console.error("Ranking error:", err));
     return () => unsub();
@@ -684,33 +722,18 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
         const snap = await getDocs(q);
         const all = snap.docs.map(d => d.data());
         
-        all.sort((a, b) => {
-          const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
-          if (scoreDiff !== 0) return scoreDiff;
-          const getTime = (ts) => {
-            if (!ts) return 0;
-            try {
-              const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
-              return isNaN(ms) ? 0 : ms;
-            } catch (e) { return 0; }
-          };
-          const aTime = getTime(a.scoreUpdatedAt);
-          const bTime = getTime(b.scoreUpdatedAt);
-          if (aTime !== bTime) return aTime - bTime;
-          const aCreated = getTime(a.timestamp);
-          const bCreated = getTime(b.timestamp);
-          return aCreated - bCreated;
-        });
+        all.sort(sortParticipants);
 
         // Bierzemy TOP 40 jako rozszerzoną pulę do wyboru!
         const top40 = all.slice(0, 40);
         setPlayers(top40);
 
+        const targetCount = Math.min(limitCount, top40.length);
         const existingUids = (liveStage?.stageName === stageName && Array.isArray(liveStage.eligibleUids)) ? liveStage.eligibleUids : null;
         if (existingUids && existingUids.length > 0) {
           setSelectedUids(existingUids);
         } else {
-          setSelectedUids(top40.slice(0, limitCount).map(p => p.uid));
+          setSelectedUids(top40.slice(0, targetCount).map(p => p.uid));
         }
 
         setLoading(false);
@@ -722,6 +745,8 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
     fetchPlayers();
   }, [db, appId, limitCount, stageName, liveStage]);
 
+  const targetCount = Math.min(limitCount, players.length);
+
   const toggle = (uid) => {
     if (selectedUids.includes(uid)) {
       setSelectedUids(prev => prev.filter(id => id !== uid));
@@ -731,8 +756,8 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
   };
 
   const handleConfirm = async () => {
-    if (selectedUids.length !== limitCount) {
-      await showAlert("UWAGA", `Liczba zaznaczonych graczy (${selectedUids.length}) nie zgadza się z wymaganą liczbą dla tego etapu (${limitCount}).\n\nUpewnij się, że wybrałeś dokładnie ${limitCount} osób.`);
+    if (players.length > 0 && selectedUids.length !== targetCount) {
+      await showAlert("UWAGA", `Liczba zaznaczonych graczy (${selectedUids.length}) nie zgadza się z wymaganą liczbą dla tego etapu (${targetCount}).\n\nUpewnij się, że wybrałeś dokładnie ${targetCount} osób.`);
       return;
     }
 
@@ -763,7 +788,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       const s = d.getSeconds().toString().padStart(2, '0');
       const ms = d.getMilliseconds().toString().padStart(3, '0');
       return `${h}:${m}:${s}.${ms}`;
-    } catch (e) {
+    } catch {
       return '--:--:--.---';
     }
   };
@@ -780,7 +805,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       const s = Math.floor((diff % 60000) / 1000);
       if (h > 0) return `${h}h ${m}m ${s}s`;
       return `${m}m ${s}s`;
-    } catch (e) {
+    } catch {
       return '--';
     }
   };
@@ -790,7 +815,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
       <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px] p-6 max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
         <h2 className="text-3xl font-[900] uppercase mb-2">WERYFIKACJA: {stageName}</h2>
         <p className="font-mono text-[11px] text-slate-600 mb-4 leading-tight uppercase font-bold">
-          Zaznacz graczy, którzy są obecni na scenie. System domyślnie zaznaczył TOP {limitCount}, ale w razie nieobecności kogoś z czołówki, możesz dobrać osoby z rezerwy (miejsca {limitCount + 1}-40).
+          Zaznacz graczy, którzy są obecni na scenie. System domyślnie zaznaczył TOP {targetCount}, ale w razie nieobecności kogoś z czołówki, możesz dobrać osoby z rezerwy (miejsca {targetCount + 1}-40).
         </p>
         <div className="overflow-y-auto flex-1 border-2 border-black rounded-xl p-2 space-y-2 mb-4 bg-slate-50">
           {loading ? (
@@ -817,7 +842,7 @@ function PlayerSelectionModal({ db, appId, stageName, limitCount, announcement, 
         <div className="flex gap-4 shrink-0 mt-2">
            <button onClick={onClose} className={`${neoBtn} w-1/3 py-4 bg-slate-200 text-black text-sm`}>ANULUJ</button>
            <button onClick={handleConfirm} className={`${neoBtn} w-2/3 py-4 bg-[#DC2626] text-white flex justify-center items-center gap-2 text-sm`}>
-             ZATWIERDŹ <span className="bg-white text-black px-2 py-1 rounded-full text-[10px]">{selectedUids.length}/{limitCount}</span>
+             ZATWIERDŹ <span className="bg-white text-black px-2 py-1 rounded-full text-[10px]">{selectedUids.length}/{targetCount}</span>
            </button>
         </div>
       </div>

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
-  getFirestore, 
-  doc, 
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  doc,
   setDoc, 
   getDoc, 
   collection, 
@@ -13,7 +15,9 @@ import {
   serverTimestamp,
   query,
   getDocs,
-  deleteDoc
+  deleteDoc,
+  writeBatch,
+  deleteField
 } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -51,18 +55,38 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
 const appId = 'turniej-2-0-torun';
-
-// --- STYL NEO-BRUTALISTYCZNY (CUSTOM CLASSES) ---
 const neoCard = "border-[3px] border-black shadow-neo rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-neo-sm active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all rounded-[16px]";
 const neoTag = "font-mono text-[10px] tracking-widest uppercase border-2 border-black px-3 py-1 rounded-full inline-block";
 const STATIONS_CACHE_KEY = 'stations_cache';
-const CACHE_EXPIRATION_MS = 2 * 60 * 1000; // 2 minuty
+const CACHE_EXPIRATION_MS = 10 * 60 * 1000; // 10 minut
+const APP_VERSION = '2.0.0';
+
+// Pomocnik do hashowania kodów (SHA-256)
+async function hashCode(str) {
+  if (!str) return '';
+  const clean = str.toString().trim().toUpperCase();
+  if (typeof crypto === 'undefined' || !crypto?.subtle) {
+    let hash = 0;
+    for (let i = 0; i < clean.length; i++) {
+      hash = ((hash << 5) - hash) + clean.charCodeAt(i);
+      hash |= 0;
+    }
+    return `h_${hash}`;
+  }
+  const encoder = new TextEncoder();
+  const data = encoder.encode(clean);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 // Wyświetlanie wersji aplikacji w konsoli
-console.log(`%c  Turniej-App v${process.env.APP_VERSION} `, 'background: #DC2626; color: white; font-weight: bold; border-radius: 4px;');
+console.log(`%c  Turniej-App v${APP_VERSION} `, 'background: #DC2626; color: white; font-weight: bold; border-radius: 4px;');
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -91,16 +115,35 @@ export default function App() {
     
     // Sprawdzamy czy gracz ukończył wszystkie standardowe stacje (eliminacyjne)
     let endTime = null;
-    if (stations && userData?.completedStations) {
+    if (stations && userData) {
       const standardStationsCount = Object.values(stations).filter(
         st => st?.id && st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał'
       ).length;
       
-      if (standardStationsCount > 0 && userData.completedStations.length >= standardStationsCount) {
+      const completedCount = Object.values(stations).filter(st => {
+        if (!st?.id || st.id.toLowerCase() === 'półfinał' || st.id.toLowerCase() === 'finał') return false;
+        const ans = userData.answeredQuestions?.[st.id]?.length || 0;
+        return userData.completedStations?.includes(st.id) || (st.questions?.length > 0 && ans >= st.questions.length);
+      }).length;
+
+      if (standardStationsCount > 0 && completedCount >= standardStationsCount) {
         if (userData.scoreUpdatedAt) {
            endTime = typeof userData.scoreUpdatedAt.toMillis === 'function' 
              ? userData.scoreUpdatedAt.toMillis() 
              : new Date(userData.scoreUpdatedAt).getTime();
+        }
+      }
+    }
+
+    // Jeśli gra nie została ukończona, sprawdzamy czy minęła godzina zakończenia z appConfig.endTime (np. "15:30")
+    if (!endTime && appConfig?.endTime) {
+      const match = String(appConfig.endTime).trim().match(/^(\d{1,2}):(\d{2})$/);
+      if (match) {
+        const now = new Date();
+        const configEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(match[1], 10), parseInt(match[2], 10), 0, 0);
+        const configEndMs = configEndDate.getTime();
+        if (Date.now() >= configEndMs) {
+          endTime = configEndMs;
         }
       }
     }
@@ -115,10 +158,10 @@ export default function App() {
     };
 
     updateTimer(); // Wywołanie od razu, by uniknąć opóźnienia 1s
-    if (endTime) return; // Zatrzymujemy stoper, jeśli gracz skończył grę
+    if (endTime) return; // Zatrzymujemy stoper, jeśli turniej lub gra dobiegła końca
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [userData?.timestamp, userData?.scoreUpdatedAt, userData?.completedStations, stations]);
+  }, [userData?.timestamp, userData?.scoreUpdatedAt, userData?.completedStations, userData?.answeredQuestions, stations, appConfig?.endTime]);
 
   useEffect(() => {
     // Import czcionek
@@ -127,13 +170,12 @@ export default function App() {
     link.rel = "stylesheet";
     document.head.appendChild(link);
 
-    const initAuth = async () => {
+    let isSubscribed = true;
+
+    const initPersistenceAndAuth = async () => {
       try {
-        // Try to set local persistence which is best for keeping users signed in.
         await setPersistence(auth, browserLocalPersistence);
       } catch (err) {
-        // This can fail in some environments (e.g., private browsing in Edge/Firefox).
-        // Fallback to in-memory persistence.
         console.warn('Błąd przy ustawianiu utrwalania sesji (local), przechodzę na tryb w pamięci (in-memory).', err);
         try {
           await setPersistence(auth, inMemoryPersistence);
@@ -141,26 +183,32 @@ export default function App() {
           console.error('Nie udało się ustawić żadnego trybu utrwalania sesji.', fallbackErr);
         }
       }
-
-      // After attempting to set persistence, manage the sign-in state.
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else if (!auth.currentUser) { // Only sign in if persistence didn't restore a user.
-          await signInAnonymously(auth);
-        }
-      } catch (err) { console.error("Błąd logowania:", err); }
-      
-      if (!auth.currentUser) {
-        setLoading(false); // W razie kompletnej porażki zwolnij ekran ładowania
-      }
     };
-    initAuth();
 
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+    initPersistenceAndAuth();
+
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (!isSubscribed) return;
+      if (u) {
+        setUser(u);
+      } else {
+        try {
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+        } catch (err) {
+          console.error("Błąd logowania anonimowego:", err);
+          if (isSubscribed) setLoading(false);
+        }
+      }
     });
-    return () => unsubscribe();
+
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
   }, []);
 
   const fetchStations = useCallback(async () => {
@@ -218,14 +266,23 @@ export default function App() {
           });
         }
 
+        const getRawCode = (q) => {
+          const direct = q.code ?? q.Code ?? q.CODE ?? q.questionCode ?? q.QuestionCode;
+          if (direct !== undefined) return direct;
+          const key = Object.keys(q).find((k) => k.toLowerCase() === 'code');
+          if (key) return q[key];
+          const fuzzyKey = Object.keys(q).find((k) => k.toLowerCase().includes('code'));
+          return fuzzyKey ? q[fuzzyKey] : undefined;
+        };
+
         const processedStations = {};
-        Object.keys(stationEntries).forEach(stationId => {
+        for (const stationId of Object.keys(stationEntries)) {
             const station = stationEntries[stationId] || {};
             const rawQuestions = Array.isArray(station.questions)
               ? station.questions
               : questionsByStation[stationId] || [];
 
-            const questions = (Array.isArray(rawQuestions) ? rawQuestions : []).map((q) => {
+            const questions = await Promise.all((Array.isArray(rawQuestions) ? rawQuestions : []).map(async (q) => {
               const rawCorrect = Number(q.correct);
               const normalizedCorrect = Number.isFinite(rawCorrect)
                 ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
@@ -233,12 +290,19 @@ export default function App() {
               const options = (q.options && q.options.length)
                 ? q.options
                 : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
+              const rawCode = getRawCode(q);
+              const codeHash = (rawCode !== undefined && rawCode !== null && String(rawCode).trim() !== '')
+                ? await hashCode(String(rawCode).trim().toUpperCase())
+                : '';
+
+              const { code, Code, CODE, questionCode, QuestionCode, ...safeQ } = q;
               return {
-                ...q,
+                ...safeQ,
                 options,
-                correct: normalizedCorrect
+                correct: normalizedCorrect,
+                codeHash
               };
-            });
+            }));
 
             processedStations[stationId] = {
                 id: stationId,
@@ -246,12 +310,12 @@ export default function App() {
                 questions,
                 icon: iconMap[(station.iconName || '').toLowerCase()] || Info
             };
-        });
+        }
 
-        Object.keys(questionsByStation).forEach((stationId) => {
+        for (const stationId of Object.keys(questionsByStation)) {
           if (!processedStations[stationId]) {
             const rawQuestions = questionsByStation[stationId];
-            const questions = rawQuestions.map((q) => {
+            const questions = await Promise.all(rawQuestions.map(async (q) => {
               const rawCorrect = Number(q.correct);
               const normalizedCorrect = Number.isFinite(rawCorrect)
                 ? (rawCorrect >= 1 ? rawCorrect - 1 : rawCorrect)
@@ -259,12 +323,19 @@ export default function App() {
               const options = (q.options && q.options.length)
                 ? q.options
                 : [q.option1, q.option2, q.option3, q.option4].filter(Boolean).map(String);
+              const rawCode = getRawCode(q);
+              const codeHash = (rawCode !== undefined && rawCode !== null && String(rawCode).trim() !== '')
+                ? await hashCode(String(rawCode).trim().toUpperCase())
+                : '';
+
+              const { code, Code, CODE, questionCode, QuestionCode, ...safeQ } = q;
               return {
-                ...q,
+                ...safeQ,
                 options,
-                correct: normalizedCorrect
+                correct: normalizedCorrect,
+                codeHash
               };
-            });
+            }));
             processedStations[stationId] = {
               id: stationId,
               name: stationId,
@@ -275,7 +346,7 @@ export default function App() {
               icon: Info
             };
           }
-        });
+        }
 
         setStations(processedStations);
         // Zapisz do cache
@@ -343,18 +414,24 @@ export default function App() {
   }, [user]);
 
   const handleRegister = async () => {
-    if (!nick.trim() || !user) return;
+    const cleanNick = nick.trim().toUpperCase().replace(/[^A-Z0-9ĄĆĘŁŃÓŚŹŻ _-]/g, '').slice(0, 20);
+    if (!cleanNick || cleanNick.length < 2) {
+      await showAlert("BŁĄD", "Wpisz poprawny nick (od 2 do 20 znaków).");
+      return;
+    }
+    if (!user) return;
     setSubmitting(true);
     try {
       const payload = {
         uid: user.uid,
-        nick: nick.toUpperCase(),
+        nick: cleanNick,
       };
       // Pola startowe ustawiamy tylko, jeśli użytkownik ich jeszcze nie ma
       if (!userData) {
         payload.totalPoints = 0;
         payload.completedStations = [];
         payload.answeredQuestions = {};
+        payload.unlockedQuestions = {};
         payload.timestamp = new Date().toISOString();
         payload.scoreUpdatedAt = serverTimestamp();
       }
@@ -367,24 +444,12 @@ export default function App() {
     setSubmitting(false);
   };
 
-  const handleStationComplete = async (pointsEarned) => {
-    if (!user || !userData || !currentStationId) return;
-
-    setSubmitting(true);
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid), {
-      totalPoints: userData.totalPoints + pointsEarned,
-      completedStations: arrayUnion(currentStationId)
-    });
-    setSubmitting(false);
-    setView('home');
-    setCurrentStationId(null);
-  };
-
   const handleQuestionAnswered = async ({ stationId, questionIdx, pointsEarned, questionCount }) => {
-    if (!user || !userData) return;
     const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
-    const currentAnswered = userData.answeredQuestions?.[stationId] || [];
-    if (currentAnswered.includes(questionIdx)) return;
+    const currentAnswered = new Set(userData.answeredQuestions?.[stationId] || []);
+    if (currentAnswered.has(questionIdx)) return;
+
+    currentAnswered.add(questionIdx);
 
     const updates = {
       [`answeredQuestions.${stationId}`]: arrayUnion(questionIdx)
@@ -393,7 +458,7 @@ export default function App() {
       updates.totalPoints = increment(pointsEarned);
       updates.scoreUpdatedAt = serverTimestamp();
     }
-    if (currentAnswered.length + 1 >= questionCount) {
+    if (currentAnswered.size >= questionCount) {
       updates.completedStations = arrayUnion(stationId);
     }
 
@@ -570,16 +635,15 @@ export default function App() {
 
       <main className="max-w-4xl mx-auto p-6">
         {view === 'admin' && user?.uid === OWNER_UID ? (
-          <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} />
+          <AdminView appConfig={appConfig} user={user} stations={stations} onLogout={handleLogout} refetchStations={fetchStations} />
         ) : view === 'quiz' && currentStationId && stations && stations[currentStationId] ? (
-          <QuizView station={stations[currentStationId]} userData={userData} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
+          <QuizView station={stations[currentStationId]} userData={userData} user={user} handleQuestionAnswered={handleQuestionAnswered} submitting={submitting} />
         ) : view === 'leaderboard' ? (
           <LeaderboardView appConfig={appConfig} />
         ) : (
           <HomeView userData={userData} appConfig={appConfig} stations={stations} stationsError={stationsError} refetchStations={fetchStations} setView={setView} setCurrentStationId={setCurrentStationId} setShowRules={setShowRules} />
         )}
       </main>
-
       {/* MENU DOLNE */}
       {view !== 'admin' && (
         <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none flex justify-center pb-0 md:pb-8 md:px-4">
@@ -600,18 +664,22 @@ export default function App() {
 }
 
 // --- ADMIN VIEW ---
-function AdminView({ appConfig, user, stations, onLogout }) {
+function AdminView({ appConfig, user, stations, onLogout, refetchStations }) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [newTime, setNewTime] = useState('');
-  const [stationsClickable, setStationsClickable] = useState(false);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [newTime, setNewTime] = useState(appConfig?.endTime || '');
+  const [stationsClickable, setStationsClickable] = useState(!!appConfig?.stationsClickable);
   const [copiedUrl, setCopiedUrl] = useState('');
 
   const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
 
   useEffect(() => {
-    setNewTime(appConfig?.endTime || '');
+    if (appConfig?.endTime) setNewTime(appConfig.endTime);
   }, [appConfig?.endTime]);
-  useEffect(() => { setStationsClickable(!!appConfig?.stationsClickable) }, [appConfig?.stationsClickable]);
+
+  useEffect(() => {
+    if (appConfig?.stationsClickable !== undefined) setStationsClickable(!!appConfig.stationsClickable);
+  }, [appConfig?.stationsClickable]);
 
   const handleUpdateConfig = async (field, value) => {
     try {
@@ -626,7 +694,22 @@ function AdminView({ appConfig, user, stations, onLogout }) {
   const handleCopy = (url) => {
     navigator.clipboard.writeText(url);
     setCopiedUrl(url);
-    setTimeout(() => setCopiedUrl(''), 2000); // Reset po 2 sekundach
+    setTimeout(() => setCopiedUrl(''), 2000);
+  };
+
+  const handleForceRefreshStations = async () => {
+    setIsRefetching(true);
+    try {
+      localStorage.removeItem(STATIONS_CACHE_KEY);
+      if (typeof refetchStations === 'function') {
+        await refetchStations();
+      }
+      await showAlert("SUKCES", "Pytania i stacje zostały ponownie pobrane z Arkusza Google!");
+    } catch (err) {
+      console.error(err);
+      await showAlert("BŁĄD", "Nie udało się odświeżyć pytań.");
+    }
+    setIsRefetching(false);
   };
 
   const clearDatabase = async () => {
@@ -635,12 +718,44 @@ function AdminView({ appConfig, user, stations, onLogout }) {
     try {
       const participantsRef = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
       const snapshot = await getDocs(participantsRef);
-      const deletePromises = snapshot.docs.map(document => 
-        deleteDoc(doc(participantsRef, document.id))
-      );
-      await Promise.all(deletePromises);
-      await showAlert("SUKCES", "BAZA DANYCH ZOSTAŁA WYCZYSZCZONA! TURNIEJ ZRESETOWANY.");
-    } catch (err) { console.error(err); await showAlert("BŁĄD", "WYSTĄPIŁ BŁĄD PODCZAS CZYSZCZENIA BAZY."); }
+
+      const chunks = [];
+      let currentBatch = writeBatch(db);
+      let count = 0;
+
+      snapshot.docs.forEach((document) => {
+        currentBatch.delete(doc(participantsRef, document.id));
+        count++;
+        if (count >= 450) {
+          chunks.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          count = 0;
+        }
+      });
+      if (count > 0) {
+        chunks.push(currentBatch.commit());
+      }
+      await Promise.all(chunks);
+
+      // Reset stanu Finału / Reżyserki
+      const liveRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'liveStage');
+      await setDoc(liveRef, {
+        isLiveModeVisible: false,
+        active: false,
+        stageName: '',
+        eligibleUids: [],
+        askedQuestions: [],
+        currentId: deleteField(),
+        question: deleteField(),
+        showAnswer: false,
+        announcement: deleteField()
+      }, { merge: true });
+
+      await showAlert("SUKCES", "BAZA DANYCH ZOSTAŁA WYCZYSZCZONA! TURNIEJ I FINAŁ ZRESETOWANE.");
+    } catch (err) {
+      console.error(err);
+      await showAlert("BŁĄD", "WYSTĄPIŁ BŁĄD PODCZAS CZYSZCZENIA BAZY.");
+    }
     setIsDeleting(false);
   };
 
@@ -650,7 +765,7 @@ function AdminView({ appConfig, user, stations, onLogout }) {
         <div>
           <h1 className="text-5xl font-[900] uppercase tracking-tighter leading-none mb-2 text-[#DC2626]">SZTAB DOWODZENIA</h1>
           <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">
-            PANEL ZARZĄDZANIA TURNIEJEM (v{process.env.APP_VERSION})
+            PANEL ZARZĄDZANIA TURNIEJEM (v{APP_VERSION})
           </div>
         </div>
         <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-4 flex items-center gap-2 shrink-0`}>
@@ -666,7 +781,6 @@ function AdminView({ appConfig, user, stations, onLogout }) {
           </div>
         <input 
           type="text" 
-          placeholder="np. 15:30"
           value={newTime} 
           onChange={e => setNewTime(e.target.value)} 
           className="w-full p-3 border-[3px] border-black rounded-lg mb-4" 
@@ -676,6 +790,19 @@ function AdminView({ appConfig, user, stations, onLogout }) {
           className={`${neoBtn} bg-black text-white w-full py-3`}
         >
           ZAPISZ CZAS
+        </button>
+      </div>
+
+      {/* SYNCHRONIZACJA Z GOOGLE SHEETS */}
+      <div className={`${neoCard} bg-white p-8`}>
+        <h3 className="text-xl font-[900] uppercase mb-4">SYNCHRONIZACJA Z ARKUSZEM</h3>
+        <p className="font-mono text-xs text-slate-500 mb-4">Jeśli zmieniłeś pytania lub kody w Arkuszu Google, kliknij poniższy przycisk, aby natychmiast zaktualizować dane w aplikacji.</p>
+        <button 
+          onClick={handleForceRefreshStations} 
+          disabled={isRefetching}
+          className={`${neoBtn} bg-black text-white w-full py-4`}
+        >
+          {isRefetching ? "POBIERANIE..." : "POBIERZ PYTANIA Z ARKUSZA PONOWNIE"}
         </button>
       </div>
 
@@ -795,7 +922,8 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
           .filter(st => st?.id && st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał')
           .map((st) => {
           const maxPoints = st.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
-          const isDone = userData?.completedStations?.includes(st.id);
+          const answeredCount = userData?.answeredQuestions?.[st.id]?.length || 0;
+          const isDone = userData?.completedStations?.includes(st.id) || (st.questions?.length > 0 && answeredCount >= st.questions.length);
           return (
             <div 
               key={st.id} 
@@ -849,10 +977,11 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 }
 
 // --- QUIZ VIEW ---
-function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
+function QuizView({ station, userData, user, handleQuestionAnswered, submitting }) {
   const questionRefs = useRef([]); // Ref do przewijania
   const stationIdRef = useRef(station.id);
-  const isDone = userData?.completedStations?.includes(station.id);
+  const answeredCount = userData?.answeredQuestions?.[station.id]?.length || 0;
+  const isDone = userData?.completedStations?.includes(station.id) || (station.questions?.length > 0 && answeredCount >= station.questions.length);
   const [localScore, setLocalScore] = useState(0);
   const [questionCodes, setQuestionCodes] = useState({});
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
@@ -865,8 +994,10 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     setQuestionCodes({});
     setActiveQuestionIdx(null);
     const answeredOnStation = new Set(userData?.answeredQuestions?.[station.id] || []);
+    const unlockedFromDb = new Set(userData?.unlockedQuestions?.[station.id] || []);
+    const combinedUnlocked = new Set([...answeredOnStation, ...unlockedFromDb]);
     setAnsweredQuestions(answeredOnStation);
-    setUnlockedQuestions(answeredOnStation); // Odblokowane to co najmniej te, na które już odpowiedziano
+    setUnlockedQuestions(combinedUnlocked);
 
     if (stationIdRef.current !== station.id) {
       setSelectedOptions({});
@@ -878,11 +1009,11 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
     // Przewijanie do aktywnego pytania
     if (activeQuestionIdx !== null && questionRefs.current[activeQuestionIdx]) {
       setTimeout(() => {
-        questionRefs.current[activeQuestionIdx].scrollIntoView({
+        questionRefs.current[activeQuestionIdx]?.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
         });
-      }, 100); // Małe opóźnienie dla pewności, że element jest widoczny
+      }, 100);
     }
   }, [activeQuestionIdx]);
 
@@ -898,34 +1029,26 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
 
   const maxPoints = station.questions?.reduce((acc, q) => acc + (q.points || 0), 0) || 0;
 
-  const getQuestionCodeValue = (question) => {
-    if (!question) return undefined;
-    const direct = question.code ?? question.Code ?? question.CODE ?? question.questionCode ?? question.QuestionCode;
-    if (direct !== undefined) return direct;
-    const key = Object.keys(question).find((k) => k.toLowerCase() === 'code');
-    if (key) return question[key];
-    const fuzzyKey = Object.keys(question).find((k) => k.toLowerCase().includes('code'));
-    return fuzzyKey ? question[fuzzyKey] : undefined;
-  };
-
   const requiresCode = (question) => {
-    const code = getQuestionCodeValue(question);
-    return code !== undefined && code !== null && code.toString().trim() !== '';
+    return Boolean(question?.codeHash);
   };
 
   const handleUnlockQuestion = async (idx) => {
     const question = station.questions?.[idx];
-    const expectedRaw = getQuestionCodeValue(question);
-    if (!question || expectedRaw === undefined || expectedRaw === null || expectedRaw.toString().trim() === '') {
-      console.warn('Brak kodu w obiekcie pytania lub nieznany klucz:', question);
-      await showAlert("BŁĄD", "Brak kodu dla tego pytania.");
+    if (!question || !question.codeHash) {
+      setUnlockedQuestions((prev) => {
+        const next = new Set(prev);
+        next.add(idx);
+        return next;
+      });
+      setActiveQuestionIdx(idx);
       return;
     }
 
     const enteredCode = (questionCodes[idx] || '').toString().trim().toUpperCase();
-    const expectedCode = expectedRaw.toString().trim().toUpperCase();
+    const enteredHash = await hashCode(enteredCode);
 
-    if (enteredCode === expectedCode) {
+    if (enteredHash === question.codeHash) {
       setUnlockedQuestions((prev) => {
         const next = new Set(prev);
         next.add(idx);
@@ -933,6 +1056,14 @@ function QuizView({ station, userData, handleQuestionAnswered, submitting }) {
       });
       setQuestionCodes((prev) => ({ ...prev, [idx]: '' }));
       setActiveQuestionIdx(idx);
+
+      // Zapisujemy trwale odblokowane pytanie w profilu gracza w Firestore
+      if (user?.uid) {
+        const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'participants', user.uid);
+        updateDoc(userRef, {
+          [`unlockedQuestions.${station.id}`]: arrayUnion(idx)
+        }).catch((err) => console.warn("Błąd zapisu odblokowania pytania:", err));
+      }
     } else {
       await showAlert("ZŁY KOD", "Zapytaj Strażnika pytania o poprawny kod.");
     }
@@ -1113,6 +1244,33 @@ function RulesModal({ onClose }) {
   );
 }
 
+// Pomocnik do rozstrzygania remisów w rankingu
+export function sortParticipants(a, b) {
+  const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
+  if (scoreDiff !== 0) return scoreDiff;
+
+  const getTime = (ts) => {
+    if (!ts) return Number.MAX_SAFE_INTEGER;
+    try {
+      if (typeof ts.toMillis === 'function') return ts.toMillis();
+      if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+      if (ts.seconds !== undefined) return ts.seconds * 1000;
+      const ms = new Date(ts).getTime();
+      return isNaN(ms) ? Number.MAX_SAFE_INTEGER : ms;
+    } catch {
+      return Number.MAX_SAFE_INTEGER;
+    }
+  };
+
+  const aTime = getTime(a.scoreUpdatedAt);
+  const bTime = getTime(b.scoreUpdatedAt);
+  if (aTime !== bTime) return aTime - bTime;
+
+  const aCreated = getTime(a.timestamp);
+  const bCreated = getTime(b.timestamp);
+  return aCreated - bCreated;
+}
+
 // --- RANKING VIEW ---
 function LeaderboardView({ appConfig }) {
   const [leaders, setLeaders] = useState([]);
@@ -1122,25 +1280,7 @@ function LeaderboardView({ appConfig }) {
     const q = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const all = snapshot.docs.map(d => d.data());
-      all.sort((a, b) => {
-        const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
-        if (scoreDiff !== 0) return scoreDiff;
-
-        const getTime = (ts) => {
-          if (!ts) return 0;
-          try {
-            const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
-            return isNaN(ms) ? 0 : ms;
-          } catch (e) { return 0; }
-        };
-        const aTime = getTime(a.scoreUpdatedAt);
-        const bTime = getTime(b.scoreUpdatedAt);
-        if (aTime !== bTime) return aTime - bTime;
-
-        const aCreated = getTime(a.timestamp);
-        const bCreated = getTime(b.timestamp);
-        return aCreated - bCreated;
-      });
+      all.sort(sortParticipants);
       setLeaders(all.slice(0, 10));
       setLoading(false);
     });
@@ -1154,41 +1294,53 @@ function LeaderboardView({ appConfig }) {
         <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">RANKING TOP 10 NA ŻYWO</div>
       </div>
 
-      <div className="space-y-4">
-        {leaders.map((p, idx) => (
-          <div 
-            key={p.uid} 
-            className={`${neoCard} p-6 flex items-center justify-between ${idx === 0 ? 'bg-red-50 border-[#DC2626]' : 'bg-white'}`}
-          >
-            <div className="flex items-center gap-6">
-              <div className={`w-12 h-12 border-[3px] border-black rounded-[12px] flex items-center justify-center font-[900] text-xl ${
-                idx === 0 ? 'bg-[#EAB308]' : idx === 1 ? 'bg-slate-300' : idx === 2 ? 'bg-orange-400' : 'bg-white'
-              }`}>
-                {idx + 1}
-              </div>
-              <span className="text-xl font-[900] uppercase tracking-tight truncate max-w-[150px] md:max-w-[300px]">{p.nick}</span>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-[900] leading-none">{p.totalPoints}</div>
-              <div className="font-mono text-[9px] text-slate-400 tracking-widest font-bold">
-                PKT
-              </div>
-              {p.scoreUpdatedAt && (
-                <div className="font-mono text-[9px] text-slate-400 tracking-widest font-bold mt-1">
-                {(() => {
-                  try {
-                    const d = typeof p.scoreUpdatedAt.toDate === 'function' ? p.scoreUpdatedAt.toDate() : new Date(p.scoreUpdatedAt);
-                    return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  } catch (e) {
-                    return '';
-                  }
-                })()}
+      {loading && leaders.length === 0 ? (
+        <div className="flex justify-center items-center p-12">
+          <div className="w-10 h-10 border-4 border-black border-t-slate-400 rounded-full animate-spin"></div>
+          <p className="ml-4 font-mono uppercase text-sm">Wczytywanie rankingu...</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {leaders.map((p, idx) => (
+            <div 
+              key={p.uid} 
+              className={`${neoCard} p-6 flex items-center justify-between ${idx === 0 ? 'bg-red-50 border-[#DC2626]' : 'bg-white'}`}
+            >
+              <div className="flex items-center gap-6">
+                <div className={`w-12 h-12 border-[3px] border-black rounded-[12px] flex items-center justify-center font-[900] text-xl ${
+                  idx === 0 ? 'bg-[#EAB308]' : idx === 1 ? 'bg-slate-300' : idx === 2 ? 'bg-orange-400' : 'bg-white'
+                }`}>
+                  {idx + 1}
                 </div>
-              )}
+                <span className="text-xl font-[900] uppercase tracking-tight truncate max-w-[150px] md:max-w-[300px]">{p.nick}</span>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-[900] leading-none">{p.totalPoints}</div>
+                <div className="font-mono text-[9px] text-slate-400 tracking-widest font-bold">
+                  PKT
+                </div>
+                {p.scoreUpdatedAt && (
+                  <div className="font-mono text-[9px] text-slate-400 tracking-widest font-bold mt-1">
+                  {(() => {
+                    try {
+                      const d = typeof p.scoreUpdatedAt.toDate === 'function' ? p.scoreUpdatedAt.toDate() : new Date(p.scoreUpdatedAt);
+                      return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    } catch {
+                      return '';
+                    }
+                  })()}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+          {leaders.length === 0 && (
+            <div className="text-center font-mono text-sm text-slate-500 py-12 uppercase">
+              Brak zarejestrowanych uczestników.
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={`${neoCard} bg-black text-white p-8 text-center`}>
         <Trophy className="w-10 h-10 mx-auto mb-4 text-[#EAB308]" />

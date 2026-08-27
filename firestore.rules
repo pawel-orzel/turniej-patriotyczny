@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Pomocnicza funkcja sprawdzająca czy żądanie pochodzi od zalogowanego administratora
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == "fIGFNjIUm6Onldwe27qb7R9vvB63";
+    }
+
+    // Pomocnicza funkcja sprawdzająca czy żądanie pochodzi od zalogowanego użytkownika
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Pomocnicza funkcja sprawdzająca czy użytkownik edytuje swój własny dokument
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // 1. Zabezpieczenie konfiguracji turnieju (appConfig, liveStage)
+    match /artifacts/{appId}/public/data/config/{configDoc} {
+      // Wszyscy zalogowani gracze mogą czytać konfigurację
+      allow read: if isAuthenticated();
+      // Tylko administrator może modyfikować konfigurację i sterować Reżyserką
+      allow write: if isAdmin();
+    }
+
+    // 2. Zabezpieczenie danych uczestników
+    match /artifacts/{appId}/public/data/participants/{userId} {
+      // Wszyscy zalogowani mogą czytać ranking
+      allow read: if isAuthenticated();
+
+      // Tworzenie profilu uczestnika z walidacją nicku
+      allow create: if isOwner(userId) 
+                    && request.resource.data.nick is string 
+                    && request.resource.data.nick.size() >= 2
+                    && request.resource.data.nick.size() <= 25;
+
+      // Aktualizacja własnych punktów i odpowiedzi
+      allow update: if isOwner(userId);
+
+      // Usuwanie uczestników dozwolone wyłącznie dla administratora (czyszczenie bazy)
+      allow delete: if isAdmin();
+    }
+
+    // Blokada wszelkiego innego ruchu
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
