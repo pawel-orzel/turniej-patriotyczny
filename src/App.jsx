@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   initializeFirestore,
@@ -6,16 +6,13 @@ import {
   persistentMultipleTabManager,
   doc,
   setDoc, 
-  getDoc, 
   collection, 
   onSnapshot, 
   updateDoc,
   arrayUnion,
   increment,
   serverTimestamp,
-  query,
-  getDocs,
-  deleteDoc,
+  getDocs, 
   writeBatch,
   deleteField
 } from 'firebase/firestore';
@@ -161,7 +158,7 @@ export default function App() {
     if (endTime) return; // Zatrzymujemy stoper, jeśli turniej lub gra dobiegła końca
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [userData?.timestamp, userData?.scoreUpdatedAt, userData?.completedStations, userData?.answeredQuestions, stations, appConfig?.endTime]);
+  }, [userData, stations, appConfig?.endTime]);
 
   useEffect(() => {
     // Import czcionek
@@ -193,8 +190,8 @@ export default function App() {
         setUser(u);
       } else {
         try {
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
+          if (typeof window !== 'undefined' && window.__initial_auth_token) {
+            await signInWithCustomToken(auth, window.__initial_auth_token);
           } else {
             await signInAnonymously(auth);
           }
@@ -236,7 +233,9 @@ export default function App() {
       console.warn("Nie udało się załadować stacji z cache (może być uszkodzony). Pobieram z sieci.", e);
       try {
         localStorage.removeItem(STATIONS_CACHE_KEY);
-      } catch (err) {} // Bezpieczne zignorowanie błędu, jeśli przeglądarka blokuje localStorage
+      } catch {
+        // Bezpieczne zignorowanie błędu, jeśli przeglądarka blokuje localStorage
+      }
     }
 
     try {
@@ -295,7 +294,13 @@ export default function App() {
                 ? await hashCode(String(rawCode).trim().toUpperCase())
                 : '';
 
-              const { code, Code, CODE, questionCode, QuestionCode, ...safeQ } = q;
+              const safeQ = { ...q };
+              delete safeQ.code;
+              delete safeQ.Code;
+              delete safeQ.CODE;
+              delete safeQ.questionCode;
+              delete safeQ.QuestionCode;
+
               return {
                 ...safeQ,
                 options,
@@ -328,7 +333,13 @@ export default function App() {
                 ? await hashCode(String(rawCode).trim().toUpperCase())
                 : '';
 
-              const { code, Code, CODE, questionCode, QuestionCode, ...safeQ } = q;
+              const safeQ = { ...q };
+              delete safeQ.code;
+              delete safeQ.Code;
+              delete safeQ.CODE;
+              delete safeQ.questionCode;
+              delete safeQ.QuestionCode;
+
               return {
                 ...safeQ,
                 options,
@@ -352,7 +363,7 @@ export default function App() {
         // Zapisz do cache
         try {
           localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: processedStations }));
-        } catch (err) {
+        } catch {
           console.warn("Zapis cache zablokowany przez przeglądarkę.");
         }
     } catch (error) {
@@ -979,31 +990,19 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
 // --- QUIZ VIEW ---
 function QuizView({ station, userData, user, handleQuestionAnswered, submitting }) {
   const questionRefs = useRef([]); // Ref do przewijania
-  const stationIdRef = useRef(station.id);
-  const answeredCount = userData?.answeredQuestions?.[station.id]?.length || 0;
-  const isDone = userData?.completedStations?.includes(station.id) || (station.questions?.length > 0 && answeredCount >= station.questions.length);
-  const [localScore, setLocalScore] = useState(0);
+  const [localBonusScore, setLocalBonusScore] = useState(0);
   const [questionCodes, setQuestionCodes] = useState({});
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
-  const [unlockedQuestions, setUnlockedQuestions] = useState(new Set());
-  const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
+  const [locallyUnlocked, setLocallyUnlocked] = useState(new Set());
   const [selectedOptions, setSelectedOptions] = useState({});
 
-  useEffect(() => {
-    setLocalScore(0);
-    setQuestionCodes({});
-    setActiveQuestionIdx(null);
-    const answeredOnStation = new Set(userData?.answeredQuestions?.[station.id] || []);
-    const unlockedFromDb = new Set(userData?.unlockedQuestions?.[station.id] || []);
-    const combinedUnlocked = new Set([...answeredOnStation, ...unlockedFromDb]);
-    setAnsweredQuestions(answeredOnStation);
-    setUnlockedQuestions(combinedUnlocked);
+  const answeredQuestions = useMemo(() => new Set(userData?.answeredQuestions?.[station.id] || []), [userData?.answeredQuestions, station.id]);
+  const unlockedFromDb = useMemo(() => new Set(userData?.unlockedQuestions?.[station.id] || []), [userData?.unlockedQuestions, station.id]);
+  const isDone = userData?.completedStations?.includes(station.id) || (station.questions?.length > 0 && answeredQuestions.size >= station.questions.length);
 
-    if (stationIdRef.current !== station.id) {
-      setSelectedOptions({});
-      stationIdRef.current = station.id;
-    }
-  }, [station.id, userData]);
+  const unlockedQuestions = useMemo(() => {
+    return new Set([...answeredQuestions, ...unlockedFromDb, ...locallyUnlocked]);
+  }, [answeredQuestions, unlockedFromDb, locallyUnlocked]);
 
   useEffect(() => {
     // Przewijanie do aktywnego pytania
@@ -1036,11 +1035,7 @@ function QuizView({ station, userData, user, handleQuestionAnswered, submitting 
   const handleUnlockQuestion = async (idx) => {
     const question = station.questions?.[idx];
     if (!question || !question.codeHash) {
-      setUnlockedQuestions((prev) => {
-        const next = new Set(prev);
-        next.add(idx);
-        return next;
-      });
+      setLocallyUnlocked((prev) => new Set([...prev, idx]));
       setActiveQuestionIdx(idx);
       return;
     }
@@ -1049,11 +1044,7 @@ function QuizView({ station, userData, user, handleQuestionAnswered, submitting 
     const enteredHash = await hashCode(enteredCode);
 
     if (enteredHash === question.codeHash) {
-      setUnlockedQuestions((prev) => {
-        const next = new Set(prev);
-        next.add(idx);
-        return next;
-      });
+      setLocallyUnlocked((prev) => new Set([...prev, idx]));
       setQuestionCodes((prev) => ({ ...prev, [idx]: '' }));
       setActiveQuestionIdx(idx);
 
@@ -1077,14 +1068,9 @@ function QuizView({ station, userData, user, handleQuestionAnswered, submitting 
 
     const isCorrect = optionIdx === question.correct;
     if (isCorrect) {
-      setLocalScore((prev) => prev + (question.points || 0));
+      setLocalBonusScore((prev) => prev + (question.points || 0));
     }
 
-    setAnsweredQuestions((prev) => {
-      const next = new Set(prev);
-      next.add(questionIdx);
-      return next;
-    });
     setSelectedOptions((prev) => ({ ...prev, [questionIdx]: optionIdx }));
     handleQuestionAnswered({
       stationId: station.id,
@@ -1106,7 +1092,7 @@ function QuizView({ station, userData, user, handleQuestionAnswered, submitting 
         <h3 className="text-[clamp(1.75rem,8vw,2.25rem)] font-[900] uppercase leading-none mb-4 break-words">{station.name}</h3>
         <div className="bg-white/20 p-4 rounded-[12px] font-mono text-[12px] font-bold flex justify-between">
           <span>MAX STACJI: {maxPoints} PKT</span>
-          <span>ZDOBYTO: {localScore} PKT</span>
+          <span>ZDOBYTO: {localBonusScore} PKT</span>
         </div>
       </div>
 
@@ -1245,7 +1231,7 @@ function RulesModal({ onClose }) {
 }
 
 // Pomocnik do rozstrzygania remisów w rankingu
-export function sortParticipants(a, b) {
+function sortParticipants(a, b) {
   const scoreDiff = (b.totalPoints || 0) - (a.totalPoints || 0);
   if (scoreDiff !== 0) return scoreDiff;
 
