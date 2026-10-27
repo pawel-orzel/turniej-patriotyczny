@@ -4,6 +4,8 @@ import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  memoryLocalCache,
+  getFirestore,
   doc,
   setDoc, 
   collection, 
@@ -53,9 +55,38 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-});
+
+// Bezpieczna inicjalizacja bazy Firestore z fallbackiem (rozwiązuje problem blokady IndexedDB w iframe na telefonach)
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+} catch (errCache) {
+  console.warn("Firestore persistent cache niedostępne (częste w iframe na telefonach), używam fallbacku:", errCache);
+  try {
+    db = getFirestore(app);
+  } catch (errGet) {
+    try {
+      db = initializeFirestore(app, {
+        localCache: memoryLocalCache()
+      });
+    } catch (errMemory) {
+      console.error("Inicjalizacja Firestore nie powiodła się:", errMemory);
+    }
+  }
+}
+
+// Bezpieczny wrapper dla window.history.replaceState (chroni przed SecurityError w sandboxed iframes)
+const safeReplaceState = (url) => {
+  try {
+    if (typeof window !== 'undefined' && window.history && typeof window.history.replaceState === 'function') {
+      window.history.replaceState({}, '', url);
+    }
+  } catch (e) {
+    // Ciche zignorowanie blokady ramek cross-origin na Safari/iOS
+  }
+};
 const appId = 'turniej-2-0-torun';
 const neoCard = "border-[3px] border-black shadow-neo rounded-[32px]";
 const neoBtn = "border-[3px] border-black shadow-neo-sm active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all rounded-[16px]";
@@ -509,7 +540,7 @@ export default function App() {
       const myUid = result.user.uid;
       
       if (myUid === OWNER_UID) {
-        window.history.replaceState({}, '', '?admin=true');
+        safeReplaceState('?admin=true');
         setView('admin');
         setShowAdminForm(false);
         setAdminEmail('');
@@ -537,13 +568,13 @@ export default function App() {
         setShowAdminForm(false);
         setAdminEmail('');
         setAdminPassword('');
-        window.history.replaceState({}, '', window.location.pathname);
+        safeReplaceState(window.location.pathname);
         await signInAnonymously(auth);
       } else {
         // Udawane wylogowanie dla gracza (wraca do ekranu Paszportu i czysci URL z ewentualnych stacji)
         setView('passport');
         setShowAdminForm(false);
-        window.history.replaceState({}, '', window.location.pathname);
+        safeReplaceState(window.location.pathname);
       }
     } catch (err) { 
       console.error("Błąd wylogowania: ", err); 
@@ -760,7 +791,13 @@ function AdminView({ appConfig, user, stations, onLogout, refetchStations }) {
   };
 
   const handleCopy = (url) => {
-    navigator.clipboard.writeText(url);
+    try {
+      if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(url);
+      }
+    } catch (e) {
+      console.warn("Dostęp do schowka zablokowany:", e);
+    }
     setCopiedUrl(url);
     setTimeout(() => setCopiedUrl(''), 2000);
   };

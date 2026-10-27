@@ -25,8 +25,8 @@ if (!cssFile || !jsFile) {
 const cssContent = fs.readFileSync(path.join(distAssetsDir, cssFile), 'utf8');
 let jsContent = fs.readFileSync(path.join(distAssetsDir, jsFile), 'utf8');
 
-// Bezpieczne zabezpieczenie przed przedwczesnym zamknięciem tagu <script>
-jsContent = jsContent.replace(/<\/script>/gi, '<\\/script>');
+// Bezpieczne zabezpieczenie przed tagami script w kodzie JS wstrzykiwanym do HTML
+jsContent = jsContent.replace(/<\/script/gi, '<\\/script').replace(/<script/gi, '<\\script');
 
 const htmlOutput = `<!-- ======================================================== -->
 <!-- MODUŁ TURNIEJ 2.0 (AUTOMATYCZNIE WYGENEROWANY Z turniej-app) -->
