@@ -30,7 +30,7 @@ import {
 import { 
   User, Trophy, Coffee, Shield, Heart, Zap, Megaphone, Lock, Info,
   CheckCircle, ChevronRight, 
-  MapPin, LogOut
+  MapPin, LogOut, ArrowLeft
 } from 'lucide-react';
 
 import FinalStage from './final';
@@ -622,6 +622,20 @@ export default function App() {
               </button>
             </>
           )}
+
+          <div className="mt-8 pt-4 border-t border-slate-200">
+            <button 
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && typeof window.pokazZakladke === 'function') {
+                  window.pokazZakladke('widok-hub');
+                }
+              }} 
+              className="font-mono text-xs text-slate-400 hover:text-black uppercase tracking-widest flex items-center justify-center gap-1.5 mx-auto transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Wróć do Parafia App
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -654,9 +668,23 @@ export default function App() {
             <div className="text-lg md:text-2xl font-[900] leading-none">{userData?.totalPoints} PKT</div>
           </div>
           <div className="font-mono text-[8px] md:text-[10px] tracking-widest text-slate-400 uppercase font-bold mt-0.5">KONIEC: {appConfig?.endTime || '--:--'}</div>
-          <button onClick={handleLogout} className="mt-1 font-mono text-[8px] md:text-[9px] font-bold tracking-widest uppercase bg-slate-100 text-black px-2 py-1 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all flex items-center gap-1 shadow-neo-sm">
-            <LogOut className="w-3 h-3" /> WYLOGUJ
-          </button>
+          <div className="flex items-center gap-1.5 mt-1">
+            <button 
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && typeof window.pokazZakladke === 'function') {
+                  window.pokazZakladke('widok-hub');
+                }
+              }} 
+              className="font-mono text-[8px] md:text-[9px] font-bold tracking-widest uppercase bg-white hover:bg-slate-100 text-black px-2 py-1 rounded-md border-2 border-black active:translate-y-[2px] transition-all flex items-center gap-1 shadow-neo-sm"
+              title="Wróć do Parafia App"
+            >
+              <ArrowLeft className="w-3 h-3" /> PARAFIA APP
+            </button>
+            <button onClick={handleLogout} className="font-mono text-[8px] md:text-[9px] font-bold tracking-widest uppercase bg-slate-100 hover:bg-red-50 text-black px-2 py-1 rounded-md border-2 border-black active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all flex items-center gap-1 shadow-neo-sm">
+              <LogOut className="w-3 h-3" /> WYLOGUJ
+            </button>
+          </div>
         </div>
       </header>
 
@@ -682,6 +710,19 @@ export default function App() {
             <button onClick={() => setView('leaderboard')} className={`flex flex-col items-center gap-1 ${view === 'leaderboard' ? 'text-[#DC2626]' : 'text-black'}`}>
               <Trophy className="w-7 h-7" />
               <span className="font-mono text-[9px] font-bold uppercase tracking-widest">RANKING</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && typeof window.pokazZakladke === 'function') {
+                  window.pokazZakladke('widok-hub');
+                }
+              }} 
+              className="flex flex-col items-center gap-1 text-slate-500 hover:text-black transition-colors"
+              title="Wróć do Parafia App"
+            >
+              <ArrowLeft className="w-7 h-7" />
+              <span className="font-mono text-[9px] font-bold uppercase tracking-widest">PARAFIA APP</span>
             </button>
           </nav>
         </div>
@@ -795,9 +836,23 @@ function AdminView({ appConfig, user, stations, onLogout, refetchStations }) {
             PANEL ZARZĄDZANIA TURNIEJEM (v{APP_VERSION})
           </div>
         </div>
-        <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-4 flex items-center gap-2 shrink-0`}>
-          <LogOut className="w-5 h-5" /> WYLOGUJ ZE SZTABU
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button 
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined' && typeof window.pokazZakladke === 'function') {
+                window.pokazZakladke('widok-hub');
+              }
+            }} 
+            className="px-4 py-4 bg-white hover:bg-slate-100 text-black border-2 border-black font-mono font-bold text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5 transition-all flex items-center gap-1.5"
+            title="Wróć do Parafia App"
+          >
+            <ArrowLeft className="w-4 h-4" /> PARAFIA APP
+          </button>
+          <button onClick={onLogout} className={`${neoBtn} bg-black text-white px-6 py-4 flex items-center gap-2 shrink-0`}>
+            <LogOut className="w-5 h-5" /> WYLOGUJ ZE SZTABU
+          </button>
+        </div>
       </div>
 
       {/* ZARZĄDZANIE CZASEM */}
