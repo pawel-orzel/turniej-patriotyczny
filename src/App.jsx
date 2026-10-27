@@ -88,7 +88,20 @@ console.log(`%c  Turniej-App v${APP_VERSION} `, 'background: #DC2626; color: whi
 export default function App() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [nick, setNick] = useState('');
+  const [nick, setNick] = useState(() => {
+    try {
+      if (typeof window !== 'undefined' && window.CURRENT_USER && window.CURRENT_USER.name) {
+        return window.CURRENT_USER.name;
+      }
+    } catch(e) {}
+    return '';
+  });
+
+  useEffect(() => {
+    if (!nick && typeof window !== 'undefined' && window.CURRENT_USER && window.CURRENT_USER.name) {
+      setNick(window.CURRENT_USER.name);
+    }
+  }, [nick]);
   const [stations, setStations] = useState(null);
   const [stationsError, setStationsError] = useState(null);
   const [appConfig, setAppConfig] = useState(null);
@@ -397,13 +410,15 @@ export default function App() {
   useEffect(() => {
     if (!stations) return; // Czekaj aż stacje się załadują
     const params = new URLSearchParams(window.location.search);
-    const sId = params.get('station');
-    const adminParam = params.get('admin');
+    const sId = params.get('station') || (typeof window !== 'undefined' && window.initialParams && window.initialParams.station);
+    const adminParam = params.get('admin') || (typeof window !== 'undefined' && window.initialParams && window.initialParams.admin);
     if (adminParam === 'true' && user?.uid === OWNER_UID) {
       setView('admin');
-    } else if (stations[sId] && userData) {
+    } else if (sId && stations[sId]) {
       setCurrentStationId(sId);
-      setView('quiz');
+      if (userData) {
+        setView('quiz');
+      }
     }
   }, [user, userData, stations]); // Reaguj gdy załaduje się user i jego dane
 
@@ -850,16 +865,23 @@ function AdminView({ appConfig, user, stations, onLogout, refetchStations }) {
           <div className="p-3 bg-slate-50 border-2 border-black rounded-lg shadow-neo-sm flex justify-between items-center">
             <div>
               <div className="font-[900] uppercase mb-1">REJESTRACJA (PLAKAT GŁÓWNY)</div>
-              <code className="text-xs break-all text-blue-600 font-bold">{window.location.origin}/</code>
+              <code className="text-xs break-all text-blue-600 font-bold">
+                {typeof window !== 'undefined' && window.rootUrl ? `${window.rootUrl}?modul=turniej` : `${window.location.origin}/`}
+              </code>
             </div>
-            <button onClick={() => handleCopy(`${window.location.origin}/`)} className={`${neoBtn} px-4 py-2 text-xs font-bold uppercase ${copiedUrl === `${window.location.origin}/` ? 'bg-green-500 text-white' : 'bg-white'}`}>
-              {copiedUrl === `${window.location.origin}/` ? 'SKOPIOWANO' : 'KOPIUJ'}
+            <button onClick={() => {
+              const u = typeof window !== 'undefined' && window.rootUrl ? `${window.rootUrl}?modul=turniej` : `${window.location.origin}/`;
+              handleCopy(u);
+            }} className={`${neoBtn} px-4 py-2 text-xs font-bold uppercase ${copiedUrl && copiedUrl.includes('turniej') ? 'bg-green-500 text-white' : 'bg-white'}`}>
+              {copiedUrl && copiedUrl.includes('turniej') ? 'SKOPIOWANO' : 'KOPIUJ'}
             </button>
           </div>
         {stations && Object.values(stations)
           .filter(st => st?.id && st.id.toLowerCase() !== 'półfinał' && st.id.toLowerCase() !== 'finał')
           .map(st => {
-            const url = `${window.location.origin}/?station=${st.id}`;
+            const url = typeof window !== 'undefined' && window.rootUrl 
+              ? `${window.rootUrl}?modul=turniej&station=${encodeURIComponent(st.id)}`
+              : `${window.location.origin}/?station=${st.id}`;
             return (
               <div key={st.id} className="p-3 bg-slate-50 border-2 border-black rounded-lg shadow-neo-sm flex justify-between items-center">
                 <div>
