@@ -48,3 +48,4 @@ ${jsContent}
 
 fs.writeFileSync(targetHtmlPath, htmlOutput, 'utf8');
 console.log(`Pomyślnie wygenerowano plik: ${targetHtmlPath} (${(Buffer.byteLength(htmlOutput, 'utf8') / 1024).toFixed(1)} KB)`);
+

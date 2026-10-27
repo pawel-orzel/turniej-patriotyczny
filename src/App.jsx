@@ -30,12 +30,13 @@ import {
 import { 
   User, Trophy, Coffee, Shield, Heart, Zap, Megaphone, Lock, Info,
   CheckCircle, ChevronRight, 
-  Flag, MapPin, LogOut
+  MapPin, LogOut
 } from 'lucide-react';
 
 import FinalStage from './final';
 import { showAlert, showConfirm } from './modal';
 import RegRodo from './reg.RODO';
+import { FAVICON_DATA_URI } from './favicon';
 
 const OWNER_UID = "fIGFNjIUm6Onldwe27qb7R9vvB63"; // WAŻNE: Wklej tutaj swoje UID z panelu Firebase Authentication
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVoBjRhKnw9bMdRdGQe6wFrtKicSCd-S-ulA4IuxXv_-X1ikTH4zoAeSGs-GjDoYVkZQ/exec"; // WAŻNE: Wklej tutaj URL z Google Apps Script
@@ -567,7 +568,7 @@ export default function App() {
         {showRules && <RulesModal onClose={() => setShowRules(false)} />}
         <div className={`${neoCard} bg-white w-full max-w-sm p-10 text-center`}>
           <div className="bg-[#DC2626] border-4 border-black w-max mx-auto rounded-full p-4 mb-8 shadow-neo-sm">
-            <img src="/favicon.png" alt="Logo aplikacji" className="w-14 h-14 object-contain" />
+            <img src={FAVICON_DATA_URI} alt="Favicon" className="w-14 h-14 object-contain" />
           </div>
           <h1 className="text-4xl font-[900] mb-2 leading-none uppercase tracking-tighter">PASZPORT UCZESTNIKA</h1>
           <p className="font-mono text-[10px] tracking-widest text-slate-500 mb-10 uppercase">Turniej 2.0</p>
@@ -636,7 +637,7 @@ export default function App() {
       <header className="bg-white border-b-[3px] border-black p-4 md:p-6 sticky top-0 z-50 flex justify-between items-center gap-2">
         <div className="flex items-center gap-3 md:gap-4 min-w-0">
           <div className="bg-[#DC2626] border-2 border-black w-10 h-10 md:w-12 md:h-12 rounded-[10px] md:rounded-[12px] flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden shrink-0">
-            <img src="/favicon.png" alt="Logo aplikacji" className="w-6 h-6 md:w-8 md:h-8 object-contain" />
+            <img src={FAVICON_DATA_URI} alt="Favicon" className="w-6 h-6 md:w-8 md:h-8 object-contain" />
           </div>
           <div className="min-w-0">
             <h2 className="text-base md:text-xl font-[900] leading-none uppercase truncate max-w-[110px] md:max-w-[250px]">{userData?.nick}</h2>
@@ -923,11 +924,11 @@ function HomeView({ userData, appConfig, stations, stationsError, refetchStation
       {/* BANER GŁÓWNY */}
       <div className={`${neoCard} bg-[#DC2626] p-8 md:p-10 text-white relative overflow-hidden md:flex md:items-center md:justify-between`}>
         <div className="relative z-10 shrink-0">
-          <div className={neoTag + " bg-red-800 border-red-400 text-white mb-4"}>MISJA DZISIAJ</div>
+          <div className={neoTag + " bg-red-800 border-red-400 text-white mb-4"}>RYWALIZACJA O PODIUM</div>
           <h3 className="text-4xl md:text-5xl font-[900] leading-none uppercase mb-2 tracking-tighter">WIELKI TURNIEJ</h3>
-          <p className="font-mono text-[11px] tracking-widest opacity-80 uppercase">Odpowiedz na jak największą liczbę pytań!</p>
+          <p className="font-mono text-[11px] tracking-widest opacity-80 uppercase">Rywalizuj z innymi i zdobywaj nagrody!</p>
         </div>
-        <Flag className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 rotate-12 md:relative md:w-32 md:h-32 md:opacity-20 md:right-0 md:bottom-0 md:rotate-0" />
+        <Trophy className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 rotate-12 md:relative md:w-32 md:h-32 md:opacity-20 md:right-0 md:bottom-0 md:rotate-0" />
       </div>
 
       {/* BŁĄD ŁADOWANIA STACJI */}
